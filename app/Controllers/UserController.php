@@ -57,7 +57,7 @@ class UserController
     public function register_user(Request $request,Response $response)
     {
         $this->validator->validate($request,[
-            "first_name_yeah"=>v::notEmpty(),
+            "first_name"=>v::notEmpty(),
             "last_name"=>v::notEmpty(),
             "phone_number"=>v::notEmpty(),
             "password"=>v::notEmpty(),
