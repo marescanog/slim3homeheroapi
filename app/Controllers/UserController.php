@@ -73,7 +73,7 @@ class UserController
 
         //register($first_name, $last_name, $phone_number, $password)
         $isSuccess = $this->user->register(
-            CustomRequestHandler::getParam($request,"first_name_yeah"),
+            CustomRequestHandler::getParam($request,"first_name"),
             CustomRequestHandler::getParam($request,"last_name"),
             CustomRequestHandler::getParam($request,"phone_number"),
             CustomRequestHandler::getParam($request,"password")
