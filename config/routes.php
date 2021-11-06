@@ -1,14 +1,22 @@
 <?php
 
-$app->post("/create-guest","GuestEntryController:createGuest");
+// Sample Routes
+
+$app->get("/","GuestEntryController:loadApp");
+
+$app->get("/create-guest","GuestEntryController:createGuest");
+
+$app->get("/is_in_db","GuestEntryController:isInDb)");
 
 $app->get("/view-guests" ,"GuestEntryController:viewGuests");
 
+$app->get("/get-single-guest","GuestEntryController:getSingleGuest");
+
 $app->get("/get-single-guest/{id}","GuestEntryController:getSingleGuest");
 
-$app->patch("/edit-single-guest/{id}","GuestEntryController:editGuest");
+$app->get("/edit-single-guest/{id}","GuestEntryController:editGuest");
 
-$app->delete("/delete-guest/{id}","GuestEntryController:deleteGuest");
+$app->get("/delete-guest/{id}","GuestEntryController:deleteGuest");
 
 $app->get("/count-guests" ,"GuestEntryController:countGuests");
 

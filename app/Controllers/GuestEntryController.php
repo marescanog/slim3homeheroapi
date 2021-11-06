@@ -9,7 +9,7 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\RequestInterface as Request;
 use Respect\Validation\Validator as v;
 use App\Validation\Validator;
-
+use App\Db\DB;
 
 
 class GuestEntryController
@@ -33,86 +33,111 @@ class GuestEntryController
     public function createGuest(Request $request,Response $response)
     {
 
-        $this->validator->validate($request,[
-           "name"=>v::notEmpty(),
-           "email"=>v::notEmpty()->email(),
-           "comments"=>v::notEmpty()
-        ]);
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+            
+            $status = 400;
+            $message = "";
+    
+            $sql = "SELECT * FROM hh_user";
+            $stmt = $conn->query($sql);
+            $users = $stmt->fetchAll();
+            $db = null;
+            
+            $message = "";
+            $status = 200;
+            $data = array(
+                "message" => $message,
+                "status" => $status,
+                "data" => $users,
+            );
+    
+            $this->customResponse->is200Response($response, $data);
+    
+        } catch (PDOException $e){
+            $status = 500;
+            $error = array(
+                "message" => "There was an error processing your request",
+                "status" => $status,
+                "data" => array(),
+                "error" => $e->getMessage(),
+            );
 
-        if($this->validator->failed())
-        {
-            $responseMessage = $this->validator->errors;
-            return $this->customResponse->is400Response($response,$responseMessage);
+            $this->customResponse->is200Response($response, $error);
         }
 
-        $this->guestEntry->create([
-           "full_name"=>CustomRequestHandler::getParam($request,"name"),
-        "email"=>CustomRequestHandler::getParam($request,"email"),
-        "comment"=>CustomRequestHandler::getParam($request,"comments"),
-        ]);
+    }
 
-        $responseMessage = "new guest created successfully";
-
-        $this->customResponse->is200Response($response,$responseMessage);
-
+    public function loadApp(Request $request,Response $response)
+    {
+        $responseMessage = "Api for the homehero app";
+        $this->customResponse->is200Response($response, $responseMessage);
     }
 
     public function viewGuests(Request $request,Response $response)
     {
-       $guestEntries = $this->guestEntry->get();
-
-        $this->customResponse->is200Response($response,$guestEntries);
+        $responseMessage = "View guest works";
+        $this->customResponse->is200Response($response, $responseMessage);
     }
+    
 
+    public function is_in_db($phone_number){
+        try{
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $query = "SELECT 
+                        hh.phone_no as phone_no 
+                    FROM 
+                        ".$this->table." hh WHERE phone_no = :phone";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($query);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':phone', $phone_number);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            return $result == false ? false : true;
+
+        } catch (PDOException $e) {
+            echo $e->getMessage();
+            return false;
+        }
+    }
 
     public function getSingleGuest(Request $request,Response $response,$id)
     {
 
-        $singleGuestEntry = $this->guestEntry->where(["id"=>$id])->get();
-
-        $this->customResponse->is200Response($response,$singleGuestEntry);
+        $responseMessage = "get Single user works";
+        $this->customResponse->is200Response($response, $responseMessage);
     }
 
     public function editGuest(Request $request,Response $response,$id)
     {
 
-        $this->validator->validate($request,[
-            "name"=>v::notEmpty(),
-            "email"=>v::notEmpty()->email(),
-            "comments"=>v::notEmpty()
-        ]);
-
-        if($this->validator->failed())
-        {
-            $responseMessage = $this->validator->errors;
-            return $this->customResponse->is400Response($response,$responseMessage);
-        }
-
-
-        $this->guestEntry->where(['id'=>$id])->update([
-            "full_name"=>CustomRequestHandler::getParam($request,"name"),
-            "email"=>CustomRequestHandler::getParam($request,"email"),
-            "comment"=>CustomRequestHandler::getParam($request,"comments"),
-        ]);
-        $responseMessage = "guest entry data updated successfully";
-
-        $this->customResponse->is200Response($response,$responseMessage);
+        $responseMessage = "Edit guest user works";
+        $this->customResponse->is200Response($response, $responseMessage);
     }
 
     public function deleteGuest(Request $request,Response $response,$id)
     {
-        $this->guestEntry->where(["id"=>$id])->delete();
-
-        $responseMessage = "guest entry data deleted successfully";
-
-        $this->customResponse->is200Response($response,$responseMessage);
+        $responseMessage = "Delete guest user works";
+        $this->customResponse->is200Response($response, $responseMessage);
     }
 
     public function countGuests(Request $request,Response $response)
     {
-        $guestsCount = $this->guestEntry->count();
-
-        $this->customResponse->is200Response($response,$guestsCount);
+        $responseMessage = "Count guest works";
+        $this->customResponse->is200Response($response, $responseMessage);
     }
 
 }

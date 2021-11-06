@@ -11,4 +11,9 @@ return function($container)
       return new \App\Controllers\AuthController;
     };
 
+    $container["UserController"] = function()
+    {
+      return new \App\Controllers\UserController;
+    };
+
 };
