@@ -17,7 +17,9 @@ class User
 
     // @name    Check Phone Number
     // @params  user's phone number
-    // @returns true if number is in db or false on failure/number is not in db.
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data vlaue is true if found in database and false if not in database
     public function is_in_db($phone_number){
         try{
 
@@ -29,7 +31,8 @@ class User
             
             // Prepare statement
             $stmt =  $conn->prepare($sql);
-            
+            $result = "";
+
             // Only fetch if prepare succeeded
             if ($stmt !== false) {
                 $stmt->bindparam(':phone', $phone_number);
@@ -39,17 +42,29 @@ class User
             $stmt=null;
             $db=null;
 
-            return $result == false ? false : true;
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result ? true : false
+            );
+
+            return $ModelResponse;
 
         } catch (\PDOException $e) {
 
-            return $e->getMessage();
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
         }
     }
 
     // @name    Adds a user to the database
     // @params  phone number, first name, last name
-    // @returns true on a successful add or PDOException/false if error
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is
     public function register($first_name, $last_name, $phone_number, $password){
 
         // Create Password Hash
@@ -60,7 +75,7 @@ class User
             $conn = $db->connect();
 
             // CREATE query
-            $sql = "INSERT INTO hh_user(user_type_id, first_name, last_name, phone_no, password) 
+            $sql = "INSERT INTO ".$this->table."(user_type_id, first_name, last_name, phone_no, password) 
                         values(:utypeid,:fname,:lname,:phone,:pass)";
             
             // Prepare statement
@@ -79,17 +94,29 @@ class User
             $stmt=null;
             $db=null;
 
-            return $result == false ? false : true;
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
 
         } catch (\PDOException $e) {
 
-            return $e->getMessage();
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
         }
     }
 
     // @name    Gets All Users in the Database
     // @params  limit number, default is null and thus returns all users
-    // @returns A PHP array of data containing all users or zero when no users are in the table
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data vlaue is is a PHP array of user objects, empty array when no data match in database
     public function getAll($limit = null){
         try{
             $db = new DB();
@@ -130,7 +157,6 @@ class User
                 "data"=>$e->getMessage()
             );
 
-            // return $e->getMessage();
             return $ModelResponse;
         }
     }
