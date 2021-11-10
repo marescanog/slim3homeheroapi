@@ -30,6 +30,7 @@ class UserController
          $this->validator = new Validator();
     }
 
+    // checks if a phone number is already in the database
     public function is_in_DB(Request $request,Response $response)
     {
         $this->validator->validate($request,[
@@ -54,6 +55,8 @@ class UserController
         $this->customResponse->is200Response($response, $responseMessage);
     }
 
+
+    // Saves a user into the database
     public function register_user(Request $request,Response $response)
     {
         $this->validator->validate($request,[
@@ -95,4 +98,24 @@ class UserController
         $this->customResponse->is200Response($response, $responseMessage);
     }
 
+    // Gets All users from Database
+    public function get_all_users(Request $request,Response $response)
+    {
+        $ModelResponse = $this->user->getAll();
+
+        if($ModelResponse["success"]){
+            $responseMessage =  array(
+                "data"=>$ModelResponse["data"],
+                "message"=>"Fetch Request Successful",
+            );
+            $this->customResponse->is200Response($response,  $responseMessage);
+        } else {
+            $responseMessage =  array(
+                "data"=>null,
+                "message"=>"There was a problem with accessing the database",
+            );
+            $this->customResponse->is500Response($response, $responseMessage);
+        }
+
+    }
 }

@@ -1,10 +1,10 @@
 <?php
 return function($container)
 {
-    $container["GuestEntryController"] = function()
-    {
-        return new \App\Controllers\GuestEntryController;
-    };
+    // $container["GuestEntryController"] = function()
+    // {
+    //     return new \App\Controllers\GuestEntryController;
+    // };
 
     $container["AuthController"] = function()
     {
