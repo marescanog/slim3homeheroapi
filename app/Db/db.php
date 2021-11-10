@@ -22,11 +22,11 @@ class DB {
             $conn = new \PDO("mysql:host=".$_ENV['DB_HOST'].";dbname=".$_ENV['DB_NAME'].";charset=utf8mb4", $_ENV['DB_USERNAME'], $_ENV['DB_PASSWORD']);
 
             // DEVELOPMENT PRODUCTION DATABASE CONNECTION
-            // require_once __DIR__ . '/hidden.php';
+            // require __DIR__ . '/hidden.php';
             // $conn = new \PDO($conn_dsn, $conn_user, $conn_pass);
 
             // DEVELOPMENT LOCAL DATABASE CONNECTION
-            // require_once __DIR__ . '/hiddenLocal.php';
+            // require __DIR__ . '/hiddenLocal.php';
             // $conn = new \PDO($conn_dsn, $conn_user, $conn_pass);
 
             $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
