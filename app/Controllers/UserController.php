@@ -169,7 +169,12 @@ class UserController
         // Gets a single user from Database
         public function get_single_user(Request $request,Response $response, $args)
         {
-            $ModelResponse = $this->user->getUserByID($args['id']);
+            $ModelResponse = [];
+            if (array_key_exists('id', $args)) {
+                $ModelResponse = $this->user->getUserByID($args['id']);
+            } else {
+                $ModelResponse = $this->user->getUserByPhone($args['phone']);
+            }
     
             if(is_array($ModelResponse) && array_key_exists("success", $ModelResponse) && $ModelResponse["success"]){
                 // If user is not found
@@ -187,7 +192,7 @@ class UserController
                     "message"=>"Fetch Request Successful"
                 );
                 return $this->customResponse->is200Response($response,  $responseMessage);
-                
+
             } else {
                 $responseMessage =  array(
                     "data"=>$ModelResponse['data'],
