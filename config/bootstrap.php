@@ -20,8 +20,7 @@ $routeContainers = require_once __DIR__. '/routecontainers.php';
 
 $routeContainers($container);
 
-
-// require_once __DIR__. '/routes.php';
+// Required Routes
 
 require_once __DIR__. '/routes/user-routes.php';
 
