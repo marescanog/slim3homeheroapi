@@ -5,6 +5,8 @@ $app->get("/create-guest","UserController:get_all_users");
 
 $app->get("/user/check-number","UserController:is_in_DB");
 
+$app->get("/get-single-user/{id}","UserController:get_single_user");
+
 $app->post("/user/register","UserController:register_user");
 
 

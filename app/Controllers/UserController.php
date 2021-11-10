@@ -165,4 +165,37 @@ class UserController
         }
 
     }
+
+        // Gets a single user from Database
+        public function get_single_user(Request $request,Response $response, $args)
+        {
+            $ModelResponse = $this->user->getUserByID($args['id']);
+    
+            if(is_array($ModelResponse) && array_key_exists("success", $ModelResponse) && $ModelResponse["success"]){
+                // If user is not found
+                if($ModelResponse["data"] == false){
+                    $responseMessage =  array(
+                        "message"=>"The User is not found."
+                    );
+
+                    return $this->customResponse->is404Response($response,  $responseMessage);
+                }
+
+                // If user is found
+                $responseMessage =  array(
+                    "data"=>$ModelResponse["data"],
+                    "message"=>"Fetch Request Successful"
+                );
+                return $this->customResponse->is200Response($response,  $responseMessage);
+                
+            } else {
+                $responseMessage =  array(
+                    "data"=>$ModelResponse['data'],
+                    "message"=>"There was a problem with UserController function the PDO statement",
+                );
+                $this->customResponse->is500Response($response, $responseMessage);
+            }
+
+            // $this->customResponse->is200Response($response,  "this route works ".$args['id']);
+        }
 }
