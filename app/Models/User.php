@@ -8,21 +8,8 @@ use PDOException;
 
 class User 
 {
-
     // DB stuff
-    private $conn;
     private $table = 'hh_user';
-
-    // Properties
-    private $user_id;
-    private $user_type;
-    private $user_status;
-    private $first_name;
-    private $last_name;
-    private $phone_number;
-    private $date_time_created;
-    private $messenger_status;
-    private $timestamp_last_active;
 
     // Constructor 
     public function __construct(){
@@ -38,10 +25,10 @@ class User
             $conn = $db->connect();
 
             // CREATE query
-            $query = "SELECT * FROM ".$this->table." WHERE phone_no = :phone";
+            $sql = "SELECT * FROM ".$this->table." WHERE phone_no = :phone";
             
             // Prepare statement
-            $stmt =  $conn->prepare($query);
+            $stmt =  $conn->prepare($sql);
             
             // Only fetch if prepare succeeded
             if ($stmt !== false) {
@@ -73,11 +60,11 @@ class User
             $conn = $db->connect();
 
             // CREATE query
-            $query = "INSERT INTO hh_user(user_type_id, first_name, last_name, phone_no, password) 
+            $sql = "INSERT INTO hh_user(user_type_id, first_name, last_name, phone_no, password) 
                         values(:utypeid,:fname,:lname,:phone,:pass)";
             
             // Prepare statement
-            $stmt =  $conn->prepare($query);
+            $stmt =  $conn->prepare($sql);
             $utypeID = 1;
             // Only fetch if prepare succeeded
             if ($stmt !== false) {
@@ -100,7 +87,53 @@ class User
         }
     }
 
+    // @name    Gets All Users in the Database
+    // @params  limit number, default is null and thus returns all users
+    // @returns A PHP array of data containing all users or zero when no users are in the table
+    public function getAll($limit = null){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
 
+            $sql = "";
+
+            // CREATE query
+            if($limit){
+                $sql = "SELECT * FROM ".$this->table." LIMIT $limit";
+            } else {
+                $sql = "SELECT * FROM ".$this->table;
+            }
+
+            
+            // query statement
+            $stmt =  $conn->query($sql);
+
+            // check if statement is successfil
+            if($stmt){
+                $result = $stmt->fetchAll();
+            }
+
+            $conn=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result,
+            );
+
+            return  $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            // return $e->getMessage();
+            return $ModelResponse;
+        }
+    }
 
     // @name    Connects a user with homeowner attributes
     // @params  id

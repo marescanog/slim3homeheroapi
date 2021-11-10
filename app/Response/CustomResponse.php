@@ -29,4 +29,12 @@ class CustomResponse
         return $response->withHeader("Content-Type","application/json")
             ->withStatus(422);
     }
+
+    public function is500Response($response,$responseMessage)
+    {
+        $responseMessage = json_encode(["success"=>false,"response"=>$responseMessage]);
+        $response->getBody()->write($responseMessage);
+        return $response->withHeader("Content-Type","application/json")
+            ->withStatus(500);
+    }
 }

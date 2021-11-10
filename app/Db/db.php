@@ -14,14 +14,6 @@ class DB {
         // $dotenv = Dotenv::createImmutable(__DIR__."\\..\\..\\");
         // $dotenv->load();
 
-        // // DEVELOPMENT VARIABLES
-        // $conn_host = 'localhost';
-        // $conn_db = 'homehero';
-        // $conn_user = 'root';
-        // $conn_pass = '';
-        // $conn_charset = 'utf8mb4';
-        // $conn_dsn = "mysql:host=$conn_host;dbname=$conn_db;charset=$conn_charset";
-
         try{
             // // LOCAL DATABASE, DEVELOPMENT  DATABASE CONNECTION
             // $conn = new PDO($dsn, $user, $pass);
@@ -29,8 +21,12 @@ class DB {
             // PRODUCTION DATABASE CONNECTION
             $conn = new \PDO("mysql:host=".$_ENV['DB_HOST'].";dbname=".$_ENV['DB_NAME'].";charset=utf8mb4", $_ENV['DB_USERNAME'], $_ENV['DB_PASSWORD']);
 
-            // DEVELOPMENT DATABASE CONNECTION
+            // DEVELOPMENT PRODUCTION DATABASE CONNECTION
             // require_once __DIR__ . '/hidden.php';
+            // $conn = new \PDO($conn_dsn, $conn_user, $conn_pass);
+
+            // DEVELOPMENT LOCAL DATABASE CONNECTION
+            // require_once __DIR__ . '/hiddenLocal.php';
             // $conn = new \PDO($conn_dsn, $conn_user, $conn_pass);
 
             $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
