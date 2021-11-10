@@ -1,3 +1,4 @@
 /vendor/
 .env
 /app/DB/hidden.php
+/app/DB/hiddenLocal.php
