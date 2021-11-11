@@ -208,11 +208,11 @@ class User
 
             $ModelResponse =  array(
                 "success"=>true,
-                "data"=>$result ? $result : false
+                "data"=>$result == false ? false : $result
             );
 
             return $ModelResponse;
-            
+
 
         } catch (\PDOException $e) {
 

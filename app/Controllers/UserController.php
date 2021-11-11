@@ -176,11 +176,14 @@ class UserController
                 $ModelResponse = $this->user->getUserByPhone($args['phone']);
             }
     
-            if(is_array($ModelResponse) && array_key_exists("success", $ModelResponse) && $ModelResponse["success"]){
+            if(is_array($ModelResponse) && array_key_exists("success", $ModelResponse) && $ModelResponse["success"] == true){
                 // If user is not found
                 if($ModelResponse["data"] == false){
                     $responseMessage =  array(
-                        "message"=>"The User is not found."
+                        "message"=>"The User is not found.",
+                        "isFound"=>false,
+                        "success"=>true,
+                        "data"=>null
                     );
 
                     return $this->customResponse->is404Response($response,  $responseMessage);
@@ -189,7 +192,9 @@ class UserController
                 // If user is found
                 $responseMessage =  array(
                     "data"=>$ModelResponse["data"],
-                    "message"=>"Fetch Request Successful"
+                    "message"=>"Fetch Request Successful",
+                    "isFound"=>true,
+                    "success"=>true,
                 );
                 return $this->customResponse->is200Response($response,  $responseMessage);
 
@@ -197,6 +202,8 @@ class UserController
                 $responseMessage =  array(
                     "data"=>$ModelResponse['data'],
                     "message"=>"There was a problem with UserController function the PDO statement",
+                    "isFound"=>null,
+                    "success"=>false,
                 );
                 $this->customResponse->is500Response($response, $responseMessage);
             }
