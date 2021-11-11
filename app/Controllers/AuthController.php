@@ -37,10 +37,9 @@ class AuthController
             "phone_number"=>v::notEmpty(),
             "password"=>v::notEmpty(),
             // Check if Max & Min length
-            "phone_number"=>v::Length(1,18),
-            "password"=>v::Length(8, 30),
+            // "phone_number"=>v::Length(1,18),
             // Check if phone number is a phone number
-            "phone_number"=>v::phone(),
+            // "phone_number"=>v::phone(),
         ]);
 
         if($this->validator->failed())
@@ -65,7 +64,7 @@ class AuthController
             return $this->customResponse->is500Response($response, $responseMessage);
         } 
 
-        if( $verifyAccount["data"] == false ){
+        if( $verifyAccount["isValid"] == false ){
 
             $responseMessage = "";
 
@@ -83,8 +82,16 @@ class AuthController
         }
    
         // GENERATE JWT TOKEN
+        $userData = $verifyAccount['data'];
+        $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"));
+
+        // $responseMessage =  array(
+        //     "data"=> GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number")),
+        //     "message"=>"Login Success"
+        // );
+
         $responseMessage =  array(
-            "data"=> GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number")),
+            "data"=> $userData,
             "message"=>"Login Success"
         );
 
@@ -139,8 +146,14 @@ class AuthController
             return $responseMessage;
         }
 
+        $userData = [];
+        $userData['first_name'] = $userObject['data']['first_name'];
+        $userData['initials'] = substr($userObject['data']['first_name'], 0, 1).substr($userObject['data']['last_name'], 0, 1);
+        $userData['initials'] = strtoupper($userData['initials']);
+
         $responseMessage =  array(
-            "data"=>true,
+            "isValid"=>true,
+            "data"=>$userData,
             "message"=>"Verify function sucessfully ran",
             "success"=>true
         );
