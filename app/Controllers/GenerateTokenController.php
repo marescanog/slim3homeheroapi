@@ -11,14 +11,14 @@ use \Firebase\JWT\JWT;
 class GenerateTokenController implements SecretKeyInterface
 {
 
-    public static function generateToken($email)
+    public static function generateToken($phone)
     {
         $now = time();
         $future = strtotime('+1 hour',$now);
         $secret = GenerateTokenController::JWT_SECRET_KEY;
 
         $payload = [
-          "jti"=>$email,
+          "jti"=>$phone,
           "iat"=>$now,
           "exp"=>$future
         ];
