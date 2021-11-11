@@ -165,4 +165,49 @@ class UserController
         }
 
     }
+
+        // Gets a single user from Database
+        public function get_single_user(Request $request,Response $response, $args)
+        {
+            $ModelResponse = [];
+            if (array_key_exists('id', $args)) {
+                $ModelResponse = $this->user->getUserByID($args['id']);
+            } else {
+                $ModelResponse = $this->user->getUserByPhone($args['phone']);
+            }
+    
+            if(is_array($ModelResponse) && array_key_exists("success", $ModelResponse) && $ModelResponse["success"] == true){
+                // If user is not found
+                if($ModelResponse["data"] == false){
+                    $responseMessage =  array(
+                        "message"=>"The User is not found.",
+                        "isFound"=>false,
+                        "success"=>true,
+                        "data"=>null
+                    );
+
+                    return $this->customResponse->is404Response($response,  $responseMessage);
+                }
+
+                // If user is found
+                $responseMessage =  array(
+                    "data"=>$ModelResponse["data"],
+                    "message"=>"Fetch Request Successful",
+                    "isFound"=>true,
+                    "success"=>true,
+                );
+                return $this->customResponse->is200Response($response,  $responseMessage);
+
+            } else {
+                $responseMessage =  array(
+                    "data"=>$ModelResponse['data'],
+                    "message"=>"There was a problem with UserController function the PDO statement",
+                    "isFound"=>null,
+                    "success"=>false,
+                );
+                $this->customResponse->is500Response($response, $responseMessage);
+            }
+
+            // $this->customResponse->is200Response($response,  "this route works ".$args['id']);
+        }
 }

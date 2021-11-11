@@ -180,19 +180,96 @@ class User
 
 
     // @name    Gets a user from database by phone number
-    // @params  id
-    // @returns true on a successful add or PDOException/false if error
+    // @params  phone
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data vlaue is is a user data object
     public function getUserByPhone($phone){
-        return $result == false ? false : true;
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT * FROM ".$this->table." WHERE phone_no=:phone";
+
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':phone', $phone);
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result == false ? false : $result
+            );
+
+            return $ModelResponse;
+
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
     }
 
 
 
     // @name    Gets a user from database by ID
     // @params  id
-    // @returns true on a successful add object or PDOException/false if error
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data vlaue is is a user data object
     public function getUserByID($id){
-        return $result == false ? false : true;
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT * FROM ".$this->table." WHERE user_id=:id";
+
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':id', $id);
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result ? $result : false
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
     }
 
 }

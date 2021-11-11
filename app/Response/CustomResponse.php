@@ -37,4 +37,12 @@ class CustomResponse
         return $response->withHeader("Content-Type","application/json")
             ->withStatus(500);
     }
+
+    public function is404Response($response,$responseMessage)
+    {
+        $responseMessage = json_encode(["success"=>false,"response"=>$responseMessage]);
+        $response->getBody()->write($responseMessage);
+        return $response->withHeader("Content-Type","application/json")
+            ->withStatus(404);
+    }
 }
