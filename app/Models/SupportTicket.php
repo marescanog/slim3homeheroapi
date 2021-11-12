@@ -37,7 +37,7 @@ class SupportTicket
                     $stmt->bindparam(':author', $author);
                     $stmt->bindparam(':subcat', $subcategory);
                     $stmt->bindparam(':desc', $authorDescription);
-                    $stmt->bindparam(':totalImages', $phone_number);
+                    $stmt->bindparam(':totalImages',  $totalImages);
                     $result = $stmt->execute();
                 }
                 $stmt=null;
