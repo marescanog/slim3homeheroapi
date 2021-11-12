@@ -112,6 +112,8 @@ class User
         }
     }
 
+    
+
     // @name    Gets All Users in the Database
     // @params  limit number, default is null and thus returns all users
     // @returns a Model Response object with the attributes "success" and "data"

@@ -4,6 +4,7 @@
 namespace App\Controllers;
 
 use App\Models\User;
+use App\Models\Homeowner;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -25,6 +26,8 @@ class AuthController
         $this->customResponse = new CustomResponse();
 
         $this->user = new User();
+
+        $this->homeowner = new Homeowner();
 
         $this->validator = new Validator();
     }
@@ -222,7 +225,7 @@ class AuthController
         // Add Code here to sanitize number, whatever the user inputs it will always be saved as +639XXXXXXX format
 
 
-        $ModelResponse = $this->user->createUser(
+        $ModelResponse = $this->homeowner->createHomewner(
             CustomRequestHandler::getParam($request,"first_name"),
             CustomRequestHandler::getParam($request,"last_name"),
             $phone_number,
@@ -230,24 +233,7 @@ class AuthController
         );
 
         if(is_array($ModelResponse) && array_key_exists("success", $ModelResponse) && $ModelResponse["success"]){
-
-            // After creating the user, we have to create a homeowner association
-
-
-
-
-
-
-
-
-
-
-
-            $responseMessage =  array(
-                "data"=>$ModelResponse,
-                "message"=>"Registration Sucessful!",
-            );
-            $this->customResponse->is200Response($response, $responseMessage);
+            $this->customResponse->is200Response($response, "Registration Sucessful!");
         } else {
             $responseMessage =  array(
                 "data"=>$ModelResponse["data"],
