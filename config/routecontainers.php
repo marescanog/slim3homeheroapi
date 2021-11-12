@@ -12,4 +12,9 @@ return function($container)
       return new \App\Controllers\UserController;
     };
 
+    $container["SupportTicketController"] = function()
+    {
+      return new \App\Controllers\SupportTicketController;
+    };
+
 };
