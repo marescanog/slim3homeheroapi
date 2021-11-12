@@ -2,3 +2,4 @@
 .env
 /app/DB/hidden.php
 /app/DB/hiddenLocal.php
+/app/DB/old_hidden.php

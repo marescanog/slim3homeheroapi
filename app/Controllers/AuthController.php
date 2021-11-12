@@ -4,6 +4,7 @@
 namespace App\Controllers;
 
 use App\Models\User;
+use App\Models\Homeowner;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -25,6 +26,8 @@ class AuthController
         $this->customResponse = new CustomResponse();
 
         $this->user = new User();
+
+        $this->homeowner = new Homeowner();
 
         $this->validator = new Validator();
     }
@@ -159,6 +162,86 @@ class AuthController
         );
 
         return $responseMessage;
+    }
+
+    // Saves a user into the database
+    public function userRegister(Request $request,Response $response)
+    {
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "first_name"=>v::notEmpty(),
+            "last_name"=>v::notEmpty(),
+            "phone_number"=>v::notEmpty(),
+            "password"=>v::notEmpty(),
+            "confirm_password"=>v::notEmpty(),
+            // Check if Max & Min length
+            "phone_number"=>v::Length(1,18),
+            "first_name"=>v::Length(1,50),
+            "last_name"=>v::Length(1,50),
+            "password"=>v::Length(8, 30),
+            // Check if Password Matches
+            "password"=>v::equals(CustomRequestHandler::getParam($request,"confirm_password")),
+            // Check if phone number is a phone number
+            "phone_number"=>v::phone(),
+        ]);
+
+        
+        if($this->validator->failed())
+        {
+            $validationErrors = $this->validator->errors;
+            if (array_key_exists("password", $validationErrors )) {
+                $validationErrors["password"]["password"] = "Confirmation password must match entered password.";
+            }
+
+            $message = "";
+            foreach ($validationErrors as $key => $value)
+            {
+                $message =  $message." ".$value[$key].".";
+            }
+
+            $responseMessage =  array(
+                "data"=> $validationErrors,
+                "message"=> $message,
+            );
+
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+
+        $phone_number = CustomRequestHandler::getParam($request,"phone_number");
+        $ModelResponse = $this->user->is_in_db($phone_number);
+        // Check if phone number is in DB
+        if(is_array($ModelResponse) && array_key_exists("data", $ModelResponse) && $ModelResponse["data"]){
+            $responseMessage =  array(
+                "data"=>null,
+                "message"=>"Looks like there is an account associated with this number. Please login using this phone number or click on 'Forgot Password' if you do not remember your password.",
+            );
+
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+        $ModelResponse = null;
+
+        // Add Code here to sanitize number, whatever the user inputs it will always be saved as +639XXXXXXX format
+
+
+        $ModelResponse = $this->homeowner->createHomewner(
+            CustomRequestHandler::getParam($request,"first_name"),
+            CustomRequestHandler::getParam($request,"last_name"),
+            $phone_number,
+            CustomRequestHandler::getParam($request,"password")
+        );
+
+        if(is_array($ModelResponse) && array_key_exists("success", $ModelResponse) && $ModelResponse["success"]){
+            $this->customResponse->is200Response($response, "Registration Sucessful!");
+        } else {
+            $responseMessage =  array(
+                "data"=>$ModelResponse["data"],
+                "message"=>"There was a problem with the PDO statement",
+            );
+            $this->customResponse->is500Response($response, $responseMessage);
+        }
+        
     }
 
 }
