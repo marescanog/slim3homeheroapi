@@ -31,7 +31,28 @@ class SupportTicketController
     // creates a support ticket into the database
     public function createTicket(Request $request,Response $response)
     {
-        $this->customResponse->is200Response($response,  "this route works");
+        //Sanitize the Data with the Validator
+        $this->validator->validate($request,[
+            "author"=>v::notEmpty(),
+            "subcategory"=>v::notEmpty(),
+            "authorDescription"=>v::notEmpty()
+        ]);
+
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Create Ticket
+        $ModelResponse = $this->supportTicket->createTicket(
+            CustomRequestHandler::getParam($request,"author"),
+            CustomRequestHandler::getParam($request,"subcategory"),
+            CustomRequestHandler::getParam($request,"authorDescription"),
+            CustomRequestHandler::getParam($request,"totalImages")
+        );
+
+        $this->customResponse->is200Response($response,  "Ticket Successfully created");
     }
 
 }
