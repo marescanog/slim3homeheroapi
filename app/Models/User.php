@@ -65,7 +65,7 @@ class User
     // @returns a Model Response object with the attributes "success" and "data"
     //          sucess value is true when PDO is successful and false on failure
     //          data value is
-    public function register($first_name, $last_name, $phone_number, $password){
+    public function create($first_name, $last_name, $phone_number, $password){
 
         // Create Password Hash
         $hashed_pass = password_hash($password, PASSWORD_DEFAULT);

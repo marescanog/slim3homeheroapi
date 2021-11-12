@@ -9,7 +9,6 @@ $app->get("/get-single-user/{id}","UserController:get_single_user");
 
 $app->get("/get-single-user-by-phone/{phone}","UserController:get_single_user");
 
-$app->post("/user/register","UserController:register_user");
 
 
 

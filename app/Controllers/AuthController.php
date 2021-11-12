@@ -161,4 +161,14 @@ class AuthController
         return $responseMessage;
     }
 
+    public function userRegister(Request $request,Response $response){
+        // $responseMessage =  array(
+        //     "data"=> $userData,
+        //     "message"=>"User Registration Successful Success"
+        // );
+
+        return $this->customResponse->is200Response($response, "The user Registration Route route works");
+
+    }
+
 }
