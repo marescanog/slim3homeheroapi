@@ -60,4 +60,176 @@ class SupportTicket
                 return $ModelResponse;
             }
         }
+
+
+        // @name    gets all tickets from the database
+        // @params  none
+        // @returns a Model Response object with the attributes "success" and "data"
+        //          sucess value is true when PDO is successful and false on failure
+        //          data value is
+        public function get_All($id = null){
+
+            try{
+                $db = new DB();
+                $conn = $db->connect();
+    
+                // CREATE query
+                $sql = "";
+
+                if($id == null){
+                    $sql = "SELECT * FROM ".$this->table;
+                    // query statement
+                    $stmt =  $conn->query($sql);
+
+                    // check if statement is successfil
+                    if($stmt){
+                        $result = $stmt->fetchAll();
+                    }
+
+                } else {
+                    $sql = "SELECT * FROM ".$this->table." WHERE assigned_agent = :id";
+                    // Prepare statement
+                    $stmt =  $conn->prepare($sql);
+                    $result = "";
+
+                    // Only fetch if prepare succeeded
+                    if ($stmt !== false) {
+                        $stmt->bindparam(':id', $id);
+                        $stmt->execute();
+                        $result = $stmt->fetchAll();
+                    }
+
+                    $stmt=null;
+                    $db=null;
+                }
+                
+                
+                $conn=null;
+                $db=null;
+
+    
+                $ModelResponse =  array(
+                    "success"=>true,
+                    "data"=>$result
+                );
+    
+                return $ModelResponse;
+    
+            } catch (\PDOException $e) {
+    
+                $ModelResponse =  array(
+                    "success"=>false,
+                    "data"=>$e->getMessage()
+                );
+    
+                return $ModelResponse;
+            }
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
