@@ -7,6 +7,7 @@ $app->group("/auth",function() use ($app){
     $app->post("/support-login","AuthController:supportRegister");
 
     $app->get("/check-phone", "AuthController:userPhoneCheck");
+    $app->get("/verify-password", "AuthController:userVerifyPass");
 });
 
 

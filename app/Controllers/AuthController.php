@@ -429,7 +429,7 @@ class AuthController
     }
 
     public function userVerifyPass(Request $request,Response $response){
-
+        return $this->customResponse->is200Response($response,  "This route works");
     }
 
 }
