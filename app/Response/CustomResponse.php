@@ -22,6 +22,14 @@ class CustomResponse
             ->withStatus(400);
     }
 
+    public function is401Response($response,$responseMessage)
+    {
+        $responseMessage = json_encode(["success"=>false,"response"=>$responseMessage]);
+        $response->getBody()->write($responseMessage);
+        return $response->withHeader("Content-Type","application/json")
+            ->withStatus(401);
+    }
+
     public function is422Response($response,$responseMessage)
     {
         $responseMessage = json_encode(["success"=>true,"response"=>$responseMessage]);
