@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Models\User;
 use App\Models\Homeowner;
 use App\Models\Support;
+use App\Models\Worker;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -19,6 +20,12 @@ class AuthController
     protected  $customResponse;
 
     protected  $user;
+
+    protected  $homeowner;
+
+    protected  $support;
+
+    protected  $worker;
 
     protected  $validator;
 
@@ -330,6 +337,112 @@ class AuthController
             );
             $this->customResponse->is500Response($response,  $ModelResponse);
         }
+    }
+
+    public function userPhoneCheck(Request $request,Response $response){
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+        $this->validator->validate($request,[
+            // Check if empty
+            "phone"=>v::notEmpty(),
+            // Check if phone number is a phone number
+            "phone"=>v::phone(),
+        ]);
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Check if user exists in the database via phone number
+        // Get the user object associated with phone number
+        $userObject = $this->user->getUserAccountsByPhone(CustomRequestHandler::getParam($request,"phone"));
+
+        // If there is a user object, get the role associated with user
+        // Otherwise return
+        if($userObject["data"] == false){
+            // there is no user associated with this phone number
+            return $this->customResponse->is200Response($response,  "There is no user associated with this phone number");
+        }
+
+
+        // Check for user types associated with the phone number
+        $isHomeowner = false;
+        $isWorker = false;
+        $isSupport = false;
+        $isAdmin = false;
+        $error = false;
+
+        if(count($userObject["data"]) >= 1){
+            // there is ONE or more roles associated with this phone number
+            // return $this->customResponse->is200Response($response,  "There is one or more roles associated with this phone number");
+
+            // check if the role/s is already a worker role
+            for($x = 0; $x < count($userObject["data"]); $x++){
+                switch($userObject["data"][$x]["user_type_id"]){
+                    case 1:
+                        $isHomeowner = true;
+                        break;
+                    case 2:
+                        $isWorker = true;
+                        break;
+                    case 3:
+                        $isSupport = true;
+                        break;
+                    case 4:
+                        $isAdmin = true;
+                        break;
+                    default:
+                        $error = true;
+                    break;
+                }
+
+                if($error == true){
+                    return $this->customResponse->is500Response($response,  "An error occured with the Athentication Controller. Please check the server issue.");
+                }
+
+                // if($isWorker == true){
+                //     return $this->customResponse->is400Response($response,  "This user is a worker");
+                // }
+            }
+
+        }
+        
+        // $message = "This user has the following roles: ";
+        $message = "It looks like an account already exists with this phone number.";
+        $data = [];
+        
+        // if($isHomeowner == true){
+        //     $message = $message." Homeowner,";
+        // }
+
+        // if($isWorker == true){
+        //     $message = $message." Worker,";
+        // }
+        
+        // if($isSupport == true){
+        //     $message = $message." Support,";
+        // }
+
+        // if($isAdmin == true){
+        //     $message = $message." Admin,";
+        // }
+
+        $data["isHomeowner"] = $isHomeowner;
+        $data["isWorker"] = $isWorker;
+        $data["isSupport"] = $isSupport;
+        $data["isAdmin"] = $isAdmin;
+
+        $responseMessage =  array(
+            "data"=> $data,
+            "message"=> $message,
+        );
+
+        return $this->customResponse->is400Response($response,  $responseMessage);
+
+        // return $this->customResponse->is200Response($response,  $userObject["data"]);
     }
 
 }
