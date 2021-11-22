@@ -339,6 +339,12 @@ class AuthController
         }
     }
 
+    // This function accepts a phone number in body
+    // returns success true if phone number is not in database
+    // returns success false plus a 400 response object if phone number in database
+    //          response object contains message "It looks like an account already exists with this phone number."
+    //          response data contains 4 bools: isHomeowner, isWorker, isAdmin, isSupport
+    //          if switch defaults, returns a 500 message "An error occured..."
     public function userPhoneCheck(Request $request,Response $response){
         // Server side validation using Respect Validation library
         // declare a group of rules ex. if empty, equal to etc.
@@ -377,9 +383,8 @@ class AuthController
 
         if(count($userObject["data"]) >= 1){
             // there is ONE or more roles associated with this phone number
-            // return $this->customResponse->is200Response($response,  "There is one or more roles associated with this phone number");
 
-            // check if the role/s is already a worker role
+            // return the roles that are assigned to this phone number
             for($x = 0; $x < count($userObject["data"]); $x++){
                 switch($userObject["data"][$x]["user_type_id"]){
                     case 1:
@@ -403,33 +408,13 @@ class AuthController
                     return $this->customResponse->is500Response($response,  "An error occured with the Athentication Controller. Please check the server issue.");
                 }
 
-                // if($isWorker == true){
-                //     return $this->customResponse->is400Response($response,  "This user is a worker");
-                // }
             }
 
         }
         
-        // $message = "This user has the following roles: ";
         $message = "It looks like an account already exists with this phone number.";
         $data = [];
         
-        // if($isHomeowner == true){
-        //     $message = $message." Homeowner,";
-        // }
-
-        // if($isWorker == true){
-        //     $message = $message." Worker,";
-        // }
-        
-        // if($isSupport == true){
-        //     $message = $message." Support,";
-        // }
-
-        // if($isAdmin == true){
-        //     $message = $message." Admin,";
-        // }
-
         $data["isHomeowner"] = $isHomeowner;
         $data["isWorker"] = $isWorker;
         $data["isSupport"] = $isSupport;
@@ -441,8 +426,10 @@ class AuthController
         );
 
         return $this->customResponse->is400Response($response,  $responseMessage);
+    }
 
-        // return $this->customResponse->is200Response($response,  $userObject["data"]);
+    public function userVerifyPass(Request $request,Response $response){
+
     }
 
 }
