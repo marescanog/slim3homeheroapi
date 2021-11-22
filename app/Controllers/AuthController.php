@@ -428,8 +428,72 @@ class AuthController
         return $this->customResponse->is400Response($response,  $responseMessage);
     }
 
+
+    // This function accepts password and confirm_password in body
+    // returns success true if passwords plus a response object if passwords match and are not empty
+    //          response object contains message "Secure password created"
+    //          response data contains 1 string: the hashed password
+    // returns success false plus a 400 response object if password and confirm_password are empty and do not match
+    //          response object contains validation error messages
+    //          response data contains validation errors
     public function userVerifyPass(Request $request,Response $response){
-        return $this->customResponse->is200Response($response,  "This route works");
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+
+        // Check if feilds are empy
+        $this->validator->validate($request,[
+            // Check if empty
+            "password"=>v::notEmpty(),
+            "confirm_password"=>v::notEmpty(),       
+        ]);
+        // Return error when empty
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // check if password has max and min length
+        // check if confirm password matches password
+        $this->validator->validate($request,[
+            // Check if Max & Min length
+            "password"=>v::Length(8, 30),
+            // Check if Password Matches
+            "confirm_password"=>v::equals(CustomRequestHandler::getParam($request,"password"))            
+        ]);
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $validationErrors = $this->validator->errors;
+            if (array_key_exists("confirm_password", $validationErrors )) {
+                $validationErrors["confirm_password"]["confirm_password"] = "Confirmation password must match entered password.";
+            }
+
+            $message = "";
+            foreach ($validationErrors as $key => $value)
+            {
+                $message =  $message." ".$value[$key].".";
+            }
+
+            $responseMessage =  array(
+                "data"=> $validationErrors,
+                "message"=> $message,
+            );
+
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // return a hashed version of the password
+        // Create Password Hash
+        $hashed_pass = password_hash(CustomRequestHandler::getParam($request,"password"), PASSWORD_DEFAULT);
+
+        $responseMessage =  array(
+            "data"=> $hashed_pass,
+            "message"=> "Secure password created",
+        );
+
+        return $this->customResponse->is200Response($response,  $responseMessage);
     }
 
 }
