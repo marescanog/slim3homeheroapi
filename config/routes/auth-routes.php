@@ -8,6 +8,8 @@ $app->group("/auth",function() use ($app){
 
     $app->get("/check-phone", "AuthController:userPhoneCheck");
     $app->get("/verify-password", "AuthController:userVerifyPass");
+
+    $app->post("/generate-SMS-dummy", "AuthController:generateSMSDummy");
 });
 
 

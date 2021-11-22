@@ -496,4 +496,43 @@ class AuthController
         return $this->customResponse->is200Response($response,  $responseMessage);
     }
 
+
+    // This function mimics the format for the MessageBird's Step 2: (Handling of SMS number) 
+    // note, we have to convert the numbers to international format (+639...) no hyphen
+    // This function does not generate an SMS, it is merely a dummy function for testing.
+    public function generateSMSDummy(Request $request,Response $response){
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+
+        // Check if feilds are empy
+        $this->validator->validate($request,[
+            // Check if empty
+            "phone"=>v::notEmpty(),
+            // Check if phone number is a phone number
+            "phone"=>v::phone(),     
+        ]);
+
+        // Return error when empty or invalid
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Clean up phone number to be +63 format
+
+        // Create verify object
+
+        // Make a request to Verify API
+        // try catch block
+        // if error return 400
+
+        // if request is successful, return success message to signal to client to load SMS form
+        $responseMessage =  array(
+            "data"=> null,
+            "message"=> "SMS Generated!",
+        );
+
+        return $this->customResponse->is200Response($response,  $responseMessage);
+    }
 }
