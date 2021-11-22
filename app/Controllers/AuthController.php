@@ -497,6 +497,7 @@ class AuthController
     }
 
 
+    // DUMMY ROUTE function
     // This function mimics the format for the MessageBird's Step 2: (Handling of SMS number) 
     // note, we have to convert the numbers to international format (+639...) no hyphen
     // This function does not generate an SMS, it is merely a dummy function for testing.
@@ -527,12 +528,93 @@ class AuthController
         // try catch block
         // if error return 400
 
-        // if request is successful, return success message to signal to client to load SMS form
+        $obj = [];
+        $obj['messagebird_id'] = 1;
+
+        // if request is successful, return success message with id to signal to client to load SMS form
         $responseMessage =  array(
-            "data"=> null,
+            "data"=> $obj,
             "message"=> "SMS Generated!",
         );
 
         return $this->customResponse->is200Response($response,  $responseMessage);
+    }
+
+
+    // DUMMY ROUTE function
+    // This function mimics the format for the MessageBird's Step 3: (Verify if token is correct) 
+    // This function does not verify a generated SMS, it verifies static 123456 PIN
+    // this is merely a dummy function for testing.
+    // messagebird also requires an ID
+    public function verifySMSDummy(Request $request,Response $response){
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+
+        // Check if feilds are empty
+        $this->validator->validate($request,[
+            "messagebird_id"=>v::notEmpty(),
+            "pin"=>v::notEmpty(),     
+            // pin must be 6 digits
+            "pin"=>v::length(6,6), 
+        ]);
+
+        // Return error when empty
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Check if feilds are numeric
+        $this->validator->validate($request,[
+            "messagebird_id"=>v::number(),
+            "pin"=>v::number(),    
+        ]);
+
+        // Return error when invalid
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Make request to verify API
+        // try catch
+        // if error return 400
+        // mimic message bird verification code with fake 123456 PIN
+        $this->validator->validate($request,[
+            "pin"=>v::equals("123456"), 
+        ]);
+        
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $validationErrors = $this->validator->errors;
+            if (array_key_exists("pin", $validationErrors )) {
+                $validationErrors["pin"]["pin"] = "Incorrect PIN Code entered. Please try again.";
+            }
+
+            $message = "";
+            foreach ($validationErrors as $key => $value)
+            {
+                $message =  $message." ".$value[$key].".";
+            }
+
+            $responseMessage =  array(
+                "data"=> $validationErrors,
+                "message"=> $message,
+            );
+
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // if request is successful, return success message with id to signal to client to load SMS form
+        $responseMessage =  array(
+            "data"=> null,
+            "message"=> "SMS Verified!",
+        );
+
+         return $this->customResponse->is200Response($response,  $responseMessage);
     }
 }
