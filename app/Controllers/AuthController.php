@@ -42,6 +42,7 @@ class AuthController
         $this->validator = new Validator();
     }
 
+// Homeowner
     public function userLogin(Request $request,Response $response){
 
         // Check if empty
@@ -96,7 +97,7 @@ class AuthController
    
         // GENERATE JWT TOKEN
         $userData = $verifyAccount['data'];
-        $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"));
+        $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"),1);
 
         // $responseMessage =  array(
         //     "data"=> GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number")),
@@ -111,7 +112,8 @@ class AuthController
         return $this->customResponse->is200Response($response, $responseMessage);
     }
 
-
+// This function will be soon depreciated and rewritten SINCE the SIM SMS Validation breaks up the phone number verification
+// and password verification (Still in use because $app->post("/user-registration","AuthController:userRegister");) is still in use
     // @name    verifies a user's account and phone number
     // @params  phone, password
     // @returns a Responsemessage object with the attributes "success", "data" and "message" or false on DB error
@@ -174,6 +176,8 @@ class AuthController
         return $responseMessage;
     }
 
+    // This function will be soon depreciated and rewritten SINCE the SIM SMS Validation breaks up the phone number verification
+// and password verification (Still in use because $app->post("/user-registration","AuthController:userRegister");) is still in use
     // Saves a user into the database
     public function userRegister(Request $request,Response $response)
     {
@@ -254,7 +258,8 @@ class AuthController
         
     }
 
-    // Saves a user into the database
+    // Review function later
+    // Saves a support agent user into the database
     public function supportRegister(Request $request,Response $response)
     {
         // Check if empty
@@ -339,6 +344,48 @@ class AuthController
         }
     }
 
+
+// REFACTORED & NEW CODE BELOW
+
+// =============================
+// WORKER
+// @purpose adds a worker entry, hh_user entry and schedule entry into the database
+// @accepts first_name, last_name, phone, pass (hashed)
+// @returns 
+public function workerCreateAccount(Request $request,Response $response){
+    $this->customResponse->is200Response($response,  "this route works");
+}
+
+// Global - JWT DECODE TEST
+public function userAuthenticate(Request $request,Response $response){
+    // Server side validation using Respect Validation library
+    // declare a group of rules ex. if empty, equal to etc.
+    $this->validator->validate($request,[
+        // Check if empty
+        "token"=>v::notEmpty(),
+    ]);
+
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // DECODE JWT TOKEN
+    $userData = GenerateTokenController:: Authenticate(CustomRequestHandler::getParam($request,"token"), 1);
+  
+
+    //  $responseMessage =  array(
+    //      "data"=> $userData,
+    //      "message"=>"Login Success"
+    //  );
+
+    return $this->customResponse->is200Response($response, $userData);
+}
+
+// =============================
+// GLOBAL
     // This function accepts a phone number in body
     // returns success true if phone number is not in database
     // returns success false plus a 400 response object if phone number in database
@@ -428,7 +475,8 @@ class AuthController
         return $this->customResponse->is400Response($response,  $responseMessage);
     }
 
-
+// =============================
+// GLOBAL
     // This function accepts password and confirm_password in body
     // returns success true if passwords plus a response object if passwords match and are not empty
     //          response object contains message "Secure password created"
@@ -496,7 +544,8 @@ class AuthController
         return $this->customResponse->is200Response($response,  $responseMessage);
     }
 
-
+// =============================
+// GLOBAL
     // DUMMY ROUTE function
     // This function mimics the format for the MessageBird's Step 2: (Handling of SMS number) 
     // note, we have to convert the numbers to international format (+639...) no hyphen
@@ -541,6 +590,8 @@ class AuthController
     }
 
 
+// =============================
+// GLOBAL
     // DUMMY ROUTE function
     // This function mimics the format for the MessageBird's Step 3: (Verify if token is correct) 
     // This function does not verify a generated SMS, it verifies static 123456 PIN
