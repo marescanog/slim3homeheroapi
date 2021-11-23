@@ -307,7 +307,7 @@ class User
 
             $ModelResponse =  array(
                 "success"=>true,
-                "data"=>$result ? $result : false
+                "data"=>$result
             );
 
             return $ModelResponse;

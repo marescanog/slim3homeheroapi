@@ -72,4 +72,55 @@ class Worker
         }
     }
 
+
+    // @desc    Checks if a worker has completed registration
+    // @params  phone number
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is a bool, true when user registration complete and false if not
+    public function isWorkerRegistered($phone){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT h.user_id, h.phone_no, w.has_completed_registration 
+            FROM hh_user h, worker w 
+            WHERE h.user_id = w.id
+            AND h.user_type_id = :utype
+            AND h.phone_no = :phone;
+            ";
+
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            $utype = 2;
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->execute(['utype' =>$utype, 'phone' => $phone]); 
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        }catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+    
 }
