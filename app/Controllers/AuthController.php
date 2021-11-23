@@ -350,6 +350,42 @@ class AuthController
 // REFACTORED & NEW CODE BELOW
 
 
+// =============================
+// WORKER
+// @purpose checks the database to see if the user associated with a phone number has completed registration
+// @accepts phone number
+// @returns obj (user_id, phone_no, has_completed_registration) num, string, bool
+public function hasWorkerRegistered(Request $request,Response $response){
+    // Server side validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "phone"=>v::notEmpty(),
+        // Check if numebr
+        "phone"=>v::phone()
+    ]);
+
+    // Return error message when validation failes
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    $responseMessage = $this->worker->isWorkerRegistered(CustomRequestHandler::getParam($request,"phone"));
+
+    if($responseMessage['success'] == false){
+        return $this->customResponse->is400Response($response,$responseMessage['data']);
+    }
+
+    if(count($responseMessage['data']) == 0){
+        return $this->customResponse->is400Response($response,"No account is associated with this phone number");
+    }
+
+    $this->customResponse->is200Response($response,  $responseMessage['data'][0]);
+}
+
+
+
 
 
 // =============================
