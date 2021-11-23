@@ -39,6 +39,8 @@ class AuthController
 
         $this->support = new Support();
 
+        $this->worker = new Worker();
+
         $this->validator = new Validator();
     }
 
@@ -347,22 +349,21 @@ class AuthController
 
 // REFACTORED & NEW CODE BELOW
 
+
+
+
 // =============================
 // WORKER
 // @purpose adds a worker entry, hh_user entry and schedule entry into the database
 // @accepts first_name, last_name, phone, pass (hashed)
-// @returns 
+// @returns registertoken
 public function workerCreateAccount(Request $request,Response $response){
-    $this->customResponse->is200Response($response,  "this route works");
-}
-
-// Global - JWT DECODE TEST
-public function userAuthenticate(Request $request,Response $response){
-    // Server side validation using Respect Validation library
-    // declare a group of rules ex. if empty, equal to etc.
     $this->validator->validate($request,[
-        // Check if empty
-        "token"=>v::notEmpty(),
+        // Check if empty, Max & Min length
+        "first_name"=>v::notEmpty()->Length(2,50),
+        "last_name"=>v::notEmpty()->Length(2,50),
+        "phone"=>v::notEmpty()->Length(11, 18),
+        "pass"=>v::notEmpty()->length(8,255),
     ]);
 
     // Returns a response when validator detects a rule breach
@@ -372,16 +373,34 @@ public function userAuthenticate(Request $request,Response $response){
         return $this->customResponse->is400Response($response,$responseMessage);
     }
 
-    // DECODE JWT TOKEN
-    $userData = GenerateTokenController:: Authenticate(CustomRequestHandler::getParam($request,"token"), 1);
-  
+    $users = $this->user->getUserAccountsByPhone(CustomRequestHandler::getParam($request,"phone"));
 
-    //  $responseMessage =  array(
-    //      "data"=> $userData,
-    //      "message"=>"Login Success"
-    //  );
+    if($users['data'] !== false){
+        return $this->customResponse->is400Response($response,"Phone number already taken");
+    }
+    
+    $responseMessage = $this->worker->createWorker(
+        CustomRequestHandler::getParam($request,"first_name"),
+        CustomRequestHandler::getParam($request,"last_name"),
+        CustomRequestHandler::getParam($request,"phone"),
+        CustomRequestHandler::getParam($request,"pass"));
 
-    return $this->customResponse->is200Response($response, $userData);
+
+    if($responseMessage['success'] == false){
+        $this->customResponse->is500Response($response,  $responseMessage["data"]);
+    }
+
+        // GENERATE JWT TOKEN
+        $userData = [];
+        $userData['hasCompletedRegistration'] = false;
+        $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"),2);
+
+        $responseMessage =  array(
+            "data"=> $userData,
+            "message"=>"verification Success"
+        );
+
+        return $this->customResponse->is200Response($response, $responseMessage);
 }
 
 // =============================
