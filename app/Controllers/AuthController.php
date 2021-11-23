@@ -42,6 +42,7 @@ class AuthController
         $this->validator = new Validator();
     }
 
+// Homeowner
     public function userLogin(Request $request,Response $response){
 
         // Check if empty
@@ -96,7 +97,7 @@ class AuthController
    
         // GENERATE JWT TOKEN
         $userData = $verifyAccount['data'];
-        $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"));
+        $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"),1);
 
         // $responseMessage =  array(
         //     "data"=> GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number")),
@@ -353,6 +354,34 @@ class AuthController
 // @returns 
 public function workerCreateAccount(Request $request,Response $response){
     $this->customResponse->is200Response($response,  "this route works");
+}
+
+// Global - JWT DECODE TEST
+public function userAuthenticate(Request $request,Response $response){
+    // Server side validation using Respect Validation library
+    // declare a group of rules ex. if empty, equal to etc.
+    $this->validator->validate($request,[
+        // Check if empty
+        "token"=>v::notEmpty(),
+    ]);
+
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // DECODE JWT TOKEN
+    $userData = GenerateTokenController:: Authenticate(CustomRequestHandler::getParam($request,"token"), 1);
+  
+
+    //  $responseMessage =  array(
+    //      "data"=> $userData,
+    //      "message"=>"Login Success"
+    //  );
+
+    return $this->customResponse->is200Response($response, $userData);
 }
 
 // =============================
