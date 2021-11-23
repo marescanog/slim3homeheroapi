@@ -410,7 +410,8 @@ public function createRegistrationToken(Request $request,Response $response){
     if($this->validator->failed())
     {
         $responseMessage = $this->validator->errors;
-        return $this->customResponse->is400Response($response,$responseMessage);
+        // 200 for the SWAl modal, errors on any other response
+        return $this->customResponse->is200Response($response,$responseMessage);
     }
 
     // verify ID and password
@@ -421,7 +422,8 @@ public function createRegistrationToken(Request $request,Response $response){
 
     // return when wrong password
     if($result["data"] !== true){
-        return $this->customResponse->is401Response($response,$result["data"]);
+        // 200 for the SWAl modal, errors on any other response
+        return $this->customResponse->is200Response($response,$result["data"]);
     }
 
     // GENERATE JWT TOKEN
