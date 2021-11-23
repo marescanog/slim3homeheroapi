@@ -346,10 +346,16 @@ class AuthController
 
 // REFACTORED & NEW CODE BELOW
 
-
+// =============================
 // WORKER
+// @purpose adds a worker entry, hh_user entry and schedule entry into the database
+// @accepts first_name, last_name, phone, pass (hashed)
+// @returns 
+public function workerCreateAccount(Request $request,Response $response){
+    $this->customResponse->is200Response($response,  "this route works");
+}
 
-
+// =============================
 // GLOBAL
     // This function accepts a phone number in body
     // returns success true if phone number is not in database
@@ -440,7 +446,7 @@ class AuthController
         return $this->customResponse->is400Response($response,  $responseMessage);
     }
 
-
+// =============================
 // GLOBAL
     // This function accepts password and confirm_password in body
     // returns success true if passwords plus a response object if passwords match and are not empty
@@ -509,6 +515,7 @@ class AuthController
         return $this->customResponse->is200Response($response,  $responseMessage);
     }
 
+// =============================
 // GLOBAL
     // DUMMY ROUTE function
     // This function mimics the format for the MessageBird's Step 2: (Handling of SMS number) 
@@ -554,6 +561,7 @@ class AuthController
     }
 
 
+// =============================
 // GLOBAL
     // DUMMY ROUTE function
     // This function mimics the format for the MessageBird's Step 3: (Verify if token is correct) 
