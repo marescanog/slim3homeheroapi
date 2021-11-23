@@ -402,7 +402,7 @@ public function createRegistrationToken(Request $request,Response $response){
         // Check if empty and valid
         "password"=>v::notEmpty(),
         "phone"=>v::notEmpty(),
-        "phone"=>v::phone(),
+        //"phone"=>v::phone(),
         "userID"=>v::notEmpty()
     ]);
 
@@ -450,7 +450,7 @@ public function hasWorkerRegistered(Request $request,Response $response){
         // Check if empty
         "phone"=>v::notEmpty(),
         // Check if numebr
-        "phone"=>v::phone()
+        //"phone"=>v::phone()
     ]);
 
     // Return error message when validation failes
@@ -543,7 +543,7 @@ public function workerCreateAccount(Request $request,Response $response){
             // Check if empty
             "phone"=>v::notEmpty(),
             // Check if phone number is a phone number
-            "phone"=>v::phone(),
+            //"phone"=>v::phone(),
         ]);
 
         // Returns a response when validator detects a rule breach
