@@ -16,15 +16,18 @@ $app->group("/auth",function() use ($app){
         // Case when worker is filling in registration pages and accidentally closes browser
         // he/she can still continue filling in registration pages
         $app->get("/hasRegistered", "AuthController:hasWorkerRegistered"); // Worker: 2nd Step, checking
+
+        // Returns a JWT token with additional registration info after password confirmation
+        $app->post("/create-registration-token", "AuthController:createRegistrationToken");
     });
 
 
-    $app->get("/check-phone", "AuthController:userPhoneCheck"); // Global
-    $app->post("/verify-password", "AuthController:userVerifyPass"); // Global
+    $app->get("/check-phone", "AuthController:userPhoneCheck"); // Global, checks if phone is in DB
+    $app->post("/verify-password", "AuthController:userVerifyPass"); // Global, verify if passwords match. Returns hashed pass
 
     // DUMMY ROUTES
-    $app->post("/generate-SMS-dummy", "AuthController:generateSMSDummy"); // Global
-    $app->post("/verify-SMS-dummy", "AuthController:verifySMSDummy"); // Global
+    $app->post("/generate-SMS-dummy", "AuthController:generateSMSDummy"); // Global, for SMS PIN
+    $app->post("/verify-SMS-dummy", "AuthController:verifySMSDummy"); // Global, for SMS PIN
 });
 
 

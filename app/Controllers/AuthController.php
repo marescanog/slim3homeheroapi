@@ -351,6 +351,95 @@ class AuthController
 
 
 // =============================
+// GLOBAL
+// @purpose verifies any user by password and userID
+// @accepts user_ID, password
+// @returns obj (success, data) bool and on success another bool, on fail a message string
+public function verifyUserByPasswordAndID($user_id, $password){
+    $obj = [];
+    // Get user object from database by ID
+    $result = $this->user->getUserByID($user_id);
+
+    // Check for PDO Errors
+    if($result['success'] == false){
+        return  $result;
+    }
+
+    // Check if user object exists (if not exist, error)
+    if($result['data'] == false){
+        $obj['success'] = true;
+        $obj['data'] = "The user cannot be found";
+        return $obj;
+    }
+
+    // Check if passwords match
+    $isPasswordMatch = password_verify($password , $result['data']['password']);
+
+    if($isPasswordMatch == false){
+        $obj['success'] = true;
+        $obj['data'] = "Incorrect Password"; 
+        return $obj;
+    }
+
+    $obj['success'] = true;
+    $obj['data'] = true;
+
+    return $obj;
+
+    return  $result;
+}
+
+
+
+// =============================
+// WORKER
+// @purpose verifies a worker by password and creates a registration token
+// @accepts password, phone, user_ID
+// @returns obj (JWT token, has_completed_registration) string, bool
+public function createRegistrationToken(Request $request,Response $response){
+    // Server side validation
+    $this->validator->validate($request,[
+        // Check if empty and valid
+        "password"=>v::notEmpty(),
+        "phone"=>v::notEmpty(),
+        "phone"=>v::phone(),
+        "userID"=>v::notEmpty()
+    ]);
+
+    // Return Validation Errors
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // verify ID and password
+    $result = $this->verifyUserByPasswordAndID(
+        CustomRequestHandler::getParam($request,"userID"),
+        CustomRequestHandler::getParam($request,"password") 
+        );
+
+    // return when wrong password
+    if($result["data"] !== true){
+        return $this->customResponse->is401Response($response,$result["data"]);
+    }
+
+    // GENERATE JWT TOKEN
+    $userData = [];
+    $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"),2);
+    $userData['has_registered'] = false;
+    
+    $responseMessage =  array(
+        "data"=> $userData,
+        "message"=>"Registration Token Creation and verification Success"
+    );
+
+    return $this->customResponse->is200Response($response, $responseMessage);
+}
+
+
+
+// =============================
 // WORKER
 // @purpose checks the database to see if the user associated with a phone number has completed registration
 // @accepts phone number
