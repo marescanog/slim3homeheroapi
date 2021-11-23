@@ -11,11 +11,12 @@ $app->group("/auth",function() use ($app){
         // Creates a hh_user entry, worker entry & schedule entry in the DB
         // Pre-verified by /auth/check-phone and /auth/verify-password
         $app->post("/create-account", "AuthController:workerCreateAccount"); // Worker: 1st Step
+        // Worker: 2nd Step, checking
     });
 
 
     $app->get("/check-phone", "AuthController:userPhoneCheck"); // Global
-    $app->get("/verify-password", "AuthController:userVerifyPass"); // Global, should be POST since password will update later
+    $app->post("/verify-password", "AuthController:userVerifyPass"); // Global
 
     // DUMMY ROUTES
     $app->post("/generate-SMS-dummy", "AuthController:generateSMSDummy"); // Global
