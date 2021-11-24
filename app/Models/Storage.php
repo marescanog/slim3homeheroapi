@@ -15,7 +15,7 @@ class Storage
 
     public function  __construct()
     {
-        putenv('GOOGLE_APPLICATION_CREDENTIALS='.$_ENV['GOOGLE_APPLICATION_CREDENTIALS']); // PROD
+        putenv($_ENV['GOOGLE_APPLICATION_CREDENTIALS'].'='.$_ENV['GOOGLE_CREDENTIALS']); // PROD
         //putenv('GOOGLE_APPLICATION_CREDENTIALS=google-credentials.json'); // PROD
         //putenv('GOOGLE_APPLICATION_CREDENTIALS=C:\\users\asus\Downloads\google-credentials.json'); // DEV
 
