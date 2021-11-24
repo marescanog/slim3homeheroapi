@@ -37,40 +37,49 @@ class FileController
 
         $this->storage = new Storage();
     }
-
-
     public function upload(Request $request,Response $response){
-        $files = $request->getUploadedFiles();
-        // $myFile = $files['file']['name'];
-        // $mySource = $files['file']['tmp_name'];
-        // $uploadFileName = $myFile->getClientFilename();
-
-        $myFile = $files['file'];
-
-        $extension = pathinfo($myFile->getClientFilename(), PATHINFO_EXTENSION);
-        $basename = bin2hex(random_bytes(8)); // see http://php.net/manual/en/function.random-bytes.php
-        $filename = sprintf('%s.%0.8s', $basename, $extension);
-        $this->storage->uploadObject('macaroniandcheesy',$filename , $myFile->file);
-
-        // if (empty($files['file'])) {
-        //     return $this->customResponse->is400Response($response, "No files have been sent");
-        // }
-
-        // $myFile = $files['file'];
-        // if ($myFile->getError() === UPLOAD_ERR_OK) {
-        //     $uploadFileName = $myFile->getClientFilename();
-        //     //$myFile->moveTo('uploads/' . $uploadFileName);
-        // }
-
-        //  return $this->customResponse->is200Response($response, $uploadFileName  );
-
-
-
-         return $this->customResponse->is200Response($response, $myFile->file );
-
-        //  return $this->customResponse->is200Response($response, $myFile->getClientFilename()  );
-
+        return $this->customResponse->is200Response($response, "this route works"  );
     }
+
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+    // public function upload(Request $request,Response $response){
+    //     $files = $request->getUploadedFiles();
+    //     // $myFile = $files['file']['name'];
+    //     // $mySource = $files['file']['tmp_name'];
+    //     // $uploadFileName = $myFile->getClientFilename();
+
+    //     $myFile = $files['file'];
+
+    //     $extension = pathinfo($myFile->getClientFilename(), PATHINFO_EXTENSION);
+    //     $basename = bin2hex(random_bytes(8)); // see http://php.net/manual/en/function.random-bytes.php
+    //     $filename = sprintf('%s.%0.8s', $basename, $extension);
+    //     $this->storage->uploadObject('macaroniandcheesy',$filename , $myFile->file);
+
+    //     // if (empty($files['file'])) {
+    //     //     return $this->customResponse->is400Response($response, "No files have been sent");
+    //     // }
+
+    //     // $myFile = $files['file'];
+    //     // if ($myFile->getError() === UPLOAD_ERR_OK) {
+    //     //     $uploadFileName = $myFile->getClientFilename();
+    //     //     //$myFile->moveTo('uploads/' . $uploadFileName);
+    //     // }
+
+    //     //  return $this->customResponse->is200Response($response, $uploadFileName  );
+
+
+
+    //      return $this->customResponse->is200Response($response, $myFile->file );
+
+    //     //  return $this->customResponse->is200Response($response, $myFile->getClientFilename()  );
+
+    // }
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+
 
     // public function createBucket(Request $request,Response $response){
 
@@ -101,24 +110,39 @@ class FileController
 
     // }
 
-    public function createBucket(Request $request,Response $response){
 
 
 
-       $bucket = $this->storage->createBucket("hellotherebucket");
+    //hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
 
-               $sd = 'Bucket ' . $bucket->name() . ' created.';
+//     public function createBucket(Request $request,Response $response){
 
-       // $result = $this->storage->getProjectStorage();
+
+
+//        $bucket = $this->storage->createBucket("hellotherebucket");
+
+//                $sd = 'Bucket ' . $bucket->name() . ' created.';
+
+//        // $result = $this->storage->getProjectStorage();
        
-       //  return $this->customResponse->is200Response($response,$this->storage );
+//        //  return $this->customResponse->is200Response($response,$this->storage );
 
-               // return $this->customResponse->is200Response( $response,$result );
+//                // return $this->customResponse->is200Response( $response,$result );
 
 
-       return $this->customResponse->is200Response($response, $sd );
+//        return $this->customResponse->is200Response($response, $sd );
 
-   }
+//    }
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+
+
+
+
+
 
 //    public function getListOfBuckets(Request $request,Response $response){
 //         // $buckets = $this->storage->listBuckets();
@@ -139,12 +163,16 @@ class FileController
 //    }
 
 
-   public function getListOfBuckets(Request $request,Response $response){
-    $buckets = $this->storage->listBuckets();
 
-    return $this->customResponse->is200Response($response, $buckets );
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//hdjaskhdjksahjkdhashdkjahsjdhka==================================
+//    public function getListOfBuckets(Request $request,Response $response){
+//     $buckets = $this->storage->listBuckets();
 
-    }
+//     return $this->customResponse->is200Response($response, $buckets );
+
+//     }
 
 
     

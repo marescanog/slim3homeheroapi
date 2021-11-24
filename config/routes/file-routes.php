@@ -2,6 +2,6 @@
 
 $app->post("/upload","FileController:upload");
 
-$app->post("/createBucket","FileController:createBucket");
+// $app->post("/createBucket","FileController:createBucket");
 
-$app->get("/getListOfBuckets","FileController:getListOfBuckets");
+// $app->get("/getListOfBuckets","FileController:getListOfBuckets");
