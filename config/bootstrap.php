@@ -25,6 +25,7 @@ $routeContainers($container);
 require_once __DIR__. '/routes/user-routes.php';
 require_once __DIR__. '/routes/auth-routes.php';
 require_once __DIR__. '/routes/ticket-routes.php';
+require_once __DIR__. '/routes/file-routes.php';
 
 $middleware = require_once __DIR__."/middleware.php";
 
