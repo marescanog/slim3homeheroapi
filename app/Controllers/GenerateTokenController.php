@@ -31,7 +31,8 @@ class GenerateTokenController implements SecretKeyInterface
     public static function generateRegistrationToken($userID, $userType)
     {
         $now = time();
-        $future = strtotime('+1 hour',$now);
+         $future = strtotime('+1 hour',$now);
+        // $future = strtotime('+24 hour',$now);
         $secret = GenerateTokenController::JWT_SECRET_KEY;
 
         $payload = [
