@@ -15,6 +15,135 @@ class Worker
         public function __construct(){
         }
 
+    // @desc    
+    // @params  
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is 
+    public function template(){
+        try{
+            
+            $db = new DB();
+            $conn = $db->connect();
+
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        }catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+    // @desc  gets the default rate and default rate type of worker
+    // @params  userID
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is 
+    public function get_defaultRate_defaultRateType($userID){
+        try{
+            
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT id, default_rate, default_rate_type  
+                    FROM worker 
+                    WHERE id = :userID;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        }catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+    // @desc    Retreives from the database a list of expertise the user has, 
+    //          note: Expertise is different from the sub category project_type
+    // @params  userID
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is an assocarray of expertise (IDs, ex [{"id"=>4,"name"=>"gardening"},{"id"=>1,"name"=>"carpentry"}])
+    public function getList_expertise($userID){
+        try{
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT p.expertise as id, e.expertise as name FROM skillset s
+                    JOIN project_type p ON s.skill = p.id 
+                    JOIN expertise e ON e.id = p.expertise 
+                    WHERE s.worker_id = :userID 
+                    GROUP BY e.id;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        }catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
 
     // @desc    Adds a user and a homeowner to the database
     // @params  phone number, first name, last name
