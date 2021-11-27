@@ -192,11 +192,13 @@ class WorkerController
             $file_name = CustomRequestHandler::getParam($request,"file_name");
             $file_path = CustomRequestHandler::getParam($request,"file_path");
             $file_type = CustomRequestHandler::getParam($request,"file_type");
+            // For Deleting the old id
+            $old_file_id = CustomRequestHandler::getParam($request,"old_file_id");
 
             // Add our collected and processed data into our custom function we wrote in the worker model
             $ModelResponse = $this->worker->save_personalInformation(
                 $userID,  $skill_data, $default_rate, $default_rate_type, $clearance_no, $expiration_date,
-                $file_id ,  $file_name,   $file_path,  $file_type
+                $file_id ,  $file_name,   $file_path,  $file_type, $old_file_id
             );
         
             //return $this->customResponse->is200Response($response,  $skill_list);
