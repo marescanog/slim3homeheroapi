@@ -61,17 +61,6 @@ class SupportTicket
             }
         }
 
-<<<<<<< HEAD
-        // @name    Retrieves all resolved tickets from the database
-        // @params  
-        // @returns a Model Response object containing the requested records
-        public function getResolved($id = null){
-
-            /*
-                To be added: (1) Verify if account type is support agent
-                             (2) Return "none" if no result
-            */
-=======
 
         // @name    gets all tickets from the database
         // @params  none
@@ -79,28 +68,11 @@ class SupportTicket
         //          sucess value is true when PDO is successful and false on failure
         //          data value is
         public function get_All($id = null){
->>>>>>> master
 
             try{
                 $db = new DB();
                 $conn = $db->connect();
     
-<<<<<<< HEAD
-                if($id == null){
-                    $sql = "SELECT * FROM ".$this->table." WHERE status=3";
-                    $stmt = $conn->query($sql);
-                    $result = $stmt->fetchAll();
-                } else {
-                    $sql = "SELECT * FROM ".$this->table." WHERE status=3 AND assigned_agent=:id";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bindparam(':id', $id);
-                    $stmt->execute();
-                    $result = $stmt->fetchAll();
-                }
-               
-                $stmt=null;
-                $db=null;
-=======
                 // CREATE query
                 $sql = "";
 
@@ -135,7 +107,6 @@ class SupportTicket
                 $conn=null;
                 $db=null;
 
->>>>>>> master
     
                 $ModelResponse =  array(
                     "success"=>true,
@@ -153,9 +124,6 @@ class SupportTicket
     
                 return $ModelResponse;
             }
-<<<<<<< HEAD
-        }
-=======
 
         }
 
@@ -264,5 +232,4 @@ class SupportTicket
 
 
 
->>>>>>> master
 }
