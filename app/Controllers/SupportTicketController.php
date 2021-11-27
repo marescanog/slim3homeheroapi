@@ -55,4 +55,22 @@ class SupportTicketController
         $this->customResponse->is200Response($response,  "Ticket Successfully created");
     }
 
+    // retrieves all resolved tickets from the database
+    public function getResolved(Request $request,Response $response)
+    {
+        $ModelResponse = $this->supportTicket->getResolved();
+
+        $this->customResponse->is200Response($response, $ModelResponse);
+    }
+
+    // retrieves all resolved tickets by a given user from the database
+    public function getResolvedSingle(Request $request,Response $response, array $args)
+    {
+        $ModelResponse = $this->supportTicket->getResolved($args['id']);
+
+        $this->customResponse->is200Response($response, $ModelResponse);
+    }
+
+
+
 }
