@@ -17,4 +17,14 @@ return function($container)
       return new \App\Controllers\SupportTicketController;
     };
 
+    $container["FileController"] = function()
+    {
+      return new \App\Controllers\FileController;
+    };
+
+    $container["WorkerController"] = function()
+    {
+      return new \App\Controllers\WorkerController;
+    };
+
 };

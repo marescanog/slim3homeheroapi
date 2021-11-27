@@ -61,6 +61,7 @@ class SupportTicket
             }
         }
 
+<<<<<<< HEAD
         // @name    Retrieves all resolved tickets from the database
         // @params  
         // @returns a Model Response object containing the requested records
@@ -70,11 +71,21 @@ class SupportTicket
                 To be added: (1) Verify if account type is support agent
                              (2) Return "none" if no result
             */
+=======
+
+        // @name    gets all tickets from the database
+        // @params  none
+        // @returns a Model Response object with the attributes "success" and "data"
+        //          sucess value is true when PDO is successful and false on failure
+        //          data value is
+        public function get_All($id = null){
+>>>>>>> master
 
             try{
                 $db = new DB();
                 $conn = $db->connect();
     
+<<<<<<< HEAD
                 if($id == null){
                     $sql = "SELECT * FROM ".$this->table." WHERE status=3";
                     $stmt = $conn->query($sql);
@@ -89,6 +100,42 @@ class SupportTicket
                
                 $stmt=null;
                 $db=null;
+=======
+                // CREATE query
+                $sql = "";
+
+                if($id == null){
+                    $sql = "SELECT * FROM ".$this->table;
+                    // query statement
+                    $stmt =  $conn->query($sql);
+
+                    // check if statement is successfil
+                    if($stmt){
+                        $result = $stmt->fetchAll();
+                    }
+
+                } else {
+                    $sql = "SELECT * FROM ".$this->table." WHERE assigned_agent = :id";
+                    // Prepare statement
+                    $stmt =  $conn->prepare($sql);
+                    $result = "";
+
+                    // Only fetch if prepare succeeded
+                    if ($stmt !== false) {
+                        $stmt->bindparam(':id', $id);
+                        $stmt->execute();
+                        $result = $stmt->fetchAll();
+                    }
+
+                    $stmt=null;
+                    $db=null;
+                }
+                
+                
+                $conn=null;
+                $db=null;
+
+>>>>>>> master
     
                 $ModelResponse =  array(
                     "success"=>true,
@@ -106,5 +153,116 @@ class SupportTicket
     
                 return $ModelResponse;
             }
+<<<<<<< HEAD
         }
+=======
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+>>>>>>> master
 }

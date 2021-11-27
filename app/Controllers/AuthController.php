@@ -6,6 +6,7 @@ namespace App\Controllers;
 use App\Models\User;
 use App\Models\Homeowner;
 use App\Models\Support;
+use App\Models\Worker;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -20,6 +21,12 @@ class AuthController
 
     protected  $user;
 
+    protected  $homeowner;
+
+    protected  $support;
+
+    protected  $worker;
+
     protected  $validator;
 
     public function  __construct()
@@ -32,9 +39,12 @@ class AuthController
 
         $this->support = new Support();
 
+        $this->worker = new Worker();
+
         $this->validator = new Validator();
     }
 
+// Homeowner
     public function userLogin(Request $request,Response $response){
 
         // Check if empty
@@ -89,7 +99,7 @@ class AuthController
    
         // GENERATE JWT TOKEN
         $userData = $verifyAccount['data'];
-        $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"));
+        $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"),1);
 
         // $responseMessage =  array(
         //     "data"=> GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number")),
@@ -104,7 +114,8 @@ class AuthController
         return $this->customResponse->is200Response($response, $responseMessage);
     }
 
-
+// This function will be soon depreciated and rewritten SINCE the SIM SMS Validation breaks up the phone number verification
+// and password verification (Still in use because $app->post("/user-registration","AuthController:userRegister");) is still in use
     // @name    verifies a user's account and phone number
     // @params  phone, password
     // @returns a Responsemessage object with the attributes "success", "data" and "message" or false on DB error
@@ -167,6 +178,8 @@ class AuthController
         return $responseMessage;
     }
 
+    // This function will be soon depreciated and rewritten SINCE the SIM SMS Validation breaks up the phone number verification
+// and password verification (Still in use because $app->post("/user-registration","AuthController:userRegister");) is still in use
     // Saves a user into the database
     public function userRegister(Request $request,Response $response)
     {
@@ -247,7 +260,8 @@ class AuthController
         
     }
 
-    // Saves a user into the database
+    // Review function later
+    // Saves a support agent user into the database
     public function supportRegister(Request $request,Response $response)
     {
         // Check if empty
@@ -332,4 +346,475 @@ class AuthController
         }
     }
 
+
+// REFACTORED & NEW CODE BELOW
+
+
+// =============================
+// GLOBAL
+// @purpose verifies any user by password and userID
+// @accepts user_ID, password
+// @returns obj (success, data) bool and on success another bool, on fail a message string
+public function verifyUserByPasswordAndID($user_id, $password){
+    $obj = [];
+    // Get user object from database by ID
+    $result = $this->user->getUserByID($user_id);
+
+    // Check for PDO Errors
+    if($result['success'] == false){
+        return  $result;
+    }
+
+    // Check if user object exists (if not exist, error)
+    if($result['data'] == false){
+        $obj['success'] = true;
+        $obj['data'] = "The user cannot be found";
+        return $obj;
+    }
+
+    // Check if passwords match
+    $isPasswordMatch = password_verify($password , $result['data']['password']);
+
+    if($isPasswordMatch == false){
+        $obj['success'] = true;
+        $obj['data'] = "Incorrect Password"; 
+        return $obj;
+    }
+
+    $obj['success'] = true;
+    $obj['data'] = true;
+
+    return $obj;
+
+    return  $result;
+}
+
+
+
+// =============================
+// WORKER
+// @purpose verifies a worker by password and creates a registration token
+// @accepts password, phone, user_ID
+// @returns obj (JWT token, has_completed_registration) string, bool
+public function createRegistrationToken(Request $request,Response $response){
+    // Server side validation
+    $this->validator->validate($request,[
+        // Check if empty and valid
+        "password"=>v::notEmpty(),
+        "phone"=>v::notEmpty(),
+        //"phone"=>v::phone(),
+        "userID"=>v::notEmpty()
+    ]);
+
+    // Return Validation Errors
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        // 200 for the SWAl modal, errors on any other response
+        return $this->customResponse->is200Response($response,$responseMessage);
+    }
+
+    // verify ID and password
+    $result = $this->verifyUserByPasswordAndID(
+        CustomRequestHandler::getParam($request,"userID"),
+        CustomRequestHandler::getParam($request,"password") 
+        );
+
+    // return when wrong password
+    if($result["data"] !== true){
+        // 200 for the SWAl modal, errors on any other response
+        return $this->customResponse->is200Response($response,$result["data"]);
+    }
+
+    // GENERATE JWT TOKEN
+    $userData = [];
+    // $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone"),2);
+    // $userData['token'] = GenerateTokenController::generateRegistrationToken(CustomRequestHandler::getParam($request,"phone"),2);
+    $userData['token'] = GenerateTokenController::generateRegistrationToken(CustomRequestHandler::getParam($request,"userID"),2);
+
+    $userData['has_registered'] = false;
+    
+    $responseMessage =  array(
+        "data"=> $userData,
+        "message"=>"Registration Token Creation and verification Success"
+    );
+
+    return $this->customResponse->is200Response($response, $responseMessage);
+}
+
+
+
+// =============================
+// WORKER
+// @purpose checks the database to see if the user associated with a phone number has completed registration
+// @accepts phone number
+// @returns obj (user_id, phone_no, has_completed_registration) num, string, bool
+public function hasWorkerRegistered(Request $request,Response $response){
+    // Server side validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "phone"=>v::notEmpty(),
+        // Check if numebr
+        //"phone"=>v::phone()
+    ]);
+
+    // Return error message when validation failes
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    $responseMessage = $this->worker->isWorkerRegistered(CustomRequestHandler::getParam($request,"phone"));
+
+    if($responseMessage['success'] == false){
+        return $this->customResponse->is400Response($response,$responseMessage['data']);
+    }
+
+    if(count($responseMessage['data']) == 0){
+        return $this->customResponse->is400Response($response,"No account is associated with this phone number");
+    }
+
+    $this->customResponse->is200Response($response,  $responseMessage['data'][0]);
+}
+
+
+
+
+
+// =============================
+// WORKER
+// @purpose adds a worker entry, hh_user entry and schedule entry into the database
+// @accepts first_name, last_name, phone, pass (hashed)
+// @returns registertoken
+public function workerCreateAccount(Request $request,Response $response){
+    $this->validator->validate($request,[
+        // Check if empty, Max & Min length
+        "first_name"=>v::notEmpty()->Length(2,50),
+        "last_name"=>v::notEmpty()->Length(2,50),
+        "phone"=>v::notEmpty()->Length(11, 18),
+        "pass"=>v::notEmpty()->length(8,255),
+    ]);
+
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    $users = $this->user->getUserAccountsByPhone(CustomRequestHandler::getParam($request,"phone"));
+
+    if($users['data'] !== false){
+        return $this->customResponse->is400Response($response,"Phone number already taken");
+    }
+    
+    $responseMessage = $this->worker->createWorker(
+        CustomRequestHandler::getParam($request,"first_name"),
+        CustomRequestHandler::getParam($request,"last_name"),
+        CustomRequestHandler::getParam($request,"phone"),
+        CustomRequestHandler::getParam($request,"pass"));
+
+
+    if($responseMessage['success'] == false){
+        $this->customResponse->is500Response($response,  $responseMessage["data"]);
+    }
+
+        // GENERATE JWT TOKEN
+        $userData = [];
+        $userData['hasCompletedRegistration'] = false;
+        $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"),2);
+
+        $responseMessage =  array(
+            "data"=> $userData,
+            "message"=>"verification Success"
+        );
+
+        return $this->customResponse->is200Response($response, $responseMessage);
+}
+
+// =============================
+// GLOBAL
+    // This function accepts a phone number in body
+    // returns success true if phone number is not in database
+    // returns success false plus a 400 response object if phone number in database
+    //          response object contains message "It looks like an account already exists with this phone number."
+    //          response data contains 4 bools: isHomeowner, isWorker, isAdmin, isSupport
+    //          if switch defaults, returns a 500 message "An error occured..."
+    public function userPhoneCheck(Request $request,Response $response){
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+        $this->validator->validate($request,[
+            // Check if empty
+            "phone"=>v::notEmpty(),
+            // Check if phone number is a phone number
+            //"phone"=>v::phone(),
+        ]);
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Check if user exists in the database via phone number
+        // Get the user object associated with phone number
+        $userObject = $this->user->getUserAccountsByPhone(CustomRequestHandler::getParam($request,"phone"));
+
+        // If there is a user object, get the role associated with user
+        // Otherwise return
+        if($userObject["data"] == false){
+            // there is no user associated with this phone number
+            return $this->customResponse->is200Response($response,  "There is no user associated with this phone number");
+        }
+
+
+        // Check for user types associated with the phone number
+        $isHomeowner = false;
+        $isWorker = false;
+        $isSupport = false;
+        $isAdmin = false;
+        $error = false;
+
+        if(count($userObject["data"]) >= 1){
+            // there is ONE or more roles associated with this phone number
+
+            // return the roles that are assigned to this phone number
+            for($x = 0; $x < count($userObject["data"]); $x++){
+                switch($userObject["data"][$x]["user_type_id"]){
+                    case 1:
+                        $isHomeowner = true;
+                        break;
+                    case 2:
+                        $isWorker = true;
+                        break;
+                    case 3:
+                        $isSupport = true;
+                        break;
+                    case 4:
+                        $isAdmin = true;
+                        break;
+                    default:
+                        $error = true;
+                    break;
+                }
+
+                if($error == true){
+                    return $this->customResponse->is500Response($response,  "An error occured with the Athentication Controller. Please check the server issue.");
+                }
+
+            }
+
+        }
+        
+        $message = "It looks like an account already exists with this phone number.";
+        $data = [];
+        
+        $data["isHomeowner"] = $isHomeowner;
+        $data["isWorker"] = $isWorker;
+        $data["isSupport"] = $isSupport;
+        $data["isAdmin"] = $isAdmin;
+
+        $responseMessage =  array(
+            "data"=> $data,
+            "message"=> $message,
+        );
+
+        return $this->customResponse->is400Response($response,  $responseMessage);
+    }
+
+// =============================
+// GLOBAL
+    // This function accepts password and confirm_password in body
+    // returns success true if passwords plus a response object if passwords match and are not empty
+    //          response object contains message "Secure password created"
+    //          response data contains 1 string: the hashed password
+    // returns success false plus a 400 response object if password and confirm_password are empty and do not match
+    //          response object contains validation error messages
+    //          response data contains validation errors
+    public function userVerifyPass(Request $request,Response $response){
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+
+        // Check if feilds are empy
+        $this->validator->validate($request,[
+            // Check if empty
+            "password"=>v::notEmpty(),
+            "confirm_password"=>v::notEmpty(),       
+        ]);
+        // Return error when empty
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // check if password has max and min length
+        // check if confirm password matches password
+        $this->validator->validate($request,[
+            // Check if Max & Min length
+            "password"=>v::Length(8, 30),
+            // Check if Password Matches
+            "confirm_password"=>v::equals(CustomRequestHandler::getParam($request,"password"))            
+        ]);
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $validationErrors = $this->validator->errors;
+            if (array_key_exists("confirm_password", $validationErrors )) {
+                $validationErrors["confirm_password"]["confirm_password"] = "Confirmation password must match entered password.";
+            }
+
+            $message = "";
+            foreach ($validationErrors as $key => $value)
+            {
+                $message =  $message." ".$value[$key].".";
+            }
+
+            $responseMessage =  array(
+                "data"=> $validationErrors,
+                "message"=> $message,
+            );
+
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // return a hashed version of the password
+        // Create Password Hash
+        $hashed_pass = password_hash(CustomRequestHandler::getParam($request,"password"), PASSWORD_DEFAULT);
+
+        $responseMessage =  array(
+            "data"=> $hashed_pass,
+            "message"=> "Secure password created",
+        );
+
+        return $this->customResponse->is200Response($response,  $responseMessage);
+    }
+
+// =============================
+// GLOBAL
+    // DUMMY ROUTE function
+    // This function mimics the format for the MessageBird's Step 2: (Handling of SMS number) 
+    // note, we have to convert the numbers to international format (+639...) no hyphen
+    // This function does not generate an SMS, it is merely a dummy function for testing.
+    public function generateSMSDummy(Request $request,Response $response){
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+
+        // Check if feilds are empy
+        $this->validator->validate($request,[
+            // Check if empty
+            "phone"=>v::notEmpty(),
+            // Check if phone number is a phone number
+            "phone"=>v::phone(),     
+        ]);
+
+        // Return error when empty or invalid
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Clean up phone number to be +63 format
+
+        // Create verify object
+
+        // Make a request to Verify API
+        // try catch block
+        // if error return 400
+
+        $obj = [];
+        $obj['messagebird_id'] = 1;
+
+        // if request is successful, return success message with id to signal to client to load SMS form
+        $responseMessage =  array(
+            "data"=> $obj,
+            "message"=> "SMS Generated!",
+        );
+
+        return $this->customResponse->is200Response($response,  $responseMessage);
+    }
+
+
+// =============================
+// GLOBAL
+    // DUMMY ROUTE function
+    // This function mimics the format for the MessageBird's Step 3: (Verify if token is correct) 
+    // This function does not verify a generated SMS, it verifies static 123456 PIN
+    // this is merely a dummy function for testing.
+    // messagebird also requires an ID
+    public function verifySMSDummy(Request $request,Response $response){
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+
+        // Check if feilds are empty
+        $this->validator->validate($request,[
+            "messagebird_id"=>v::notEmpty(),
+            "pin"=>v::notEmpty(),     
+            // pin must be 6 digits
+            "pin"=>v::length(6,6), 
+        ]);
+
+        // Return error when empty
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Check if feilds are numeric
+        $this->validator->validate($request,[
+            "messagebird_id"=>v::number(),
+            "pin"=>v::number(),    
+        ]);
+
+        // Return error when invalid
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Make request to verify API
+        // try catch
+        // if error return 400
+        // mimic message bird verification code with fake 123456 PIN
+        $this->validator->validate($request,[
+            "pin"=>v::equals("123456"), 
+        ]);
+        
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $validationErrors = $this->validator->errors;
+            if (array_key_exists("pin", $validationErrors )) {
+                $validationErrors["pin"]["pin"] = "Incorrect PIN Code entered. Please try again.";
+            }
+
+            $message = "";
+            foreach ($validationErrors as $key => $value)
+            {
+                $message =  $message." ".$value[$key].".";
+            }
+
+            $responseMessage =  array(
+                "data"=> $validationErrors,
+                "message"=> $message,
+            );
+
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // if request is successful, return success message with id to signal to client to load SMS form
+        $responseMessage =  array(
+            "data"=> null,
+            "message"=> "SMS Verified!",
+        );
+
+         return $this->customResponse->is200Response($response,  $responseMessage);
+    }
 }

@@ -180,7 +180,8 @@ class User
     }
 
 
-
+// This function will be depreciated soon (Homeowner is still using this for validation),
+// But once homeowner is updated to the new registration process, the getUserAccountsByPhone will be used instead
     // @name    Gets a user from database by phone number
     // @params  phone
     // @returns a Model Response object with the attributes "success" and "data"
@@ -204,6 +205,54 @@ class User
                 $stmt->bindparam(':phone', $phone);
                 $stmt->execute();
                 $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result == false ? false : $result
+            );
+
+            return $ModelResponse;
+
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+    // @name    Gets all users associated with a phone number
+    // @params  phone
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data vlaue is is a user data object
+    // @referencedBy userPhoneCheck Controller
+    public function getUserAccountsByPhone($phone){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT * FROM ".$this->table." WHERE phone_no=:phone";
+
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':phone', $phone);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
             }
             $stmt=null;
             $db=null;
@@ -258,7 +307,7 @@ class User
 
             $ModelResponse =  array(
                 "success"=>true,
-                "data"=>$result ? $result : false
+                "data"=>$result
             );
 
             return $ModelResponse;
