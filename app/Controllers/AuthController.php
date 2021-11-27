@@ -428,7 +428,10 @@ public function createRegistrationToken(Request $request,Response $response){
 
     // GENERATE JWT TOKEN
     $userData = [];
-    $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"),2);
+    // $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone"),2);
+    // $userData['token'] = GenerateTokenController::generateRegistrationToken(CustomRequestHandler::getParam($request,"phone"),2);
+    $userData['token'] = GenerateTokenController::generateRegistrationToken(CustomRequestHandler::getParam($request,"userID"),2);
+
     $userData['has_registered'] = false;
     
     $responseMessage =  array(
