@@ -83,6 +83,8 @@ class Worker
         return $current_sql.$addSkillsSql.$deleteSkillsSql.$updatedSkillsSql;
     }
 
+
+
     // ============================================================================================================
     // @desc    Saves worker personal info for registration
     // @params  $userID, $skills_toDelete (array of skill IDS), $skills_toAdd (array of skill IDS)
@@ -91,16 +93,16 @@ class Worker
     //          data value is 
     public function save_personalInformation(
                 $userID, $skill_data, $default_rate, $default_rate_type, $clearance_no, $expiration_date,
-                $file_id = true ,  $file_name = null ,   $file_path = null ,  $file_type = null 
+                $file_id = true ,  $file_name = null ,   $file_path = null ,  $file_type = null, $old_file_id = null
         ){
         try{
             // track the necessary parameters to bind PDO data
+            $bind_OLD_NBI_ID = false;
             $bind_ClearanceNo = false;
             $bind_fileName = false;
             $bind_filePath = false;
             $bind_fileType = false;
-            $bind_NBI_id = false;
-            $bind_file_id = false;
+            $bind_OLD_file_id = false;
 
             // Build Query based on parameters
             $baseSql = "SET @@session.time_zone = '+08:00'; BEGIN;";
@@ -127,8 +129,9 @@ class Worker
             $sql_insert_NBI_file_and_info_junction = "INSERT INTO `NBI_files` (`NBI_id`, `file_id`) VALUES (@nbiInfoNumber, @nbiFileNumber);";
             $sql_insert_files = "INSERT into `file` (`file_name`,`file_type`,`file_path`) VALUES (:nfileName, :nfileType, :nfilePath);SET @nbiFileNumber:=LAST_INSERT_ID();";
 
+            // when no data, Insert new NBI info entry, also inserts new file and NBI-file junction info 
             if($hasNBI['data'] == false){
-                // Insert new NBI info when none found
+                // Append sql to insert nbi info
                 $full_sql = $full_sql.$sql_insert_NBI_info. "SET @nbiInfoNumber:=LAST_INSERT_ID();";
 
                 // Add new file
@@ -143,15 +146,19 @@ class Worker
                 $bind_filePath = true;
                 $bind_fileType = true;
 
+                // There is no previous Junction entry for this. Thus no need to delete any Junctions.
+
             } else {
                 // Update existing NBI info
                 // Check if the clearance number is the same as the one we will insert
-                if($hasNBI['data']['clearance_no'] !== $clearance_no){
+                $OLD_ClearanceNo = $hasNBI['data']['clearance_no'];
+                $OLD_NBI_id = $hasNBI['data']['id'];
+                if($OLD_ClearanceNo !== $clearance_no){
                     
                     // add new NBI info entry
                     $full_sql = $full_sql.$sql_insert_NBI_info;
 
-                    // file_id false means it is a new file, thus there is no id for it yet
+                    // file_id false means it is a new file, thus there is no id for new entry yet
                     if($file_id == 'false'){
 
                         // add new file entry
@@ -164,29 +171,74 @@ class Worker
                         $bind_filePath = true;
                         $bind_fileType = true;
 
+                        // Delete old Junction entry in Table since the new LIJUNCTION  is what we will reference from now on
+                        // SOFT DELETE - Update Nbi File AND NBI file information to be 1 on is_deleted
+                        $softDelete_Nbi_file = "UPDATE `NBI_files` SET is_deleted = 1 WHERE NBI_id = :oldNBIID AND `file_id` = :oldFileID;";
+                        $full_sql = $full_sql.$softDelete_Nbi_file;
+
+                        // SOFT DELETE - Old file as well
+                        $softDelete_file = "UPDATE `file` SET is_deleted = 1 WHERE id = :oldFileID;";
+                        $full_sql = $full_sql.$softDelete_file;
+                        $bind_OLD_file_id = true;
                     } else {
                         // insert new junction with old file id
                         $full_sql = $full_sql. "SET @nbiInfoNumber:=LAST_INSERT_ID();";
 
-                        $sql_insert_NBI_file_and_info_junction_old_id = "INSERT INTO `NBI_files` (`NBI_id`, `file_id`) VALUES (@nbiInfoNumber, :nfileID);";
-                     
+                        $sql_insert_NBI_file_and_info_junction_old_id = "INSERT INTO `NBI_files` (`NBI_id`, `file_id`) VALUES (@nbiInfoNumber, :oldFileID);";
+
                         // Link new NBI info entry and old file enty into the junction table
                         $full_sql = $full_sql.$sql_insert_NBI_file_and_info_junction_old_id;
 
-                        $bind_file_id = true;
+
+                        // Delete old Junction entry in Table since the new LIJUNCTION  is what we will reference from now on
+                        // SOFT DELETE - Update Nbi File AND NBI file information to be 1 on is_deleted
+                        $softDelete_Nbi_file = "UPDATE `NBI_files` SET is_deleted = 1 WHERE NBI_id = :oldNBIID AND `file_id` = :oldFileID;"; // :oldBI id
+                        $full_sql = $full_sql.$softDelete_Nbi_file;
+
+                        // DO NOT DELETE OLD FILE since it is still in USE
                     }
 
-                    $bind_ClearanceNo = true;
+                    // Delete old reference to the NBI information since the new LINK is what we will reference from now on
+                    // HARD DELETE - DELETE Nbi File entry first then NBI information (Database does soft delete)
+                    $softDelete_Nbi_info = "UPDATE `NBI_information` SET is_deleted = 1 WHERE id = :oldNBIID;"; // :oldNBIID && is_deleted = 0
+                    $full_sql = $full_sql.$softDelete_Nbi_info;
 
+                    $bind_OLD_NBI_ID = true;
+                    $bind_ClearanceNo = true;
+                    $bind_OLD_file_id = true;
                 } else {
                     // update old NBI entry
-                    $sql_update_NBI_info_date = "UPDATE `NBI_information` SET expiration_date = :expiration_date WHERE id = :NBI_id;";
+                    $sql_update_NBI_info_date = "UPDATE `NBI_information` SET expiration_date = :expiration_date WHERE id = :oldNBIID;";
                     $full_sql = $full_sql.$sql_update_NBI_info_date;
-                    $bind_NBI_id = true;
+                    $bind_OLD_NBI_ID = true;
 
-                    // insert check for  $file_id -> Change
-                    // <code to process if has new file, if it has, add a new file to db. Otherwise don't. grab value for last insert IF>
-                    // <mark last file as deleted>
+                    // insert check for new file  $file_id -> Update Uploaded File
+                    // file_id false means it is a new file, thus there is no id for it yet
+                    if( $file_id == "false"){
+                        // add new file entry
+                        $full_sql = $full_sql.$sql_insert_files;
+
+                        $sql_insert_NBI_file_and_info_junction_with_OLD_nbiID = "INSERT INTO `NBI_files` (`NBI_id`, `file_id`) VALUES (:oldNBIID, @nbiFileNumber);";
+
+                        // Link new entries into the junction table
+                        $full_sql = $full_sql.$sql_insert_NBI_file_and_info_junction_with_OLD_nbiID;
+
+                        $bind_fileName = true;
+                        $bind_filePath = true;
+                        $bind_fileType = true;
+
+                        // Delete old Junction entry in Table since the new LIJUNCTION  is what we will reference from now on
+                        // SOFT DELETE - Update Nbi File AND NBI file information to be 1 on is_deleted
+                        $softDelete_Nbi_file = "UPDATE `NBI_files` SET is_deleted = 1 WHERE NBI_id = :oldNBIID AND `file_id` = :oldFileID;"; 
+                        $full_sql = $full_sql.$softDelete_Nbi_file;
+
+                        $bind_OLD_file_id = true;
+
+                        // SOFT DELETE - Old file as well
+                        $softDelete_file = "UPDATE `file` SET is_deleted = 1 WHERE id = :oldFileID;";
+                        $full_sql = $full_sql.$softDelete_file;
+                    }
+     
                 }
             }
 
@@ -208,9 +260,6 @@ class Worker
             //     $stmt->bindparam(':defaultRate', $default_rate);
             //     $stmt->bindparam(':defaultRateType', $default_rate_type);
             //     $stmt->bindparam(':expiration_date', $expiration_date);
-            //     if($bind_NBI_id == true){
-            //         $stmt->bindparam(':NBI_id', $expiration_date); 
-            //     }
             //     if( $bind_ClearanceNo  == true){
             //         $stmt->bindparam(':clearanceNo', $clearance_no); 
             //     }
@@ -223,12 +272,15 @@ class Worker
             //     if($bind_fileType == true){
             //         $stmt->bindparam(':nfileType', $file_type); 
             //     }
-            //     if($bind_file_id == true){
-            //         $stmt->bindparam(':nfileID', $file_id); 
+            //     if($bind_OLD_NBI_ID == true){
+            //         $stmt->bindparam(':oldNBIID', $OLD_NBI_id); 
+            //     }
+            //     if($bind_OLD_file_id == true){
+            //         $stmt->bindparam(':oldFileID', $old_file_id); 
             //     }
             //     $stmt->execute();
             // }
-   
+
             // $stmt=null;
             // $db=null;
 
@@ -244,12 +296,11 @@ class Worker
                 "bind_fileName" => $bind_fileName,
                 "bind_filePath" => $bind_filePath,
                 "bind_fileType" => $bind_fileType,
-                "bind_NBI_id" => $bind_NBI_id,
-                "bind_file_id" => $bind_file_id
+                "bind_OLD_NBIID" =>  $bind_OLD_NBI_ID,
+                "bind_OLD_file_id" => $bind_OLD_file_id,
             );
             return  $checkData;
-
-
+   
             //return $full_sql;
 
             //return $hasNBI['data']['id'];
@@ -291,7 +342,7 @@ class Worker
                     JOIN NBI_information n ON nf.NBI_id = n.id
                     JOIN file f ON nf.file_id = f.id
                     WHERE n.worker_id = :userID
-                    AND DATEDIFF(n.expiration_date, CURDATE()) BETWEEN 0 AND 360
+                    AND DATEDIFF(n.expiration_date, CURDATE()) > 0
                     AND nf.is_deleted = 0
                     AND f.is_deleted = 0
                     AND n.is_deleted = 0";
@@ -390,7 +441,7 @@ class Worker
             WHERE n.worker_id = :userID
             AND nf.is_deleted = 0
             AND n.is_deleted = 0
-            AND DATEDIFF(n.expiration_date, CURDATE()) BETWEEN 0 AND 360";
+            AND DATEDIFF(n.expiration_date, CURDATE()) > 0";
 
             // Prepare statement
             $stmt =  $conn->prepare($sql);
