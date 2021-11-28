@@ -691,7 +691,6 @@ class Worker
 
             // Prepare statement
             $stmt =  $conn->prepare($sql);
-
             $utype = 2;
 
             // Only fetch if prepare succeeded
@@ -699,25 +698,81 @@ class Worker
                 $stmt->execute(['utype' =>$utype, 'phone' => $phone]); 
                 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
+
             $stmt=null;
             $db=null;
-
             $ModelResponse =  array(
                 "success"=>true,
                 "data"=>$result
             );
-
             return $ModelResponse;
 
         }catch (\PDOException $e) {
-
             $ModelResponse =  array(
                 "success"=>false,
                 "data"=>$e->getMessage()
             );
-
             return $ModelResponse;
         }
     }
-    
+
+
+// =================================================================================
+// =================================================================================
+// =================================================================================
+
+
+    // == Hurry mode: Re-review Later - Nov 28
+    // @desc    gets radio option for general schedule or specific
+    // @params  $userID
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is a bool
+    public function  get_save_worker_schedule_preference($userID, $preference=null){
+        try{
+            
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "";
+            // CREATE query
+            if($preference !==null){
+                $sql = "UPDATE worker SET has_schedule_preference = :pref WHERE id = :userID;";
+            } else {
+                $sql = "SELECT id, has_schedule_preference FROM `worker` WHERE id = :userID;";
+            }
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            $result = "";
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                if($preference !==null){
+                    $stmt->bindparam(':userID', $userID);
+                    $stmt->bindparam(':pref', $preference);
+                    $result = $stmt->execute();
+                } else {
+                    $stmt->bindparam(':userID',$userID);
+                    $stmt->execute();
+                    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                }
+            }
+            $stmt->bindparam(':userID', $userID);
+            $stmt=null;
+            $db=null;
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+            return $ModelResponse;
+
+        }catch (\PDOException $e) {
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+            return $ModelResponse;
+        }
+    }
 }
