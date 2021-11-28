@@ -520,10 +520,37 @@ public function workerCreateAccount(Request $request,Response $response){
         $this->customResponse->is500Response($response,  $responseMessage["data"]);
     }
 
-        // GENERATE JWT TOKEN
+        // GET USER acc by phone
+        $usersWithPhone = $this->user->getUserAccountsByPhone(CustomRequestHandler::getParam($request,"phone"));
+
+        // Get the user who has a user_type_id 2 for worker
+        $usersWithPhone = $usersWithPhone['data'];
+        $userID = "";
+        if(count($usersWithPhone) == 1){
+            $userID = $usersWithPhone[0]["user_id"];
+        } else {
+            for($x = 0; $x < count($usersWithPhone) && $userID == ""; $x++){
+                if($usersWithPhone[$x]["user_type_id"] == 2){
+                    $userID = $usersWithPhone[$x]["user_id"];
+                }
+            }
+        }
+
+        $generated_jwt = "";
+        if($userID == ""){
+            return $this->customResponse->is500Response($response, "Unable to generate a token session for registration. please refresh the page.");
+        } else {
+            // GENERATE JWT TOKEN
+            $generated_jwt = GenerateTokenController::generateRegistrationToken($userID,2);
+        }
+
         $userData = [];
         $userData['hasCompletedRegistration'] = false;
-        $userData['token'] = GenerateTokenController::generateToken(CustomRequestHandler::getParam($request,"phone_number"),2);
+        $userData['token'] = $generated_jwt;
+
+        if($generated_jwt == "" || $generated_jwt == null || empty($generated_jwt)){
+            return $this->customResponse->is500Response($response, "Unable to generate a token session for registration. please refresh the page.");
+        }
 
         $responseMessage =  array(
             "data"=> $userData,
