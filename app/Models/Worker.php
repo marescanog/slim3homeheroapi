@@ -93,7 +93,7 @@ class Worker
     //          data value is 
     public function save_personalInformation(
                 $userID, $skill_data, $default_rate, $default_rate_type, $clearance_no, $expiration_date,
-                $file_id = true ,  $file_name = null ,   $file_path = null ,  $file_type = null, $old_file_id = null
+                $file_id = true ,  $file_name = null ,   $file_path = null ,  $old_file_id = null
         ){
         try{
             // track the necessary parameters to bind PDO data
@@ -101,19 +101,23 @@ class Worker
             $bind_ClearanceNo = false;
             $bind_fileName = false;
             $bind_filePath = false;
-            $bind_fileType = false;
             $bind_OLD_file_id = false;
 
             // Build Query based on parameters
             $baseSql = "SET @@session.time_zone = '+08:00'; BEGIN;";
+
+            // ==----------
             // Add skills query
             $full_sql = $this->skills_QueryBuilder($skill_data["skills_toAdd"], $skill_data["skills_toDelete"], $skill_data["skills_toUpdate"],  $baseSql, ':userID');
+            
+            // ==----------
             // Construct query for rate and type
             $sql_update_defaultRate = "UPDATE `worker` SET default_rate = :defaultRate WHERE id = :userID;";
             $sql_update_defaultType = "UPDATE `worker` SET default_rate_type = :defaultRateType WHERE id = :userID;";
-            // Add rate and type query
+            // // Add rate and type query
             $full_sql = $full_sql.$sql_update_defaultRate.$sql_update_defaultType;
 
+            // ==----------
             // Check if user already has nbi_file information existing
             $hasNBI = $this->get_nbi_information($userID);
             if($hasNBI['success'] == false){
@@ -124,17 +128,27 @@ class Worker
                 return $ModelResponse;
             }
 
+            // ==----------
             // Construct query for nbi info
             $sql_insert_NBI_info = "INSERT into NBI_information (clearance_no, worker_id, expiration_date) VALUES (:clearanceNo, :userID, :expiration_date);";
             $sql_insert_NBI_file_and_info_junction = "INSERT INTO `NBI_files` (`NBI_id`, `file_id`) VALUES (@nbiInfoNumber, @nbiFileNumber);";
-            $sql_insert_files = "INSERT into `file` (`file_name`,`file_type`,`file_path`) VALUES (:nfileName, :nfileType, :nfilePath);SET @nbiFileNumber:=LAST_INSERT_ID();";
+            $sql_insert_files = "INSERT into `file` (`file_name`,`file_path`) VALUES (:nfileName, :nfilePath);SET @nbiFileNumber:=LAST_INSERT_ID();";
 
+            // ==----------
+            /*
+                Note:  Save New File Works, Add new Image works, Change Skill types Work, change rate & rate type, Change expiration date
+                TODOS -
+                    - Doesn't work yet - Change Image
+                    - Change NBI Clearance No
+                    - Check SCENARIO 3, 4 & 5. Scenario 4 Fails and does not save entry
+            */
+            // ==---------- Scenario 1 - New File Entry
             // when no data, Insert new NBI info entry, also inserts new file and NBI-file junction info 
             if($hasNBI['data'] == false){
                 // Append sql to insert nbi info
                 $full_sql = $full_sql.$sql_insert_NBI_info. "SET @nbiInfoNumber:=LAST_INSERT_ID();";
 
-                // Add new file
+                // // Add new file
                 
                 $full_sql = $full_sql. $sql_insert_files;
 
@@ -144,20 +158,23 @@ class Worker
                 $bind_ClearanceNo = true;
                 $bind_fileName = true;
                 $bind_filePath = true;
-                $bind_fileType = true;
 
                 // There is no previous Junction entry for this. Thus no need to delete any Junctions.
 
+            // when there is data, do additional checks based on user's action
             } else {
                 // Update existing NBI info
                 // Check if the clearance number is the same as the one we will insert
                 $OLD_ClearanceNo = $hasNBI['data']['clearance_no'];
                 $OLD_NBI_id = $hasNBI['data']['id'];
+
+                
                 if($OLD_ClearanceNo !== $clearance_no){
                     
                     // add new NBI info entry
                     $full_sql = $full_sql.$sql_insert_NBI_info;
 
+                    // ==---------- Scenario 5 Existing File (Changed NBI Clearance No, Changed File Photo)
                     // file_id false means it is a new file, thus there is no id for new entry yet
                     if($file_id == 'false'){
 
@@ -180,6 +197,8 @@ class Worker
                         $softDelete_file = "UPDATE `file` SET is_deleted = 1 WHERE id = :oldFileID;";
                         $full_sql = $full_sql.$softDelete_file;
                         $bind_OLD_file_id = true;
+
+                    // ==---------- Scenario 4 Existing File (Cahnged NBI Clearance No, Same File Photo)
                     } else {
                         // insert new junction with old file id
                         $full_sql = $full_sql. "SET @nbiInfoNumber:=LAST_INSERT_ID();";
@@ -207,11 +226,13 @@ class Worker
                     $bind_ClearanceNo = true;
                     $bind_OLD_file_id = true;
                 } else {
+                    // ==---------- Scenario 2 - Existing File (Same NBI Clearance No, Same File Photo)
                     // update old NBI entry
                     $sql_update_NBI_info_date = "UPDATE `NBI_information` SET expiration_date = :expiration_date WHERE id = :oldNBIID;";
                     $full_sql = $full_sql.$sql_update_NBI_info_date;
                     $bind_OLD_NBI_ID = true;
 
+                    // ==---------- Scenario 3 Existing File (Same NBI Clearance No, Changed File Photo)
                     // insert check for new file  $file_id -> Update Uploaded File
                     // file_id false means it is a new file, thus there is no id for it yet
                     if( $file_id == "false"){
@@ -244,6 +265,7 @@ class Worker
 
             // End query builder / transaction
             $full_sql = $full_sql."COMMIT;";
+            //$test_sql = "INSERT INTO `file` (`id`, `file_name`, `file_path`, `is_deleted`, `created_on`) VALUES (NULL, 'test', 'test', '0', CURRENT_TIMESTAMP);";
 
             // // -------------
             // // Now that we have a generated SQL statement, we apply it to the DB
@@ -252,8 +274,10 @@ class Worker
             $conn = $db->connect();
 
             // Prepare statement
-            $stmt =  $conn->prepare($sql);
-            $result = "";
+            $stmt =  $conn->prepare($full_sql);
+            //$stmt =  $conn->prepare($test_sql);
+            $result = "Statement was false.";
+
             // Only fetch if prepare succeeded
             if ($stmt !== false) {
                 $stmt->bindparam(':userID', $userID);
@@ -268,9 +292,6 @@ class Worker
                 }
                 if($bind_filePath == true){
                     $stmt->bindparam(':nfilePath', $file_path); 
-                }
-                if($bind_fileType == true){
-                    $stmt->bindparam(':nfileType', $file_type); 
                 }
                 if($bind_OLD_NBI_ID == true){
                     $stmt->bindparam(':oldNBIID', $OLD_NBI_id); 
@@ -291,7 +312,6 @@ class Worker
                 "bind_ClearanceNo" => $bind_ClearanceNo,
                 "bind_fileName" => $bind_fileName,
                 "bind_filePath" => $bind_filePath,
-                "bind_fileType" => $bind_fileType,
                 "bind_OLD_NBIID" =>  $bind_OLD_NBI_ID,
                 "bind_OLD_file_id" => $bind_OLD_file_id,
             );
@@ -341,7 +361,7 @@ class Worker
             $conn = $db->connect();
 
             // CREATE query
-            $sql = "SELECT nf.file_id as id, f.file_name, f.file_type, f.file_path from NBI_files nf
+            $sql = "SELECT nf.file_id as id, f.file_name, f.file_path from NBI_files nf
                     JOIN NBI_information n ON nf.NBI_id = n.id
                     JOIN file f ON nf.file_id = f.id
                     WHERE n.worker_id = :userID
