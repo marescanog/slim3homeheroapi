@@ -753,10 +753,12 @@ class Worker
                     $stmt->bindparam(':pref', $preference);
                     $result = $stmt->execute();
                 } else {
-                    $stmt->bindparam(':userID', $userID);
+                    $stmt->bindparam(':userID',$userID);
+                    $stmt->execute();
                     $result = $stmt->fetch(PDO::FETCH_ASSOC);
                 }
             }
+            $stmt->bindparam(':userID', $userID);
             $stmt=null;
             $db=null;
             $ModelResponse =  array(
