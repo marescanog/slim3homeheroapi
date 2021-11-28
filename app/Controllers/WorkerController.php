@@ -29,6 +29,15 @@ class WorkerController
     }
 
     // =================================================================================================
+    // This function loads if the worker has a schedule preference (Only general)
+    // it is referenced by the /general-schedule route
+    // @param Request & Response, @returns formatted response object with status & message
+    public function template(Request $request,Response $response){
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response,  "This Route Works");
+    }
+
+    // =================================================================================================
     // This function is a private function only used within this controller and NOT referenced by route or anything outside this file
         // @params accepts user_int(int), skilll_list(array of skill ids->project type table)
         // returns A an object containing sorted data of skills to add, update or delete
@@ -234,7 +243,7 @@ class WorkerController
     // it is references by the /personal-info route
     // @param Request & Response, @returns formatted response object with status & message
     public function getRegistration_personalInfo(Request $request,Response $response){
-        // Get the bearer token from the Auth header
+        // Get the bearer token from the Auth header (TODO, Use Private function GET_USER_ID_FROM_TOKEN) Refactor later...
         $bearer_token = JSON_encode($request->getHeader("Authorization"));
 
         // Extract token by omitting "Bearer"
@@ -296,5 +305,136 @@ class WorkerController
         return $this->customResponse->is200Response($response,  $userData);
     }
 
+
+// ===========================================================================================================
+// ===========================================================================================================
+// ===========================================================================================================
+
+
+
+    // == Hurry mode: Re-review Later - Nov 28
+    // =================================================================================================
+    // This function Revceives a Bearer token and Decodes it to return a USER ID
+    // Domain is only within this file
+    private function GET_USER_ID_FROM_TOKEN($bearer_token){
+        // Extract token by omitting "Bearer"
+        $jwt = substr(trim($bearer_token),9);
+
+        // Decode token to get user ID
+        $result =  GenerateTokenController::AuthenticateUserType($jwt, 2);
+        //return $result ;
+        if($result['status'] == false){
+            return $this->generateServerResponse(401, $result['message']);
+        }
+
+        $userID =  $result["data"]["jti"];
+        $userData = [];
+        // return $this->customResponse->is401Response($response, $result );
+        // Authenticate user
+        // Get user information from DB and check if user is deleted
+        $result = $this->worker->is_deleted($userID);
+        $isDeleted = intval($result["data"]["is_deleted"]) != 0;
+        if($result["success"] == false){
+            return $this->generateServerResponse(500, $result["data"]);
+        }
+        if($isDeleted){
+            return $this->generateServerResponse(401, "The user is not available since it was deleted from the database.");
+        }
+        return $userID;
+    }
+
+    // == Hurry mode: Re-review Later - Nov 28
+    // =================================================================================================
+    // This function loads if the worker has a schedule preference (Only general)
+    // it is referenced by the /general-schedule route
+    // @param Request & Response, @returns formatted response object with status & message
+    public function get_general_schedule(Request $request,Response $response){
+         // Get the bearer token from the Auth header
+         $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+         // Catch the response, on success it is an ID, on fail it has status and message
+         $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+ 
+         // Error handling
+         if(is_object( $userID) && array_key_exists("status", $userID)){
+             return $this->customResponse->is401Response($response, $userID);
+         }
+ 
+         // GET VALUES FROM DB
+         $result = $this->worker->get_save_worker_schedule_preference($userID);
+         if($result['success'] == false){
+             return $this->customResponse->is500Response($response, $result['data']);
+         }
+ 
+         // Return information needed for personal info page
+         return $this->customResponse->is200Response($response, $result['data'] );
+    }
+
+    // == Hurry mode: Re-review Later - Nov 28
+    // =================================================================================================
+    // This function SAVES if the worker has a schedule preference (Only general)
+    // it is referenced by the /general-schedule route
+    // @param Request & Response, @returns formatted response object with status & message
+    public function save_general_schedule(Request $request,Response $response){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_object( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+        // VALIDATE VALUES RECEIVED FROM USER
+        $this->validator->validate($request,[
+            // Check Values Validity and if empty
+            "schedule_preference"=>v::intVal()
+        ]);
+
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+        // Grab value
+        $sched_pref = CustomRequestHandler::getParam($request,"schedule_preference");
+
+        // SAVE VALUES INTO DB
+        $result = $this->worker->get_save_worker_schedule_preference($userID, $sched_pref);
+        if($result['success'] == false){
+            return $this->customResponse->is500Response($response, $result['data']);
+        }
+
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response, $result['data'] == true ? "Successfully updated" : "something went wrong" );
+    }
+
+
+    // == Hurry mode: Re-review Later
+    // =================================================================================================
+    // This function loads if the worker has a schedule preference (Only general)
+    // it is referenced by the /general-schedule route
+    // @param Request & Response, @returns formatted response object with status & message
+    public function templateQuickGrab(Request $request,Response $response){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_object( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response,  $userID );
+        return $this->customResponse->is200Response($response,  "This route works");
+    }
+    
     
 }
