@@ -414,6 +414,137 @@ class WorkerController
     }
 
 
+    // == Hurry mode: Re-review Later - Nov 28
+    // =================================================================================================
+    // This function gets the workers preffered cities from the DB
+    // it is referenced by the /preferred-cities route
+    // @param Request & Response, @returns formatted response object with status & message
+    public function get_preferred_cities(Request $request,Response $response){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+        $preferred_cities = $this->get_cities($userID);
+
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response,  $preferred_cities);
+    }
+
+    private function get_cities($userID){
+        // Fetch data from the database
+        $result = $this->worker->getPreferredCities_fromDB($userID);
+        if($result['success'] == false){
+            return $this->customResponse->is500Response($response, $result['data']);
+        }
+
+        $preferred_cities = [];
+        // Convert Data into array
+        for($x = 0; $x < count($result['data']);$x++){
+            array_push($preferred_cities, $result['data'][$x]["city_id"]);
+        }
+        return $preferred_cities;
+    }
+
+    
+    // == Hurry mode: Re-review Later - Nov 28
+    // =================================================================================================
+    // This function loads if the worker has a schedule preference (Only general)
+    // it is referenced by the /general-schedule route
+    // @param Request & Response, @returns formatted response object with status & message
+    public function save_preferred_cities(Request $request,Response $response){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+        // VALIDATE VALUES RECEIVED FROM client
+        $this->validator->validate($request,[
+            // Check Values Validity and if empty
+            "preferred_cities"=>v::notempty()
+        ]);
+
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+        // Grab value
+        $preferred_cities_client = CustomRequestHandler::getParam($request,"preferred_cities");
+        // then process the raw data into something that our functions can use -> array
+        $cities_arr = explode(",",   $preferred_cities_client);
+        // For debug
+        // return $this->customResponse->is500Response($response,$cities_arr);
+
+        // Validate cities array to ensure that the values are between 1-12 (Current entries in DB); TODO Dynamic this
+        for($x = 0; $x < count($cities_arr); $x++){
+            if($cities_arr[$x] < 1 || $cities_arr[$x] > 12){
+                return $this->customResponse->is400Response($response,$this->generateServerResponse(400, "Key Values are only from 1-12. A key has been detected that is out of range."));
+            }
+        }
+
+        // Grab current values in the DB
+        $preferred_cities_db = $this->get_cities($userID);
+        // For debug
+        // return $this->customResponse->is500Response($response,$preferred_cities_db);
+
+        // Compare client & Db, Sort values from add & delete (cities to add, cities to delete)
+            // if not in db, add. 
+        $cities_toAdd = [];
+        for($x = 0; $x < count($cities_arr); $x++){
+            if(!in_array($cities_arr[$x], $preferred_cities_db)){
+                array_push($cities_toAdd , $cities_arr[$x]);
+            }
+        }
+            // If not in client, delete.
+        $cities_toDelete = [];
+        for($x = 0; $x < count($preferred_cities_db); $x++){
+            if(!in_array($preferred_cities_db[$x], $cities_arr)){
+                array_push($cities_toDelete, $preferred_cities_db[$x]);
+            }
+        }
+        // $debug=[];
+        // $debug['add'] =  $cities_toAdd;
+        // $debug['delete'] =   $cities_toDelete;
+        // $debug['client'] =  $cities_arr;
+        // $debug['db'] =   $preferred_cities_db;
+        // return $this->customResponse->is200Response($response, $debug );
+
+        $formattedResponse = [];
+        $formattedResponse["message"] = "Nothing added or deleted. Selection of cities are the same from previous saved values.";
+        if(count($cities_toAdd) !== 0 || count($cities_toDelete) !== 0){
+            // SAVE VALUES INTO DB
+            $result = $this->worker->savePreferredCities_intoDB($userID, $cities_toAdd, $cities_toDelete);
+            if($result['success'] == false){
+                return $this->customResponse->is500Response($response, $result['data']);
+            }
+            $formattedResponse["message"] = "Cities successfully added/removed.";
+            $formattedResponse["resultBool"] = $result['data'];
+            $formattedResponse["debug"] = $result['debug'];
+            $formattedResponse["DBsuccess"] = $result['success'];
+        }
+
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response,  $formattedResponse );
+        // return $this->customResponse->is200Response($response,  $userID );
+    }
+    
+
+
     // == Hurry mode: Re-review Later
     // =================================================================================================
     // This function loads if the worker has a schedule preference (Only general)
@@ -427,7 +558,7 @@ class WorkerController
         $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
 
         // Error handling
-        if(is_object( $userID) && array_key_exists("status", $userID)){
+        if(is_array( $userID) && array_key_exists("status", $userID)){
             return $this->customResponse->is401Response($response, $userID);
         }
 
