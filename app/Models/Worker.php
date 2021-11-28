@@ -749,9 +749,11 @@ class Worker
             // Only fetch if prepare succeeded
             if ($stmt !== false) {
                 if($preference !==null){
-                    $result = $stmt->execute(['userID' =>$userID, 'pref' =>$preference]); 
+                    $stmt->bindparam(':userID', $userID[0]);
+                    $stmt->bindparam(':pref', $preference);
+                    $result = $stmt->execute();
                 } else {
-                    $stmt->execute(['userID' =>$userID]); 
+                    $stmt->bindparam(':userID', $userID[0]);
                     $result = $stmt->fetch(PDO::FETCH_ASSOC);
                 }
             }

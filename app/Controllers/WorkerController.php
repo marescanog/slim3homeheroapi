@@ -356,7 +356,7 @@ class WorkerController
          $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
  
          // Error handling
-         if(is_object( $userID) && array_key_exists("status", $userID)){
+         if(is_array( $userID) && array_key_exists("status", $userID)){
              return $this->customResponse->is401Response($response, $userID);
          }
  
@@ -383,7 +383,7 @@ class WorkerController
         $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
 
         // Error handling
-        if(is_object( $userID) && array_key_exists("status", $userID)){
+        if(is_array( $userID) && array_key_exists("status", $userID)){
             return $this->customResponse->is401Response($response, $userID);
         }
 
