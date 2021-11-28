@@ -201,7 +201,9 @@ class WorkerController
                 $file_id ,  $file_name,   $file_path,  $file_type, $old_file_id
             );
         
-            //return $this->customResponse->is200Response($response,  $skill_list);
+            if($ModelResponse["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $ModelResponse["data"]) );
+            }
 
         // Return information needed for personal info page
         return $this->customResponse->is200Response($response, $ModelResponse);

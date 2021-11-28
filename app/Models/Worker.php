@@ -248,47 +248,43 @@ class Worker
             // // -------------
             // // Now that we have a generated SQL statement, we apply it to the DB
             // // Create new DB connection
-            // $db = new DB();
-            // $conn = $db->connect();
+            $db = new DB();
+            $conn = $db->connect();
 
-            // // Prepare statement
-            // $stmt =  $conn->prepare($sql);
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->bindparam(':defaultRate', $default_rate);
+                $stmt->bindparam(':defaultRateType', $default_rate_type);
+                $stmt->bindparam(':expiration_date', $expiration_date);
+                if( $bind_ClearanceNo  == true){
+                    $stmt->bindparam(':clearanceNo', $clearance_no); 
+                }
+                if( $bind_fileName == true){
+                    $stmt->bindparam(':nfileName', $file_name); 
+                }
+                if($bind_filePath == true){
+                    $stmt->bindparam(':nfilePath', $file_path); 
+                }
+                if($bind_fileType == true){
+                    $stmt->bindparam(':nfileType', $file_type); 
+                }
+                if($bind_OLD_NBI_ID == true){
+                    $stmt->bindparam(':oldNBIID', $OLD_NBI_id); 
+                }
+                if($bind_OLD_file_id == true){
+                    $stmt->bindparam(':oldFileID', $old_file_id); 
+                }
+                $result = $stmt->execute();
+            }
 
-            // // Only fetch if prepare succeeded
-            // if ($stmt !== false) {
-            //     $stmt->bindparam(':userID', $userID);
-            //     $stmt->bindparam(':defaultRate', $default_rate);
-            //     $stmt->bindparam(':defaultRateType', $default_rate_type);
-            //     $stmt->bindparam(':expiration_date', $expiration_date);
-            //     if( $bind_ClearanceNo  == true){
-            //         $stmt->bindparam(':clearanceNo', $clearance_no); 
-            //     }
-            //     if( $bind_fileName == true){
-            //         $stmt->bindparam(':nfileName', $file_name); 
-            //     }
-            //     if($bind_filePath == true){
-            //         $stmt->bindparam(':nfilePath', $file_path); 
-            //     }
-            //     if($bind_fileType == true){
-            //         $stmt->bindparam(':nfileType', $file_type); 
-            //     }
-            //     if($bind_OLD_NBI_ID == true){
-            //         $stmt->bindparam(':oldNBIID', $OLD_NBI_id); 
-            //     }
-            //     if($bind_OLD_file_id == true){
-            //         $stmt->bindparam(':oldFileID', $old_file_id); 
-            //     }
-            //     $stmt->execute();
-            // }
+            $stmt=null;
+            $db=null;
 
-            // $stmt=null;
-            // $db=null;
 
-            // $ModelResponse =  array(
-            //     "success"=>true,
-            //     "data"=>$result
-            // );
-            // return $ModelResponse;
 
             $checkData = array(
                 "statement" => $full_sql,
@@ -299,7 +295,14 @@ class Worker
                 "bind_OLD_NBIID" =>  $bind_OLD_NBI_ID,
                 "bind_OLD_file_id" => $bind_OLD_file_id,
             );
-            return  $checkData;
+            // return  $checkData;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result,
+                "debugLog"=> $checkData
+            );
+            return $ModelResponse;
    
             //return $full_sql;
 
