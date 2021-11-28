@@ -758,7 +758,7 @@ class Worker
                     $result = $stmt->fetch(PDO::FETCH_ASSOC);
                 }
             }
-            $stmt->bindparam(':userID', $userID);
+
             $stmt=null;
             $db=null;
             $ModelResponse =  array(
@@ -775,4 +775,127 @@ class Worker
             return $ModelResponse;
         }
     }
+
+    // @desc    
+    // @params  
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is 
+    public function getPreferredCities_fromDB($userID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+            // CREATE query
+            $sql = "SELECT * FROM `city_preference` WHERE worker_id = :userID;";
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+            return $ModelResponse;
+
+        }catch (\PDOException $e) {
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+            return $ModelResponse;
+        }
+    }
+
+
+
+
+
+    // @desc    
+    // @params  
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is 
+    public function savePreferredCities_intoDB($userID, $cities_toAdd, $cities_toDelete){
+        try{
+            // Build Query based on parameters
+            $baseSql = "SET @@session.time_zone = '+08:00'; BEGIN;";
+
+            if(count($cities_toAdd) !== 0){
+                $sql_addCities = "INSERT INTO city_preference (worker_id, city_id) VALUES ";
+                for($x = 0; $x < count($cities_toAdd); $x++){
+                    $sql_addCities = $sql_addCities."(:userID,".$cities_toAdd[$x].")";
+                    $sql_addCities = $x == count($cities_toAdd) - 1 ? $sql_addCities.";" : $sql_addCities.",";
+                }
+                $baseSql = $baseSql.$sql_addCities;
+            }
+            //"DELETE FROM `city_preference` WHERE `city_preference`.`worker_id` = 66 AND `city_preference`.`city_id` = 2"
+            if(count($cities_toDelete) !== 0){
+                $sql_deleteCities = "DELETE FROM `city_preference` WHERE worker_id = :userID AND city_id = ";
+                for($x = 0; $x < count($cities_toDelete); $x++){
+                    $baseSql = $baseSql.$sql_deleteCities.$cities_toDelete[$x].";";
+                }
+            }
+
+            // End query builder / transaction
+            $full_sql = $baseSql."COMMIT;";
+
+            // Interact with DB
+            $db = new DB();
+            $conn = $db->connect();
+
+            // Prepare statement
+            $stmt =  $conn->prepare($full_sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $result = $stmt->execute();
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $debug = [];
+            $debug["sql"] =  $full_sql;
+            $debug["add"] =  $cities_toAdd;
+            $debug["delete"] =  $cities_toDelete;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result,
+                "debug"=>$debug
+            );
+
+            return $ModelResponse;
+
+        }catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
 }
