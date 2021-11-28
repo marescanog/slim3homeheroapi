@@ -145,7 +145,7 @@ class WorkerController
                 // Check if empty
                 "file_name"=>v::notEmpty(),
                 "file_path"=>v::notEmpty(),
-                "file_type"=>v::notEmpty()
+                // "file_type"=>v::notEmpty()
             ]);
 
             // Return Validation Errors
@@ -169,8 +169,6 @@ class WorkerController
             $responseMessage = $this->validator->errors;
             return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
         }
-        // Check if skill list is an array if ids
-            // <Add code here>
 
     
         // ---------------
@@ -178,30 +176,41 @@ class WorkerController
             // Grab the skill_list from the body (array of project_type ids-> which is the subcategory of expertise )
             $skill_list = CustomRequestHandler::getParam($request,"skill_list");
             // then process the raw data into something that our functions can use (used by the skills_QueryBuilder in our save personal information function)
-            $skill_data = $this->processSkillsData($userID, $skill_list);
+            $skill_arr = explode(",",  $skill_list);
+            $skill_data = $this->processSkillsData($userID, $skill_arr);
+            // Check if skills list is a string
+            if(is_string($skill_data)){
+                return $this->customResponse->is500Response($response,$this->generateServerResponse(500, "Incorrect Data Format: Please check on the processing of skill list array into data object"));
+            }
+            // // For Debugging
+            // return $this->customResponse->is500Response($response,$skill_data);
+
             //------
-            // Grab the default rate & rate type from body
+            // Grab the default rate & rate type from body // clean for 2's place decimal
             $default_rate = CustomRequestHandler::getParam($request,"default_rate");
+            $default_rate = number_format($default_rate, 2, '.', '');
             $default_rate_type = CustomRequestHandler::getParam($request,"default_rate_type");
+
             //------
             // Grab the clearance no & expiration date from body
             $clearance_no = CustomRequestHandler::getParam($request,"clearance_no");
             $expiration_date = CustomRequestHandler::getParam($request,"expiration_date");
             // Grab the nbi file info
-            $has_new_file_information  = CustomRequestHandler::getParam($request,"has_new_file");
             $file_name = CustomRequestHandler::getParam($request,"file_name");
             $file_path = CustomRequestHandler::getParam($request,"file_path");
-            $file_type = CustomRequestHandler::getParam($request,"file_type");
+            // $file_type = CustomRequestHandler::getParam($request,"file_type");
             // For Deleting the old id
             $old_file_id = CustomRequestHandler::getParam($request,"old_file_id");
 
             // Add our collected and processed data into our custom function we wrote in the worker model
             $ModelResponse = $this->worker->save_personalInformation(
                 $userID,  $skill_data, $default_rate, $default_rate_type, $clearance_no, $expiration_date,
-                $file_id ,  $file_name,   $file_path,  $file_type, $old_file_id
+                $file_id ,  $file_name,   $file_path,  $old_file_id
             );
         
-            //return $this->customResponse->is200Response($response,  $skill_list);
+            if($ModelResponse["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $ModelResponse["data"]) );
+            }
 
         // Return information needed for personal info page
         return $this->customResponse->is200Response($response, $ModelResponse);
@@ -240,7 +249,7 @@ class WorkerController
 
         $userID =  $result["data"]["jti"];
         $userData = [];
-
+        // return $this->customResponse->is401Response($response, $result );
         // Authenticate user
             // Get user information from DB and check if user is deleted
             $result = $this->worker->is_deleted($userID);
