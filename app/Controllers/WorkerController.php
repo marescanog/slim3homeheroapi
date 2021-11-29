@@ -829,8 +829,15 @@ class WorkerController
             return $this->customResponse->is401Response($response, $userID);
         }
 
+        // Complete the worker registration
+            // Submit the application and create a support ticket
+            $result = $this->worker->completeWorkerRegistration($userID);
+            if(  $result["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $result["data"]) );
+            }
+
         // Return information needed for personal info page
-        return $this->customResponse->is200Response($response,  $userID );
+        return $this->customResponse->is200Response($response,  "Sucessful submission of application.");
     }
 
 
