@@ -995,7 +995,62 @@ class Worker
     }
 
 
+// == Hurry mode: Re-review Later - Nov 29
+    // @desc    
+    // @params  
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is 
+    public function completeWorkerRegistration($userID){
+        try{
+            $result = "";
+            $db = new DB();
+            $conn = $db->connect();
 
+            $systemDescription = "WORKER #$userID SUBMITTED AN APPLICATION";
+
+            $sql = "SET @@session.time_zone = '+08:00'; 
+                    BEGIN;
+                        UPDATE ".$this->table." SET has_completed_registration = 1 WHERE id = 66;
+                        
+                        INSERT INTO support_ticket (author, issue_id, has_images, system_Description) 
+                        values(:userID, 1, 1, :sysDesc);
+
+                        INSERT INTO ticket_actions (action_taken, system_generated_description, support_ticket)
+                        VALUES(1, :sysDesc, LAST_INSERT_ID());
+                    COMMIT;
+                    ";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only execute if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->bindparam(':sysDesc', $systemDescription);
+                $result = $stmt->execute();
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        }catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
 
 
 
