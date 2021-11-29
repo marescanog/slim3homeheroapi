@@ -5,6 +5,7 @@ namespace App\Controllers;
 
 use App\Models\Worker;
 use App\Models\User;
+use App\Models\SupportTicket;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -20,6 +21,8 @@ class WorkerController
 
     protected $user;
 
+    protected $supportticket;
+
     protected  $validator;
 
     public function  __construct()
@@ -30,12 +33,14 @@ class WorkerController
 
         $this->user = new User();
 
+        $this->supportticket = new SupportTicket();
+
         $this->validator = new Validator();
     }
 
     // =================================================================================================
-    // This function loads if the worker has a schedule preference (Only general)
-    // it is referenced by the /general-schedule route
+    // This function <add your description>
+    // it is referenced by <add your route>
     // @param Request & Response, @returns formatted response object with status & message
     public function template(Request $request,Response $response){
         // Return information needed for personal info page
@@ -807,7 +812,26 @@ class WorkerController
     }
 
 
+    // Nove - 30 - In a Hurry Review Later
+    // =================================================================================================
+    // This function changes the user's registration status to complete and submits a support ticket for evaluation
+    // it is referenced by submit-application
+    // @param Request & Response, @returns formatted response object with status & message
+    public function submit_application(Request $request,Response $response){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
 
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response,  $userID );
+    }
 
 
 
