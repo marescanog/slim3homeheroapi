@@ -4,6 +4,7 @@
 namespace App\Controllers;
 
 use App\Models\Worker;
+use App\Models\User;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -17,6 +18,8 @@ class WorkerController
 
     protected $worker;
 
+    protected $user;
+
     protected  $validator;
 
     public function  __construct()
@@ -24,6 +27,8 @@ class WorkerController
         $this->customResponse = new CustomResponse();
 
         $this->worker = new Worker();
+
+        $this->user = new User();
 
         $this->validator = new Validator();
     }
@@ -705,32 +710,97 @@ class WorkerController
             return $this->customResponse->is401Response($response, $userID);
         }
 
-    // Goal formatting
-        // Get info needed for rgistration
-        // Worker Full Name string 
-        // worker mobile number string
-        // Worker skills array of ids
-        // worker salary goal string
-        // Worker Certification or diplomas array of ids
-        // NBI number 
-        // NBI expiration expiration  string string
-        // worker schedule bool
-        // woker lead time string 
-        // worker notice time string
-        // worker cities array of ids
+        
+        $data = [];
+        // Get user info needed for registration review
+            // Worker Full Name string 
+            // worker mobile number string
+            $userData = $this->user->getUserByID($userID);
+            if($userData["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $userData["data"]) );
+            }
+            // $userData["expertiseList"] = $expertiseList["data"];
+            $data['name'] = ucfirst($userData["data"]["first_name"])." ".ucfirst($userData["data"]["last_name"]);
+            $data['mobile'] = $userData["data"]["phone_no"];
 
-            $data = [];
-            $data['name'] = "Jose Santos";
-            $data['mobile'] = "099-222-2222";
-            $data['skills'] = "Electrical, Carpentry";
-            $data['salary'] = "300.00 /per day";
-            $data['cert'] = "TESDA certificate, TOR";
-            $data['nbiNo'] = "2009182378";
-            $data['expiration'] = "09/12/2022";
-            $data['has_sched_pref'] = "false";
-            $data['booking_lead'] = "1 month/s";
-            $data['notice_lead'] = "3 day/s";
-            $data['cities'] = "Cebu City, mandaue, Talisay";
+            // Worker skills array of ids
+            $skillList = $this->worker->getList_expertise($userID);
+            if($skillList["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $skillList["data"]) );
+            }
+            // Convert the array to a formatted string
+            if(count($skillList["data"]) == 0 || $skillList["data"] == null || empty($skillList["data"])){
+                $data['skills'] = "--"; // we still want the page to load so no send error
+            }
+            $skillsString = "";
+            for($x = 0; $x < count($skillList["data"]); $x++){
+                $skillsString = $skillsString.ucfirst($skillList["data"][$x]["name"]);
+                if(count($skillList["data"])-1 != $x ){
+                    $skillsString = $skillsString.", ";
+                }
+            }
+            $data['skills'] = $skillsString;
+
+            // Get worker information from table
+            $workerData = $this->worker->getWorkerRegistrationReviewInfo_ByID($userID);
+            if( $workerData["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $workerData["data"]) );
+            }
+            // Construct Salary String
+            $wrate = $workerData["data"]["default_rate"];
+            $wtype = strtolower($workerData["data"]["type"]);
+            $data['salary'] = "$wrate/per $wtype";
+            // Add sched pref info
+            $data['has_sched_pref'] = $workerData["data"]["has_schedule_preference"] == 0 ? "false" : "true";
+            // Add booking lead info
+            $data['booking_lead'] =  $workerData["data"]["lead_time"];
+            // Add notice lead info
+            $data['notice_lead'] =  $workerData["data"]["notice_time"];
+
+            // Get NBI Information from table
+            $nbiInfo = $this->worker->get_nbi_information($userID);
+            if( $nbiInfo["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $nbiInfo["data"]) );
+            }
+            $data['nbiNo'] = $nbiInfo["data"]["clearance_no"];
+            $data['expiration'] = $nbiInfo["data"]["expiration_date"];
+
+            // Get list of cities from DB
+            $citiesList= $this->worker->getPreferredCities_fromDB($userID, true);
+            if(  $citiesList["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $citiesList["data"]) );
+            }
+            // Convert the array to a formatted string
+            if(count($citiesList["data"]) == 0 || $citiesList["data"] == null || empty($citiesList["data"])){
+                $data['cities'] = "--"; // we still want the page to load so no send error
+            }
+            $citiesString = "";
+            for($x = 0; $x < count($citiesList["data"]); $x++){
+                $citiesString =  $citiesString.ucfirst($citiesList["data"][$x]["city_name"]);
+                if(count($citiesList["data"])-1 != $x ){
+                    $citiesString =  $citiesString.", ";
+                }
+            }
+            $data['cities'] =  $citiesString;
+
+            // Get list of Certifications
+            // <TODO> since we don't have save fature for certifications yet.
+            $certificationsList = [];
+            $certificationsString = "";
+            //return $this->customResponse->is200Response($response,  $citiesList);
+
+            //$data = [];
+            // $data['name'] = "Jose Santos";
+            // $data['mobile'] = "099-222-2222";
+            // $data['skills'] = "Electrical, Carpentry";
+            // $data['salary'] = "300.00 /per day";
+            $data['cert'] = count($certificationsList) == 0 ? "none" : $certificationsString;
+            // $data['nbiNo'] = "2009182378";
+            // $data['expiration'] = "09/12/2022";
+            // $data['has_sched_pref'] = "false";
+            // $data['booking_lead'] = "1 month/s";
+            // $data['notice_lead'] = "3 day/s";
+            // $data['cities'] = "Cebu City, mandaue, Talisay";
 
         // Return information needed for personal info page
         return $this->customResponse->is200Response($response,  $data );
