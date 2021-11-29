@@ -453,27 +453,37 @@ class WorkerController
     }
 
     
-    // == Hurry mode: Re-review Later - Nov 28
+    // == Hurry mode: Re-review Later - Nov 29
+    // ADDITIONAL NOTE!!!
+    // SUPER ROUGH PATCH AND WORKAROUNDS DUE TO DEADLINE RUSH
+    // THIS PART OF APP NEEDS REVIEW & DEBUGGING
+    // WORKS ONLY IF YOU PRAY FOR FORGIVENESS
     // =================================================================================================
     // This function loads if the worker has a schedule preference (Only general)
     // it is referenced by the /general-schedule route
     // @param Request & Response, @returns formatted response object with status & message
     public function save_preferred_cities(Request $request,Response $response){
-        // Get the bearer token from the Auth header
-        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+        // Something was wrong with CORS error and we don't have much time to fix it
+        // Something was wrong with how the bearer token was sent
+        // disabling for now
+        // temporary solution is to send it as a parameter along with the body
 
-        // Catch the response, on success it is an ID, on fail it has status and message
-        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+                        // // Get the bearer token from the Auth header
+                        // $bearer_token = JSON_encode($request->getHeader("Authorization"));
 
-        // Error handling
-        if(is_array( $userID) && array_key_exists("status", $userID)){
-            return $this->customResponse->is401Response($response, $userID);
-        }
+                        // // Catch the response, on success it is an ID, on fail it has status and message
+                        // $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+                        // // Error handling
+                        // if(is_array( $userID) && array_key_exists("status", $userID)){
+                        //     return $this->customResponse->is401Response($response, $userID);
+                        // }
 
         // VALIDATE VALUES RECEIVED FROM client
         $this->validator->validate($request,[
             // Check Values Validity and if empty
-            "preferred_cities"=>v::notempty()
+            "preferred_cities"=>v::notempty(),
+            "token"=>v::notempty(),
         ]);
 
         // Return Validation Errors
@@ -483,12 +493,43 @@ class WorkerController
             return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
         }
 
+        // Get the bearer token from the parameters
+        $raw = CustomRequestHandler::getParam($request,"token");
+
+        // Decode token
+        $result =  GenerateTokenController::AuthenticateUserType( $raw, 2);
+
+        // ^^ No error handling/ catch implemented for decode above. Server doesn't return anything when token/user is incorrect
+        if($result['status'] == false){
+            return $this->generateServerResponse(401, $result['message']);
+        }
+
+        $userID =  $result["data"]["jti"];
+        $userData = [];
+        // return $this->customResponse->is200Response($response,    $userID);
+        // return $this->customResponse->is401Response($response, $result );
+
+        // Authenticate user
+        // Get user information from DB and check if user is deleted
+        $result = $this->worker->is_deleted($userID);
+        $isDeleted = intval($result["data"]["is_deleted"]) != 0;
+        if($result["success"] == false){
+            return $this->generateServerResponse(500, $result["data"]);
+        }
+        if($isDeleted){
+            return $this->generateServerResponse(401, "The user is not available since it was deleted from the database.");
+        }
+
         // Grab value
         $preferred_cities_client = CustomRequestHandler::getParam($request,"preferred_cities");
         // then process the raw data into something that our functions can use -> array
-        $cities_arr = explode(",",   $preferred_cities_client);
+        // $cities_arr = explode(",",   $preferred_cities_client);
         // For debug
         // return $this->customResponse->is500Response($response,$cities_arr);
+
+        // unlike last request no need to explode since it is already send as an array for some reason
+        // This might be the fact because we removed the headers and sent the token in the body instead of the header
+        $cities_arr = $preferred_cities_client;
 
         // Validate cities array to ensure that the values are between 1-12 (Current entries in DB); TODO Dynamic this
         for($x = 0; $x < count($cities_arr); $x++){
