@@ -689,6 +689,61 @@ class WorkerController
         // return $this->customResponse->is200Response($response,  $userID );
     }
     
+    // =================================================================================================
+    // This function loads all the information needed for the review page
+    // it is referenced by the /general-schedule route
+    // @param Request & Response, @returns formatted response object with status & message
+    public function get_registration_review(Request $request,Response $response){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+    // Goal formatting
+        // Get info needed for rgistration
+        // Worker Full Name string 
+        // worker mobile number string
+        // Worker skills array of ids
+        // worker salary goal string
+        // Worker Certification or diplomas array of ids
+        // NBI number 
+        // NBI expiration expiration  string string
+        // worker schedule bool
+        // woker lead time string 
+        // worker notice time string
+        // worker cities array of ids
+
+            $data = [];
+            $data['name'] = "Jose Santos";
+            $data['mobile'] = "099-222-2222";
+            $data['skills'] = "Electrical, Carpentry";
+            $data['salary'] = "300.00 /per day";
+            $data['cert'] = "TESDA certificate, TOR";
+            $data['nbiNo'] = "2009182378";
+            $data['expiration'] = "09/12/2022";
+            $data['has_sched_pref'] = "false";
+            $data['booking_lead'] = "1 month/s";
+            $data['notice_lead'] = "3 day/s";
+            $data['cities'] = "Cebu City, mandaue, Talisay";
+
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response,  $data );
+    }
+
+
+
+
+
+
+
+
+
 
 
     // == Hurry mode: Re-review Later
@@ -713,5 +768,9 @@ class WorkerController
         return $this->customResponse->is200Response($response,  "This route works");
     }
     
+
+
+
+
     
 }

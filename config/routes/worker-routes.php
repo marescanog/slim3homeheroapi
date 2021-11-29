@@ -9,4 +9,6 @@ $app->group("/registration",function() use ($app){
 
     $app->get("/preferred-cities","WorkerController:get_preferred_cities");
     $app->post("/save-preferred-cities","WorkerController:save_preferred_cities");
+
+    $app->get("/review-information","WorkerController:get_registration_review");
 });
