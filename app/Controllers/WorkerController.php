@@ -625,7 +625,7 @@ class WorkerController
         // VALIDATE VALUES RECEIVED FROM client
         $this->validator->validate($request,[
             // Check Values Validity and if empty
-            "preferred_cities"=>v::notempty(),
+            "preferred_cities"=>v::notEmpty(),
         ]);
 
         // Return Validation Errors
