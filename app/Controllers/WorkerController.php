@@ -4,6 +4,8 @@
 namespace App\Controllers;
 
 use App\Models\Worker;
+use App\Models\User;
+use App\Models\SupportTicket;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -17,6 +19,10 @@ class WorkerController
 
     protected $worker;
 
+    protected $user;
+
+    protected $supportticket;
+
     protected  $validator;
 
     public function  __construct()
@@ -25,12 +31,16 @@ class WorkerController
 
         $this->worker = new Worker();
 
+        $this->user = new User();
+
+        $this->supportticket = new SupportTicket();
+
         $this->validator = new Validator();
     }
 
     // =================================================================================================
-    // This function loads if the worker has a schedule preference (Only general)
-    // it is referenced by the /general-schedule route
+    // This function <add your description>
+    // it is referenced by <add your route>
     // @param Request & Response, @returns formatted response object with status & message
     public function template(Request $request,Response $response){
         // Return information needed for personal info page
@@ -615,7 +625,7 @@ class WorkerController
         // VALIDATE VALUES RECEIVED FROM client
         $this->validator->validate($request,[
             // Check Values Validity and if empty
-            "preferred_cities"=>v::notempty(),
+            "preferred_cities"=>v::notEmpty(),
         ]);
 
         // Return Validation Errors
@@ -689,6 +699,145 @@ class WorkerController
         // return $this->customResponse->is200Response($response,  $userID );
     }
     
+    // =================================================================================================
+    // This function loads all the information needed for the review page
+    // it is referenced by the /general-schedule route
+    // @param Request & Response, @returns formatted response object with status & message
+    public function get_registration_review(Request $request,Response $response){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+        
+        $data = [];
+        // Get user info needed for registration review
+            // Worker Full Name string 
+            // worker mobile number string
+            $userData = $this->user->getUserByID($userID);
+            if($userData["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $userData["data"]) );
+            }
+            // $userData["expertiseList"] = $expertiseList["data"];
+            $data['name'] = ucfirst($userData["data"]["first_name"])." ".ucfirst($userData["data"]["last_name"]);
+            $data['mobile'] = $userData["data"]["phone_no"];
+
+            // Worker skills array of ids
+            $skillList = $this->worker->getList_expertise($userID);
+            if($skillList["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $skillList["data"]) );
+            }
+            // Convert the array to a formatted string
+            if(count($skillList["data"]) == 0 || $skillList["data"] == null || empty($skillList["data"])){
+                $data['skills'] = "--"; // we still want the page to load so no send error
+            }
+            $skillsString = "";
+            for($x = 0; $x < count($skillList["data"]); $x++){
+                $skillsString = $skillsString.ucfirst($skillList["data"][$x]["name"]);
+                if(count($skillList["data"])-1 != $x ){
+                    $skillsString = $skillsString.", ";
+                }
+            }
+            $data['skills'] = $skillsString;
+
+            // Get worker information from table
+            $workerData = $this->worker->getWorkerRegistrationReviewInfo_ByID($userID);
+            if( $workerData["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $workerData["data"]) );
+            }
+            // Construct Salary String
+            $wrate = $workerData["data"]["default_rate"];
+            $wtype = strtolower($workerData["data"]["type"]);
+            $data['salary'] = "$wrate/per $wtype";
+            // Add sched pref info
+            $data['has_sched_pref'] = $workerData["data"]["has_schedule_preference"] == 0 ? "false" : "true";
+            // Add booking lead info
+            $data['booking_lead'] =  $workerData["data"]["lead_time"];
+            // Add notice lead info
+            $data['notice_lead'] =  $workerData["data"]["notice_time"];
+
+            // Get NBI Information from table
+            $nbiInfo = $this->worker->get_nbi_information($userID);
+            if( $nbiInfo["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $nbiInfo["data"]) );
+            }
+            $data['nbiNo'] = $nbiInfo["data"]["clearance_no"];
+            $data['expiration'] = $nbiInfo["data"]["expiration_date"];
+
+            // Get list of cities from DB
+            $citiesList= $this->worker->getPreferredCities_fromDB($userID, true);
+            if(  $citiesList["success"] == false){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $citiesList["data"]) );
+            }
+            // Convert the array to a formatted string
+            if(count($citiesList["data"]) == 0 || $citiesList["data"] == null || empty($citiesList["data"])){
+                $data['cities'] = "--"; // we still want the page to load so no send error
+            }
+            $citiesString = "";
+            for($x = 0; $x < count($citiesList["data"]); $x++){
+                $citiesString =  $citiesString.ucfirst($citiesList["data"][$x]["city_name"]);
+                if(count($citiesList["data"])-1 != $x ){
+                    $citiesString =  $citiesString.", ";
+                }
+            }
+            $data['cities'] =  $citiesString;
+
+            // Get list of Certifications
+            // <TODO> since we don't have save fature for certifications yet.
+            $certificationsList = [];
+            $certificationsString = "";
+            //return $this->customResponse->is200Response($response,  $citiesList);
+
+            //$data = [];
+            // $data['name'] = "Jose Santos";
+            // $data['mobile'] = "099-222-2222";
+            // $data['skills'] = "Electrical, Carpentry";
+            // $data['salary'] = "300.00 /per day";
+            $data['cert'] = count($certificationsList) == 0 ? "none" : $certificationsString;
+            // $data['nbiNo'] = "2009182378";
+            // $data['expiration'] = "09/12/2022";
+            // $data['has_sched_pref'] = "false";
+            // $data['booking_lead'] = "1 month/s";
+            // $data['notice_lead'] = "3 day/s";
+            // $data['cities'] = "Cebu City, mandaue, Talisay";
+
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response,  $data );
+    }
+
+
+    // Nove - 30 - In a Hurry Review Later
+    // =================================================================================================
+    // This function changes the user's registration status to complete and submits a support ticket for evaluation
+    // it is referenced by submit-application
+    // @param Request & Response, @returns formatted response object with status & message
+    public function submit_application(Request $request,Response $response){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response,  $userID );
+    }
+
+
+
+
+
+
 
 
     // == Hurry mode: Re-review Later
@@ -713,5 +862,9 @@ class WorkerController
         return $this->customResponse->is200Response($response,  "This route works");
     }
     
+
+
+
+
     
 }

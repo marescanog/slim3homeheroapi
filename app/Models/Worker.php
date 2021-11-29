@@ -781,21 +781,34 @@ class Worker
     // @returns a Model Response object with the attributes "success" and "data"
     //          sucess value is true when PDO is successful and false on failure
     //          data value is 
-    public function getPreferredCities_fromDB($userID){
+    public function getPreferredCities_fromDB($userID, $formatted = null){
         try{
             $db = new DB();
             $conn = $db->connect();
-            // CREATE query
-            $sql = "SELECT * FROM `city_preference` WHERE worker_id = :userID;";
+            
+            $result = "";
+            $sql = "";
+            
+            if($formatted != null){
+                // CREATE query
+                $sql = "SELECT c.id, c.city_name 
+                FROM `city_preference` p 
+                JOIN `city` c ON p.city_id = c.id
+                WHERE worker_id = :userID;";
+            } else {
+                // CREATE query
+                $sql = "SELECT * FROM `city_preference` WHERE worker_id = :userID;";
+            }
             // Prepare statement
             $stmt =  $conn->prepare($sql);
-            $result = "";
+
             // Only fetch if prepare succeeded
             if ($stmt !== false) {
                 $stmt->bindparam(':userID', $userID);
                 $stmt->execute();
                 $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
+
             $stmt=null;
             $db=null;
 
@@ -813,9 +826,6 @@ class Worker
             return $ModelResponse;
         }
     }
-
-
-
 
 
     // @desc    
@@ -889,6 +899,100 @@ class Worker
     }
 
 
+
+// == Hurry mode: Re-review Later - Nov 29
+    // @desc    
+    // @params  
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is 
+    public function getWorkerRegistrationReviewInfo_ByID($userID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+            // CREATE query
+            $sql = "SELECT w.id, w.has_schedule_preference, w.has_completed_registration, w.is_deleted,
+                        w.default_rate, r.type, w.lead_time, w.notice_time
+                    FROM `worker` w
+                    JOIN `rate_type` r ON r.id = w.default_rate_type
+                    WHERE w.id=:userID;";
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+            return $ModelResponse;
+
+        }catch (\PDOException $e) {
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+            return $ModelResponse;
+        }
+    }
+
+    // @desc    
+    // @params  
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is 
+    public function getCertifications_fromDB($userID, $formatted = null){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = "";
+            $sql = "";
+            //TODO
+            if($formatted != null){
+                // CREATE query
+                // $sql = "SELECT c.id, c.city_name 
+                // FROM `city_preference` p 
+                // JOIN `city` c ON p.city_id = c.id
+                // WHERE worker_id = :userID;";
+            } else {
+                // CREATE query
+                // $sql = "SELECT * FROM `city_preference` WHERE worker_id = :userID;";
+            }
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+            return $ModelResponse;
+
+        }catch (\PDOException $e) {
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+            return $ModelResponse;
+        }
+    }
 
 
 
