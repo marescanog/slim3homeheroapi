@@ -1011,7 +1011,7 @@ class Worker
 
             $sql = "SET @@session.time_zone = '+08:00'; 
                     BEGIN;
-                        UPDATE ".$this->table." SET has_completed_registration = 1 WHERE id = 66;
+                        UPDATE ".$this->table." SET has_completed_registration = 1 WHERE id = :userID;
                         
                         INSERT INTO support_ticket (author, issue_id, has_images, system_Description) 
                         values(:userID, 1, 1, :sysDesc);
