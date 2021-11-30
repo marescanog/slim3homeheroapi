@@ -844,4 +844,147 @@ public function workerCreateAccount(Request $request,Response $response){
 
          return $this->customResponse->is200Response($response,  $responseMessage);
     }
+
+
+// 
+// ========================================================
+
+
+
+// =============================
+// HOMEOWNER
+// @purpose adds a hoemowner entry, hh_user entry and schedule entry into the database
+// @accepts first_name, last_name, phone, pass (hashed)
+// @returns registertoken
+public function homeownerCreateAccount(Request $request,Response $response){
+    $this->validator->validate($request,[
+        // Check if empty, Max & Min length
+        "first_name"=>v::notEmpty()->Length(2,50),
+        "last_name"=>v::notEmpty()->Length(2,50),
+        "phone"=>v::notEmpty()->Length(11, 18),
+        "pass"=>v::notEmpty()->length(8,255),
+    ]);
+
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    $users = $this->user->getUserAccountsByPhone(CustomRequestHandler::getParam($request,"phone"));
+
+    if($users['data'] !== false){
+        return $this->customResponse->is400Response($response,"Phone number already taken");
+    }
+    
+    $responseMessage = $this->homeowner->createHomeownerWithHashedPass(
+        CustomRequestHandler::getParam($request,"first_name"),
+        CustomRequestHandler::getParam($request,"last_name"),
+        CustomRequestHandler::getParam($request,"phone"),
+        CustomRequestHandler::getParam($request,"pass"));
+
+
+    if($responseMessage['success'] == false){
+        $this->customResponse->is500Response($response,  $responseMessage["data"]);
+    }
+
+        // GET USER acc by phone
+        $usersWithPhone = $this->user->getUserAccountsByPhone(CustomRequestHandler::getParam($request,"phone"));
+
+        // Get the user who has a user_type_id 1 for homeowner
+        $usersWithPhone = $usersWithPhone['data'];
+        $userID = "";
+        if(count($usersWithPhone) == 1){
+            $userID = $usersWithPhone[0]["user_id"];
+        } else {
+            for($x = 0; $x < count($usersWithPhone) && $userID == ""; $x++){
+                if($usersWithPhone[$x]["user_type_id"] == 1){
+                    $userID = $usersWithPhone[$x]["user_id"];
+                    break;
+                }
+            }
+        }
+
+        $generated_jwt = "";
+        if($userID == ""){
+            return $this->customResponse->is500Response($response, "Unable to generate a token the login session. please refresh the page.");
+        } else {
+            // GENERATE JWT TOKEN
+            $generated_jwt = GenerateTokenController::generateUserToken($userID,1);
+        }
+
+        $userData['token'] = $generated_jwt;
+
+        if($generated_jwt == "" || $generated_jwt == null || empty($generated_jwt)){
+            return $this->customResponse->is500Response($response, "Unable to generate a token the login session. please refresh the page.");
+        }
+
+        $responseMessage =  array(
+            "data"=> $userData,
+            "message"=>"verification Success"
+        );
+
+        return $this->customResponse->is200Response($response, $responseMessage);
+}
+
+
+
+
+// =============================
+// GLOBAL USER
+// @purpose verifies a worker by password and creates a registration token
+// @accepts password, phone, user_ID
+// @returns obj (JWT token, has_completed_registration) string, bool
+public function createLoginToken(Request $request,Response $response){
+    // Server side validation
+    $this->validator->validate($request,[
+        // Check if empty and valid
+        "password"=>v::notEmpty(),
+        "phone"=>v::notEmpty(),
+        //"phone"=>v::phone(),
+        "userID"=>v::notEmpty(),
+        "userType"=>v::notEmpty()
+    ]);
+
+    // Return Validation Errors
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        // 200 for the SWAl modal, errors on any other response
+        return $this->customResponse->is200Response($response,$responseMessage);
+    }
+
+    // verify ID and password
+    $result = $this->verifyUserByPasswordAndID(
+        CustomRequestHandler::getParam($request,"userID"),
+        CustomRequestHandler::getParam($request,"password") 
+        );
+
+    // return when wrong password
+    if($result["data"] !== true){
+        // 200 for the SWAl modal, errors on any other response
+        return $this->customResponse->is200Response($response,$result["data"]);
+    }
+
+    // GENERATE JWT TOKEN
+    $userData = [];
+    $userData['token'] = GenerateTokenController::generateUserToken(
+        CustomRequestHandler::getParam($request,"userID"),
+        CustomRequestHandler::getParam($request,"userType"));
+
+    $userData['has_registered'] = false;
+    
+    $responseMessage =  array(
+        "data"=> $userData,
+        "message"=>"Login Token Creation and verification Success"
+    );
+
+    return $this->customResponse->is200Response($response, $responseMessage);
+}
+
+
+
+
+
 }
