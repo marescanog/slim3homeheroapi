@@ -88,8 +88,8 @@ class Homeowner
 
             // CREATE query
             $sql = "BEGIN;
-                    INSERT INTO hh_user(user_type_id, first_name, last_name, phone_no, password) 
-                        values(:utypeid,:fname,:lname,:phone,:pass);
+                    INSERT INTO hh_user(user_type_id, user_status_id, first_name, last_name, phone_no, password) 
+                        values(:utypeid,2,:fname,:lname,:phone,:pass);
                     INSERT INTO ".$this->table." (id) VALUES (LAST_INSERT_ID());
                     COMMIT;
                     ";
