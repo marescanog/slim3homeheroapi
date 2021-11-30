@@ -10,6 +10,9 @@ $app->group("/auth",function() use ($app){
     $app->post("/create-login-token", "AuthController:createLoginToken");
     $app->post("/decode-token", "AuthController:decodeLoginToken");
 
+    // Universal Login, instead of returning a JWT, it returns users associated with phone number
+    $app->post("/client-login","AuthController:login"); 
+
 // New routes
 $app->group("/homeowner",function() use ($app){
     // Creates a hh_user entry, worker entry & schedule entry in the DB

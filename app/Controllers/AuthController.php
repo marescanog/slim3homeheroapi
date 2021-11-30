@@ -877,10 +877,13 @@ public function homeownerCreateAccount(Request $request,Response $response){
     if($users['data'] !== false){
         return $this->customResponse->is400Response($response,"Phone number already taken");
     }
-    
+
+    $fname= CustomRequestHandler::getParam($request,"first_name");
+    $lname= CustomRequestHandler::getParam($request,"last_name");
+
     $responseMessage = $this->homeowner->createHomeownerWithHashedPass(
-        CustomRequestHandler::getParam($request,"first_name"),
-        CustomRequestHandler::getParam($request,"last_name"),
+        ucfirst($fname),
+        ucfirst($lname),
         CustomRequestHandler::getParam($request,"phone"),
         CustomRequestHandler::getParam($request,"pass"));
 
@@ -915,6 +918,11 @@ public function homeownerCreateAccount(Request $request,Response $response){
         }
 
         $userData['token'] = $generated_jwt;
+        $userData['status'] = 200;
+        $userData['first_name'] = ucfirst( $fname);
+        $userData['initials'] = substr( $fname, 0, 1).substr( $lname, 0, 1);
+        $userData['role'] = null;
+        $userData['email'] = null;
 
         if($generated_jwt == "" || $generated_jwt == null || empty($generated_jwt)){
             return $this->customResponse->is500Response($response, "Unable to generate a token the login session. please refresh the page.");
@@ -931,8 +939,8 @@ public function homeownerCreateAccount(Request $request,Response $response){
 
 
 
-// =============================
-// GLOBAL USER
+// ============================= - FOR POSTMAN DEBUGGING
+// WORKER ONLY - REGISTRATION
 // @purpose verifies a worker by password and creates a registration token
 // @accepts password, phone, user_ID
 // @returns obj (JWT token, has_completed_registration) string, bool
@@ -1020,6 +1028,144 @@ public function decodeLoginToken(Request $request,Response $response){
     return $this->customResponse->is200Response($response, $responseMessage);
 }
 
+
+// =================================================================
+
+    // =================================================================================================
+    // == THIS ONE IS BEING USED BY THE HOMEOWNER LOGIN, using the global client login route
+    // == Hurry mode: Re-review Later
+    // =================================================================================================
+    // This function if for all, it checks what type of user the user is
+        // if correct user type, generates token.
+        // if not correct type, returns a message with bools
+    // it is referenced by the /general-schedule route
+    // @param Request & Response, @returns formatted response object with status & message
+    public function login(Request $request,Response $response){
+
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+        $this->validator->validate($request,[
+            // Check if empty
+            "phone"=>v::notEmpty(),
+            "password"=>v::notEmpty(),
+            "userType"=>v::between(1, 4),
+        ]);
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+
+        // Check if user exists in the database via phone number
+        // Get the user object associated with phone number
+        $userObject = $this->user->getUserAccountsByPhone(CustomRequestHandler::getParam($request,"phone"));
+
+        // If there is a user object, get the role associated with user
+        // Otherwise return
+        if($userObject["data"] == false){
+            $res = [];
+            $res['status'] = 404;
+            $res['message'] = "There is no user associated with this phone number";
+            return $this->customResponse->is404Response($response,  $res);
+        }
+
+        // Check for user types associated with the phone number
+        $isHomeowner = false;
+        $isWorker = false;
+        $isSupport = false;
+        $isAdmin = false;
+        $userData = null;
+
+        // gather needed variables
+        $usersList = $userObject['data'];
+        $password = CustomRequestHandler::getParam($request,"password");
+        $userType = CustomRequestHandler::getParam($request,"userType");
+        $phone = CustomRequestHandler::getParam($request,"phone");
+
+        // Check list if the userType indicated is one of the types
+        for($x = 0; $x < count($usersList); $x++){
+            // Check for single user
+            switch($usersList[$x]["user_type_id"]){
+                case "1":
+                    $isHomeowner = true;
+                    break;
+                case "2":
+                    $isWorker = true;
+                    break;
+                case "3":
+                    $isSupport = true;
+                    break;
+                case "4":
+                    $isAdmin = true;
+                    break;
+                default:
+                    $error = true;
+                break;
+            }
+
+            // Grab the needed user data from the list
+            if( $userType == $usersList[$x]["user_type_id"] && $phone == $usersList[$x]["phone_no"]){
+                $userData = $usersList[$x];
+            }
+        }
+
+        $list_usertypes = ["Homeowner", "Worker", "Support", "Admin"];
+
+        // if not found in list, the phone number has not registered as that user yet
+        if($userData == null){
+            $data = [];
+            $data["status"] =  400;
+            $data["isHomeowner"] =  $isHomeowner;
+            $data["isWorker"] =  $isWorker ;
+            $data["isSupport"] =  $isSupport;
+            $data["isAdmin"] =  $isAdmin ;
+            $data["message"] =  "The phone number is not associated with a ".$list_usertypes[$userType - 1]." account. Would you like to be redirected to the login portal for this user?";
+            
+            return $this->customResponse->is400Response($response,  $data);
+        }
+   
+        // otherwise proceed with the login verification of password
+            // Check if passwords match
+            $isPasswordMatch = password_verify($password , $userData["password"]);
+        
+        if($isPasswordMatch == false){
+            $res = [];
+            $res['status'] = 401;
+            $res['message'] = "Wrong password! Please check if you have entered the correct input.";
+            return $this->customResponse->is404Response($response,  $res);
+        }
+
+        // GENERATE JWT TOKEN
+        $generated_jwt = GenerateTokenController::generateUserToken($userData['user_id'], (int)$userType);
+
+        if($generated_jwt == "" || $generated_jwt == null || empty($generated_jwt)){
+            return $this->customResponse->is500Response($response, "Unable to generate a token the login session. please refresh the page.");
+        }
+
+        $resData['token'] = $generated_jwt;
+        $resData['status'] = 200;
+        $resData['first_name'] = ucfirst($userData['first_name']);
+        $resData['initials'] = substr($userData['first_name'], 0, 1).substr($userData['last_name'], 0, 1);
+        $resData['role'] = null;
+        $resData['email'] = null;
+
+        if($userType == 3 || $userType == 4){
+            // Get Data from Support Model
+            // TODO
+            $resData['role'] = null;
+            $resData['email'] = null;
+        }
+
+        $responseMessage =  array(
+            "data"=> $resData,
+            "message"=>"verification Success"
+        );
+
+        return $this->customResponse->is200Response($response,  $resData);
+    }
 
 
 
