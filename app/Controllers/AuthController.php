@@ -983,6 +983,42 @@ public function createLoginToken(Request $request,Response $response){
     return $this->customResponse->is200Response($response, $responseMessage);
 }
 
+// =============================
+// GLOBAL USER
+// @purpose verifies a worker by password and creates a registration token
+// @accepts password, phone, user_ID
+// @returns obj (JWT token, has_completed_registration) string, bool
+public function decodeLoginToken(Request $request,Response $response){
+    // Server side validation
+    $this->validator->validate($request,[
+        // Check if empty and valid
+        "token"=>v::notEmpty(),
+        "userType"=>v::notEmpty()
+    ]);
+
+    // Return Validation Errors
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // DECODE JWT TOKEN
+    $result = GenerateTokenController::AuthenticateUserType(
+        CustomRequestHandler::getParam($request,"token"),
+        CustomRequestHandler::getParam($request,"userType"));
+
+    if($result["status"] == false) {
+        return $this->customResponse->is401Response($response, $result["message"] );
+    }
+    
+    $responseMessage =  array(
+        "data"=> $result,
+        "message"=>"Login Token Creation and verification Success"
+    );
+
+    return $this->customResponse->is200Response($response, $responseMessage);
+}
 
 
 
