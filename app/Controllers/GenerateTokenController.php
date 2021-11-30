@@ -45,6 +45,7 @@ class GenerateTokenController implements SecretKeyInterface
         return JWT::encode($payload,$secret,"HS256");
     }
 
+    // General for all tokens (Registration and User Token)
     public static function AuthenticateUserType($JWT,$user_type)
     {
       try {
@@ -79,4 +80,23 @@ class GenerateTokenController implements SecretKeyInterface
       }
 
     }
+
+    // ==== new for Global User (Homeowner, worker, support, admin)
+    public static function generateUserToken($userID, $userType)
+    {
+        $now = time();
+         $future = strtotime('+8 hour',$now);
+        // $future = strtotime('+24 hour',$now);
+        $secret = GenerateTokenController::JWT_SECRET_KEY;
+
+        $payload = [
+          "jti"=>$userID,
+          "iat"=>$now,
+          "exp"=>$future,
+          "utype"=>$userType
+        ];
+
+        return JWT::encode($payload,$secret,"HS256");
+    }
+
 }
