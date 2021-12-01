@@ -1176,7 +1176,7 @@ class Worker
     }
 
 
-    // @desc    Get Past Job Orders (Restrict by worker's preferred city & skillset)
+    // @desc    Get Past Job Orders (Restrict by worker id/ only logged in workers info)
     // @params  workerID, includeCancelled
     // @returns a Model Response object with the attributes "success" and "data"
     //          sucess value is true when PDO is successful and false on failure
@@ -1201,6 +1201,58 @@ class Worker
             } else {
                 $sql.="AND jo.job_order_status_id = 2";
             }
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':id', $workerID);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+    // @desc    Get Reviews (Restrict by worker id/ only logged in workers info)
+    // @params  workerID
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is 
+    public function getReviews($workerID)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = " SELECT r.job_order_id, hh.first_name, hh.last_name, r.overall_quality, r.professionalism, r.reliability, r.punctuality, r.comment, r.created_on
+            FROM rating r, homeowner ho, hh_user hh
+            WHERE r.created_by=ho.id
+            AND ho.id=hh.user_id
+            AND r.rated_worker=:id
+            AND r.is_deleted=0 ";
+
 
             // Prepare statement
             $stmt =  $conn->prepare($sql);

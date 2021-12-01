@@ -352,6 +352,17 @@ class WorkerController
         return $this->customResponse->is200Response($response,  $ModelResponse);
     }
 
+    // This function loads all the Past Job Orders (Restrict by worker id/ only logged in workers postings & isCompleted)
+    // it is referenced by /past-job-orders route
+    // @param Request & Response @returns formatted response object with status & message
+    public function getReviews(Request $request,Response $response, array $args){
+
+
+        $ModelResponse = $this->worker->getReviews($args['id']);
+        
+        return $this->customResponse->is200Response($response,  $ModelResponse);
+    }
+
 
     // 4. Get Past Job Orders (Restrict by worker id/ only logged in workers postings & isCompleted)
     //    - One version includes cancelled job orders
