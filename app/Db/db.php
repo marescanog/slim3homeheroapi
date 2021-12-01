@@ -23,7 +23,7 @@ class DB {
 
             // DEVELOPMENT PRODUCTION DATABASE CONNECTION
             // require __DIR__ . '/hidden.php';
-            // $conn = new \PDO($conn_dsn, $conn_user, $conn_pass);
+            //$conn = new \PDO($conn_dsn, $conn_user, $conn_pass);
 
             // DEVELOPMENT LOCAL DATABASE CONNECTION
             // require __DIR__ . '/hiddenLocal.php';

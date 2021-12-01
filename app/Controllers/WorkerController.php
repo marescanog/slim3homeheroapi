@@ -315,7 +315,8 @@ class WorkerController
         return $this->customResponse->is200Response($response,  $userData);
     }
     
-    //2. Get Job Postings (Restrict by worker's preferred city & skillset)
+    /* LACKING: Code optimization for controller area */
+    
     // =================================================================================================
     // This function loads all the job postings
     // it is referenced by /job-postings route
@@ -327,7 +328,31 @@ class WorkerController
         return $this->customResponse->is200Response($response,  $ModelResponse);
     }
 
-    // 3. Get Ongoing Job Orders (Restrict by worker id/ only logged in workers postings)
+    // This function loads all the Ongoing Job Orders (Restrict by worker id/ only logged in workers postings)
+    // it is referenced by /ongoing-job-orders route
+    // @param Request & Response, @returns formatted response object with status & message
+    public function getOngoingJobOrders(Request $request,Response $response, array $args){
+
+        $ModelResponse = $this->worker->getOngoingJobOrders($args['id']);
+        
+        return $this->customResponse->is200Response($response,  $ModelResponse);
+    }
+
+    // This function loads all the Past Job Orders (Restrict by worker id/ only logged in workers postings & isCompleted)
+    // it is referenced by /past-job-orders route
+    // @param Request & Response (with get parameter indicating if cancelled job orders should be included), 
+    // @returns formatted response object with status & message
+    public function getPastJobOrders(Request $request,Response $response, array $args){
+
+
+        $ModelResponse = $this->worker->getPastJobOrders($args['id'],
+            CustomRequestHandler::getParam($request,"includeCancelled")
+        );
+        
+        return $this->customResponse->is200Response($response,  $ModelResponse);
+    }
+
+
     // 4. Get Past Job Orders (Restrict by worker id/ only logged in workers postings & isCompleted)
     //    - One version includes cancelled job orders
     //    - Another version only includes successfully billed job orders

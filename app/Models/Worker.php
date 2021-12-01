@@ -1061,7 +1061,7 @@ class Worker
     }
 
     // @desc    Get Job Postings (Restrict by worker's preferred city & skillset)
-    // @params  userID
+    // @params  workerID
     // @returns a Model Response object with the attributes "success" and "data"
     //          sucess value is true when PDO is successful and false on failure
     //          data value is 
@@ -1086,9 +1086,121 @@ class Worker
             AND jp.rate_type_id=rt.id
             
             AND jp.job_post_status_id=1
+            AND jp.is_deleted=0
             AND c.id IN (SELECT city_id FROM city_preference WHERE worker_id=:id)
             AND jp.required_expertise_id IN (SELECT skill FROM skillset WHERE worker_id=:id) 
             GROUP BY jp.id ";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':id', $workerID);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+    // @desc    Get Ongoing Job Orders (Restrict by worker's preferred city & skillset)
+    // @params  workerID
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is 
+    public function getOngoingJobOrders($workerID)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = " SELECT jo.id, hh.first_name, hh.last_name, jo.date_time_start
+            FROM job_order jo, homeowner ho, hh_user hh
+            WHERE jo.homeowner_id=ho.id
+            AND ho.id=hh.user_id
+            AND jo.worker_id=:id
+            AND jo.job_order_status_id=1
+            AND jo.is_deleted=0";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':id', $workerID);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+    // @desc    Get Past Job Orders (Restrict by worker's preferred city & skillset)
+    // @params  workerID, includeCancelled
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is 
+    public function getPastJobOrders($workerID, $includeCancelled)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = " SELECT jo.id, hh.first_name, hh.last_name, jo.date_time_start, jo.date_time_closed
+            FROM job_order jo, homeowner ho, hh_user hh
+            WHERE jo.homeowner_id=ho.id
+            AND ho.id=hh.user_id
+            AND jo.worker_id=:id
+            AND jo.is_deleted=0 ";
+
+            if($includeCancelled==1){
+                $sql.="AND jo.job_order_status_id IN (2,3)";
+            } else {
+                $sql.="AND jo.job_order_status_id = 2";
+            }
 
             // Prepare statement
             $stmt =  $conn->prepare($sql);

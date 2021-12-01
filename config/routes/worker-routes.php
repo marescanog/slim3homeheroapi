@@ -16,10 +16,9 @@ $app->group("/registration",function() use ($app){
 
 $app->group("/worker",function() use ($app){
     $app->get("/job-postings/{id}","WorkerController:getJobPostings");
-    $app->get("/ongoing-job-orders","WorkerController:getOngoingJobOrders");
-    $app->get("/past-job-orders","WorkerController:getPastJobOrders");
-    $app->get("/past-job-orders/with-cancelled","WorkerController:getPastJobOrdersWithCancelled");
-    $app->get("/reviews","WorkerController:getReviews");
+    $app->get("/ongoing-job-orders/{id}","WorkerController:getOngoingJobOrders");
+    $app->get("/past-job-orders/{id}","WorkerController:getPastJobOrders");
+    $app->get("/reviews/{id}","WorkerController:getReviews");
     // 2. Get Job Postings (Restrict by worker's preferred city & skillset)
     // 3. Get Ongoing Job Orders (Restrict by worker id/ only logged in workers postings)
     // 4. Get Past Job Orders (Restrict by worker id/ only logged in workers postings & isCompleted)
