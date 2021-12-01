@@ -2,9 +2,23 @@
 
 $app->group("/auth",function() use ($app){
 
-    $app->post("/login","AuthController:userLogin");
-    $app->post("/user-registration","AuthController:userRegister"); // This function will soon be rewritten and depreciated
+    $app->post("/login","AuthController:userLogin"); // This function will soon be rewritten and depreciated Refer to New Routes instead
+    $app->post("/user-registration","AuthController:userRegister"); // This function will soon be rewritten and depreciated Refer to New Routes instead
     $app->post("/support-login","AuthController:supportRegister");
+
+    // Returns a JWT token with additional Login info after password confirmation
+    $app->post("/create-login-token", "AuthController:createLoginToken");
+    $app->post("/decode-token", "AuthController:decodeLoginToken");
+
+    // Universal Login, instead of returning a JWT, it returns users associated with phone number
+    $app->post("/client-login","AuthController:login"); 
+
+// New routes
+$app->group("/homeowner",function() use ($app){
+    // Creates a hh_user entry, worker entry & schedule entry in the DB
+    // Pre-verified by /auth/check-phone and /auth/verify-password
+    $app->post("/create-account", "AuthController:homeownerCreateAccount"); 
+});
 
 // New routes
     $app->group("/worker",function() use ($app){

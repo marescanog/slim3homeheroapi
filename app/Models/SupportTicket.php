@@ -20,23 +20,32 @@ class SupportTicket
         // @returns a Model Response object with the attributes "success" and "data"
         //          sucess value is true when PDO is successful and false on failure
         //          data value is
-        public function createTicket($author, $subcategory, $authorDescription, $totalImages){
+        public function createTicket($author, $subcategory, $authorDescription, $systemDescription, $totalImages = 0){
             try{
                 $db = new DB();
                 $conn = $db->connect();
     
                 // CREATE query
-                $sql = "INSERT INTO ".$this->table."(author, subcategory, authorDescription, numberOfImages) 
-                            values(:author,:subcat,:desc,:totalImages)";
-                
+                $sql = " SET @@session.time_zone = '+08:00'; 
+                         BEGIN;
+                            INSERT INTO ".$this->table."(author, issue_id, system_Description, author_Description, numberOfImages) 
+                                values(:author,:issueID, :sysDesc, :authDesc, :totalImages);
+
+                            INSERT INTO ticket_actions (action_taken, system_generated_description, support_ticket)
+                                VALUES(1, :sysDesc, LAST_INSERT_ID());
+
+                            COMMIT;
+                        ";
+                //Create also an action in the table
                 // Prepare statement
                 $stmt =  $conn->prepare($sql);
 
                 // Only fetch if prepare succeeded
                 if ($stmt !== false) {
                     $stmt->bindparam(':author', $author);
-                    $stmt->bindparam(':subcat', $subcategory);
-                    $stmt->bindparam(':desc', $authorDescription);
+                    $stmt->bindparam(':issueID', $subcategory);
+                    $stmt->bindparam(':sysDesc', $authorDescription);
+                    $stmt->bindparam(':authDesc', $systemDescription);
                     $stmt->bindparam(':totalImages',  $totalImages);
                     $result = $stmt->execute();
                 }
