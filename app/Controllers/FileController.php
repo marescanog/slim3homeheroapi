@@ -295,28 +295,16 @@ private function generateServerResponse($status, $message){
 
 
     
-    public function sdfsfsd(Request $request,Response $response){
-        // Get the bearer token from the Auth header
-        $bearer_token = JSON_encode($request->getHeader("Authorization"));
-
-        // Catch the response, on success it is an ID, on fail it has status and message
-        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
-
-        // Error handling
-        if(is_array( $userID) && array_key_exists("status", $userID)){
-            return $this->customResponse->is401Response($response, $userID);
-        }
-
-
-// shkfjskdhfkjafk
 
 
 
 
 
 
-        // Return information needed for personal info page
-        return $this->customResponse->is200Response($response,  $userID );
-        // return $this->customResponse->is200Response($response,  "This route works");
-    }
+
+
+
+
+
+
 }
