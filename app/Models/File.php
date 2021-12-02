@@ -346,46 +346,30 @@ class File
 
 
 
-    public function saveProject($userID, $home_id , $job_size_id, $required_expertise_id, $job_description  
-            ,$rate_offer, $rate_type_id, $preferred_date_time, $project_name){
-            // Get all necessary parameters
-            // $home_id = CustomRequestHandler::getParam($request,"home_id");
-            // $job_size_id = CustomRequestHandler::getParam($request,"job_size_id");
-            // $required_expertise_id = CustomRequestHandler::getParam($request,"required_expertise_id");
-            // $job_description = CustomRequestHandler::getParam($request,"job_description");
-            // $rate_offer = CustomRequestHandler::getParam($request,"rate_offer");
-            // $rate_type_id = CustomRequestHandler::getParam($request,"rate_type_id");
-            // $preferred_date_time = CustomRequestHandler::getParam($request,"preferred_date_time");
-            // $project_name = CustomRequestHandler::getParam($request,"project_name");
+    public function saveProject(
+                $userID,
+                $home_id, 
+                $job_size_id, 
+                $required_expertise_id,
+                $job_description, 
+                $rate_offer,   
+                $isExactSchedule,
+                $rate_type_id, 
+                $preferred_date_time, 
+                $project_name
+            ){
         try{
             $db = new DB();
             $conn = $db->connect();
 
-            // CREATE query
-            $sql = "SET @@session.time_zone = '+08:00'; 
-                        INSERT INTO job_post (homeowner_id, home_id, job_size_id, required_expertise_id, job_description,
-                        rate_offer, rate_type_id, is_exact_schedule, preferred_date_time)
-                        VALUES
-                        (:userID, :homeID, :jobSize, :expert, :jobdesc, :rateoffer, :ratetype, :isexact, :prefdateTime);
-                    ";
+            $sql = "SET @@session.time_zone = '+08:00'; INSERT INTO job_post (homeowner_id, home_id, job_size_id, required_expertise_id, job_post_status_id, job_description, rate_offer, rate_type_id, is_exact_schedule, preferred_date_time, job_post_name)
+                    VALUES (:userID, :homeID, :jobSize, :expert, 1, :jobdesc, :rateoffer, :ratetype, :isexact, :prefdateTime, :jobPostName);";
 
-            // $sql = "SET @@session.time_zone = '+08:00';"."INSERT INTO `job_post` (`id`, `homeowner_id`, `home_id`, `job_size_id`, `required_expertise_id`, `job_post_status_id`, `job_description`, `rate_offer`, `rate_type_id`, `is_exact_schedule`, `preferred_date_time`, `date_time_closed`, `cancellation_reason`, `is_deleted`, `created_on`) VALUES (NULL, :userID, :homeID, :jobSize, :expert, '1', :jobdesc, :rateoffer, :ratetype, :isexact, :prefdateTime, NULL, NULL, '0', CURRENT_TIMESTAMP);";
-
-            $data = [
-                'userID' => $userID,
-                'homeID' => $home_id,
-                'jobSize' => $job_size_id,
-                'expert' => $required_expertise_id,
-                'jobdesc' => $job_description,
-                'rateoffer' => $rate_offer,
-                'ratetype' =>$rate_type_id ,
-                'isexact' => $preferred_date_time,
-                'prefdateTime' => $project_name,
-            ];
-            
             // Prepare statement
             $stmt =  $conn->prepare($sql);
+
             $result = "";
+
             // Only fetch if prepare succeeded
             if ($stmt !== false) {
                 $stmt->bindparam(':userID', $userID );
@@ -395,10 +379,12 @@ class File
                 $stmt->bindparam(':jobdesc',  $job_description );
                 $stmt->bindparam(':rateoffer',$rate_offer );
                 $stmt->bindparam(':ratetype', $rate_type_id );
-                $stmt->bindparam(':isexact', $preferred_date_time );
-                $stmt->bindparam(':prefdateTime', $project_name );
-                // $result = $stmt->execute($data);
+                $stmt->bindparam(':isexact', $isExactSchedule );
+                $stmt->bindparam(':prefdateTime', $preferred_date_time );
+                $stmt->bindparam(':jobPostName', $project_name );
                 $result = $stmt->execute();
+            } else {
+                $result = "prepare statement failed";
             }
             $stmt=null;
             $db=null;
@@ -407,7 +393,8 @@ class File
                 "success"=>true,
                 "data"=>$result
             );
-
+            // ($userID, $home_id , $job_size_id, $required_expertise_id, $job_description  
+            // ,$rate_offer, $rate_type_id, $preferred_date_time, $project_name)
             return $ModelResponse;
 
         } catch (\PDOException $e) {
