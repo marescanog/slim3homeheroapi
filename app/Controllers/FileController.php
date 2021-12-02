@@ -270,18 +270,31 @@ private function generateServerResponse($status, $message){
         }
 
         // Get all necessary parameters
+        // userID in JWT
         $home_id = CustomRequestHandler::getParam($request,"home_id");
         $job_size_id = CustomRequestHandler::getParam($request,"job_size_id");
         $required_expertise_id = CustomRequestHandler::getParam($request,"required_expertise_id");
         $job_description = CustomRequestHandler::getParam($request,"job_description");
         $rate_offer = CustomRequestHandler::getParam($request,"rate_offer");
+        $isExactSchedule = CustomRequestHandler::getParam($request,"is_exact_schedule");
         $rate_type_id = CustomRequestHandler::getParam($request,"rate_type_id");
         $preferred_date_time = CustomRequestHandler::getParam($request,"preferred_date_time");
         $project_name = CustomRequestHandler::getParam($request,"project_name");
 
-        // adds address
-        $result = $this->file->saveProject($userID,$home_id, $job_size_id, $required_expertise_id,$job_description, 
-        $rate_offer,   $rate_type_id, $preferred_date_time, $preferred_date_time, $project_name);
+
+        // adds project
+        $result = $this->file->saveProject(
+            $userID,
+            $home_id, 
+            $job_size_id, 
+            $required_expertise_id,
+            $job_description, 
+            $rate_offer,   
+            $isExactSchedule,
+            $rate_type_id, 
+            $preferred_date_time, 
+            $project_name
+        );
         // Error handling
         if(  $result['success'] !== true){
             return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
