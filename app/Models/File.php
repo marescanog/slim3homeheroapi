@@ -15,6 +15,439 @@ class File
         public function __construct(){
         }
 
+        
+    // @desc    Adds a user and a homeowner to the database
+    // @params  phone number, first name, last name
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is
+    public function searchProject($keyword){
+
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT id, expertise, type from project_type";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                //$stmt->bindparam(':keyword', $keyword);
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+    public function getCities(){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT id, city_name FROM `city`";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+    public function getBarangays(){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT id, city_id, barangay_name FROM `barangay` ";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+    public function getHomeTypes(){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT id, home_type_name FROM `home_type`";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+    public function getUsersSavedAddresses($userID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            // $sql = "SELECT * FROM `home_details` WHERE homeowner_id = :userid";
+            $sql = "SELECT hd.home_id, hd.homeowner_id, h.street_no, h.street_name
+            FROM `home_details` hd, home h
+            WHERE hd.homeowner_id = :userid
+            and  hd.home_id = h.id";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userid', $userID );
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+    public function getUserDefaultAddress($userID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT default_home_id FROM `homeowner` where id = :userid";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userid', $userID );
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+    public function saveAddress($userID, $street_no, $street_name,  $barangay_id,  $home_type, $extra_address_info ){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SET @@session.time_zone = '+08:00'; 
+            BEGIN;                
+                INSERT INTO home (street_no, street_name, barangay_id, home_type) 
+                values(:streetNo, :streetName, :barangayID, :homeType);
+
+                INSERT INTO home_details (home_id, homeowner_id, extra_address_info)
+                VALUES(LAST_INSERT_ID(), :userID, :extraAdd);
+            COMMIT;
+            ";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':streetNo', $street_no );
+                $stmt->bindparam(':streetName', $street_name);
+                $stmt->bindparam(':barangayID', $barangay_id );
+                $stmt->bindparam(':homeType', $home_type );
+                $stmt->bindparam(':userID', $userID );
+                $stmt->bindparam(':extraAdd', $extra_address_info );
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+    public function getLatestAddedHomeID($userID){
+
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT home_id, homeowner_id FROM `home_details` WHERE homeowner_id = :userID ORDER BY created_on DESC";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+    public function saveProject($userID, $home_id , $job_size_id, $required_expertise_id, $job_description  
+            ,$rate_offer, $rate_type_id, $preferred_date_time, $project_name){
+            // Get all necessary parameters
+            // $home_id = CustomRequestHandler::getParam($request,"home_id");
+            // $job_size_id = CustomRequestHandler::getParam($request,"job_size_id");
+            // $required_expertise_id = CustomRequestHandler::getParam($request,"required_expertise_id");
+            // $job_description = CustomRequestHandler::getParam($request,"job_description");
+            // $rate_offer = CustomRequestHandler::getParam($request,"rate_offer");
+            // $rate_type_id = CustomRequestHandler::getParam($request,"rate_type_id");
+            // $preferred_date_time = CustomRequestHandler::getParam($request,"preferred_date_time");
+            // $project_name = CustomRequestHandler::getParam($request,"project_name");
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SET @@session.time_zone = '+08:00'; 
+                        INSERT INTO job_post (homeowner_id, home_id, job_size_id, required_expertise_id, job_description,
+                        rate_offer, rate_type_id, is_exact_schedule, preferred_date_time)
+                        VALUES
+                        (:userID, :homeID, :jobSize, :expert, :jobdesc, :rateoffer, :ratetype, :isexact, :prefdateTime);
+                    ";
+
+            // $sql = "SET @@session.time_zone = '+08:00';"."INSERT INTO `job_post` (`id`, `homeowner_id`, `home_id`, `job_size_id`, `required_expertise_id`, `job_post_status_id`, `job_description`, `rate_offer`, `rate_type_id`, `is_exact_schedule`, `preferred_date_time`, `date_time_closed`, `cancellation_reason`, `is_deleted`, `created_on`) VALUES (NULL, :userID, :homeID, :jobSize, :expert, '1', :jobdesc, :rateoffer, :ratetype, :isexact, :prefdateTime, NULL, NULL, '0', CURRENT_TIMESTAMP);";
+
+            $data = [
+                'userID' => $userID,
+                'homeID' => $home_id,
+                'jobSize' => $job_size_id,
+                'expert' => $required_expertise_id,
+                'jobdesc' => $job_description,
+                'rateoffer' => $rate_offer,
+                'ratetype' =>$rate_type_id ,
+                'isexact' => $preferred_date_time,
+                'prefdateTime' => $project_name,
+            ];
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID );
+                $stmt->bindparam(':homeID', $home_id);
+                $stmt->bindparam(':jobSize', $job_size_id );
+                $stmt->bindparam(':expert', $required_expertise_id );
+                $stmt->bindparam(':jobdesc',  $job_description );
+                $stmt->bindparam(':rateoffer',$rate_offer );
+                $stmt->bindparam(':ratetype', $rate_type_id );
+                $stmt->bindparam(':isexact', $preferred_date_time );
+                $stmt->bindparam(':prefdateTime', $project_name );
+                // $result = $stmt->execute($data);
+                $result = $stmt->execute();
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // @desc    Adds a user and a homeowner to the database
     // @params  phone number, first name, last name
