@@ -50,7 +50,7 @@ class FileController
 
 private function generateServerResponse($status, $message){
     $response = [];
-    $response['status'] = 401;
+    $response['status'] = $status;
     $response['message'] = $message;
     return $response;
 }
@@ -378,10 +378,10 @@ private function generateServerResponse($status, $message){
             return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $singleJobPost['data']) );
         }
         if($singleJobPost['data'] == false){
-            return $this->customResponse->is404Response($response,$this->generateServerResponse(404, "404: Job Post cannot be found"));
+            return $this->customResponse->is500Response($response,$this->generateServerResponse(404, "404: Job Post cannot be found"));
         }
         if($singleJobPost['data']['homeowner_id'] != $userID){
-            return $this->customResponse->is401Response($response,$this->generateServerResponse(404, "401: Unauthorized access to job post."));
+            return $this->customResponse->is401Response($response,$this->generateServerResponse(401, "401: Unauthorized access to job post."));
         }
 
 
