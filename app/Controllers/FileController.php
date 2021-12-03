@@ -393,27 +393,32 @@ private function generateServerResponse($status, $message){
         }
         $jo =  $singleJobOrder['data'];
 
-        // Get Single Job Bill Associated with post
-        $singleBill =  $this->file->getSingleBill($jo['id']);
-        // Error handling 
-        if( $singleBill['success'] !== true){
-            return $this->$singleBill->is500Response($response, $this->generateServerResponse(500, $singleBill['data']) );
+        $singleBill = null;
+        $singleRating = null;
+        if(  $jo !== false ){
+            // Get Single Job Bill Associated with post
+            $singleBill =  $this->file->getSingleBill($jo['id']);
+            // Error handling 
+            if( $singleBill['success'] !== true){
+                return $this->$singleBill->is500Response($response, $this->generateServerResponse(500, $singleBill['data']) );
+            }
+
+            // Get single review associated with post
+            $singleRating =  $this->file->getSingleRating($jo['id']);
+            // Error handling 
+            if(  $singleRating['success'] !== true){
+                return $this->$singleBill->is500Response($response, $this->generateServerResponse(500,  $singleRating['data']) );
+            }
         }
 
-        // Get single review associated with post
-        $singleRating =  $this->file->getSingleRating($jo['id']);
-        // Error handling 
-        if(  $singleRating['success'] !== true){
-            return $this->$singleBill->is500Response($response, $this->generateServerResponse(500,  $singleRating['data']) );
-        }
 
 
         // send data back
         $data = [];
         $data['singleJobPost'] = $singleJobPost['data'];
         $data['singleJobOrder'] = $jo;
-        $data['singleBill'] = $singleBill['data'];
-        $data['singleReview'] =  $singleRating['data'] ;
+        $data['singleBill'] = $singleBill == null ? false : $singleBill['data'];
+        $data['singleReview'] = $singleRating == null ? false : $singleRating['data'] ;
 
         
         // Return information needed for personal info page
