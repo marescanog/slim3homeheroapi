@@ -332,7 +332,7 @@ private function generateServerResponse($status, $message){
         $ongoingProj =  $this->file->getOngoingProjects($userID);
         // Error handling
         if(   $ongoingProj['success'] !== true){
-            return $this->customResponse->is401Response($response, $this->generateServerResponse(500, $ongoingProj['data']) );
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $ongoingProj['data']) );
         }
 
 
@@ -346,6 +346,79 @@ private function generateServerResponse($status, $message){
         return $this->customResponse->is200Response($response, $data);
     }
 
+
+
+
+    public function getSingleProject(Request $request,Response $response, array $args){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+        // Get the necessary data needed to pass into the variables
+        $jobPostID = $args['id'];
+
+        // Validate Data & Return Validation Errors
+        if(!v::intVal()->validate($jobPostID))
+        {
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, "wrong api route argument"));
+        }
+
+
+        // Get Single job post
+        $singleJobPost=  $this->file->getSingleJobPost($jobPostID);
+        // Error handling & Verification
+        if(   $singleJobPost['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $singleJobPost['data']) );
+        }
+        if($singleJobPost['data'] == false){
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(404, "404: Job Post cannot be found"));
+        }
+        if($singleJobPost['data']['homeowner_id'] != $userID){
+            return $this->customResponse->is401Response($response,$this->generateServerResponse(404, "401: Unauthorized access to job post."));
+        }
+
+
+        // Get Single Job Order Associated with post
+        $singleJobOrder =  $this->file->getSingleJobOrder($jobPostID);
+        // Error handling 
+        if( $singleJobOrder['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $singleJobOrder['data']) );
+        }
+        $jo =  $singleJobOrder['data'];
+
+        // Get Single Job Bill Associated with post
+        $singleBill =  $this->file->getSingleBill($jo['id']);
+        // Error handling 
+        if( $singleBill['success'] !== true){
+            return $this->$singleBill->is500Response($response, $this->generateServerResponse(500, $singleBill['data']) );
+        }
+
+        // Get single review associated with post
+        $singleRating =  $this->file->getSingleRating($jo['id']);
+        // Error handling 
+        if(  $singleRating['success'] !== true){
+            return $this->$singleBill->is500Response($response, $this->generateServerResponse(500,  $singleRating['data']) );
+        }
+
+
+        // send data back
+        $data = [];
+        $data['singleJobPost'] = $singleJobPost['data'];
+        $data['singleJobOrder'] = $jo;
+        $data['singleBill'] = $singleBill['data'];
+        $data['singleReview'] =  $singleRating['data'] ;
+
+        
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response, $data);
+    }
 
 
 
