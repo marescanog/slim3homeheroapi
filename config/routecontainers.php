@@ -27,4 +27,14 @@ return function($container)
       return new \App\Controllers\WorkerController;
     };
 
+    $container["SupportAgentController"] = function()
+    {
+      return new \App\Controllers\SupportAgentController;
+    };
+
+    $container["HomeownerController"] = function()
+    {
+      return new \App\Controllers\HomeownerController;
+    };
+
 };
