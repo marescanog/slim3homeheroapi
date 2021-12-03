@@ -316,6 +316,68 @@ private function generateServerResponse($status, $message){
 
 
 
+    public function getProjects(Request $request,Response $response){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+        // Get ongoing projects
+        $ongoingProj =  $this->file->getOngoingProjects($userID);
+        // Error handling
+        if(   $ongoingProj['success'] !== true){
+            return $this->customResponse->is401Response($response, $this->generateServerResponse(500, $ongoingProj['data']) );
+        }
+
+
+        // send data back
+        $data = [];
+        $data['ongoingProjects'] = $ongoingProj['data'];
+        $data['closedProjects'] = [];
+
+        
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response, $data);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

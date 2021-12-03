@@ -415,6 +415,59 @@ class File
 
 
 
+    // Dec 3
+
+    public function getOngoingProjects($userID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT jp.id, jp.home_id, CONCAT(h.street_no,' ', h.street_name, ', ', b.barangay_name, ', ', c.city_name,' city') as `complete_address`,  jp.job_size_id, jos.job_order_size, jp.required_expertise_id, pt.type as `project_type`, e.id as `expertise_id`, e.expertise, jp.job_post_status_id, jp.job_description, jp.rate_offer, jp.rate_type_id, rt.type as `rate_type`, jp.preferred_date_time, jp.job_post_name
+            FROM `job_post` jp, home h, barangay b, city c, job_order_size jos, project_type pt, expertise e, rate_type rt
+            WHERE
+            jp.home_id = h.id
+            AND h.barangay_id = b.id
+            AND b.city_id = c.id
+            AND jp.job_size_id = jos.id
+            AND jp.required_expertise_id = pt.id
+            AND pt.expertise = e.id
+            AND jp.rate_type_id = rt.id
+            AND jp.is_deleted = 0
+            AND jp.preferred_date_time >= CURRENT_TIMESTAMP
+            AND homeowner_id = :userid";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userid', $userID );
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
 
 
 

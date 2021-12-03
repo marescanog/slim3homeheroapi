@@ -11,3 +11,11 @@ $app->post("/add-address","FileController:addAddress");
 
 $app->post("/add-project","FileController:addProject");
 
+
+
+
+$app->group("/homeowner",function() use ($app){
+    
+    $app->get("/get-projects","FileController:getProjects");
+});
+
