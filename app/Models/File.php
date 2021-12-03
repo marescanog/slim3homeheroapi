@@ -416,7 +416,6 @@ class File
 
 
     // Dec 3
-
     public function getOngoingProjects($userID){
         try{
             $db = new DB();
@@ -469,12 +468,187 @@ class File
 
 
 
+    public function getSingleJobPost($jobPostID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT jp.id, jp.home_id, CONCAT(h.street_no,' ', h.street_name, ', ', b.barangay_name, ', ', c.city_name,' city') as `complete_address`,  jp.job_size_id, jos.job_order_size, jp.required_expertise_id, pt.type as `project_type`, e.id as `expertise_id`, e.expertise, jp.job_post_status_id, jp.job_description, jp.rate_offer, jp.rate_type_id, rt.type as `rate_type`, jp.preferred_date_time, jp.job_post_name, jp.cancellation_reason, jp.date_time_closed, jp.created_on, jp.homeowner_id
+            FROM `job_post` jp, home h, barangay b, city c, job_order_size jos, project_type pt, expertise e, rate_type rt
+            WHERE
+            jp.home_id = h.id
+            AND h.barangay_id = b.id
+            AND b.city_id = c.id
+            AND jp.job_size_id = jos.id
+            AND jp.required_expertise_id = pt.id
+            AND pt.expertise = e.id
+            AND jp.rate_type_id = rt.id
+            AND jp.is_deleted = 0
+            AND jp.id = :postID";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':postID', $jobPostID);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+    public function getSingleJobOrder($jobPostID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT jo.id,jo.created_on as `assigned_on`, jo.worker_id,  CONCAT(u.first_name, ' ', u.last_name) as `assigned_worker`, jo.date_time_start, jo.date_time_closed
+            FROM `job_post` jp, `job_order` jo
+            JOIN hh_user u ON jo.worker_id = u.user_id
+            WHERE jo.job_post_id = jp.id
+            and jo.job_post_id = :postID";
+
+            $result = "";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':postID', $jobPostID);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+    public function getSingleBill($jobOrderID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT b.id, bs.status, b.date_time_completion_paid, b.total_price_billed, b.created_on as `billed_on`, pm.id as `payment_method_id`, pm.payment_method
+            FROM `bill` b, `bill_status` bs, `payment_method`  pm
+            WHERE  b.bill_status_id = bs.id
+            AND b.job_order_id = :joID
+            AND b.payment_method_id = pm.id";
+
+            $result = "";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':joID', $jobOrderID);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
 
 
 
 
+    public function getSingleRating($jobOrderID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
 
+            // CREATE query
+            $sql = "SELECT * FROM `rating` WHERE job_order_id = :joID";
 
+            $result = "";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':joID', $jobOrderID);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
 
 
 
