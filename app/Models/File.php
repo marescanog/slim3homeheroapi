@@ -676,8 +676,10 @@ class File
             AND pt.expertise = e.id
             AND jp.rate_type_id = rt.id
             AND jp.is_deleted = 0
-            AND jp.job_post_status_id != 1
-            AND (jo.date_time_start != NULL OR jp.job_post_status_id = 4 OR jo.job_order_status_id = 3 OR jo.job_order_status_id = 2)
+            AND(
+            	jp.job_post_status_id = 4 OR jo.job_order_status_id = 3 OR jo.job_order_status_id = 2 OR
+                (jp.job_post_status_id = 1 AND jp.preferred_date_time < CURRENT_TIMESTAMP)
+            )
             AND jp.homeowner_id = :userid";
 
             // Prepare statement
