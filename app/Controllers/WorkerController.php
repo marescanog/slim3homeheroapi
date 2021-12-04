@@ -927,7 +927,6 @@ class WorkerController
 
         // Return information needed for personal info page
         return $this->customResponse->is200Response($response,  $userID );
-        return $this->customResponse->is200Response($response,  "This route works");
     }
     
 
