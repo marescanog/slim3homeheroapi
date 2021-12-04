@@ -434,6 +434,7 @@ class File
             AND jp.rate_type_id = rt.id
             AND jp.is_deleted = 0
             AND jp.preferred_date_time >= CURRENT_TIMESTAMP
+            AND jp.job_post_status_id = 1
             AND homeowner_id = :userid";
 
             // Prepare statement
@@ -654,6 +655,121 @@ class File
 
 
 
+    // Dec 3
+    public function getClosedProjects($userID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT jp.id, jp.home_id, CONCAT(h.street_no,' ', h.street_name, ', ', b.barangay_name, ', ', c.city_name,' city') as `complete_address`, jp.job_size_id, jos.job_order_size, jp.required_expertise_id, pt.type as `project_type`, e.id as `expertise_id`, e.expertise, jp.job_post_status_id, jp.cancellation_reason,jp.job_description, jp.rate_offer, jp.rate_type_id, rt.type as `rate_type`, jp.preferred_date_time, jp.job_post_name, jo.id as `job_order_id`, jo.isRated, r.overall_quality, r.professionalism, r.reliability, r.punctuality, r.comment, CONCAT(u.first_name, ' ' ,u.last_name) as `assigned_to`, jo.job_order_status_id, bill.bill_status_id, bill.total_price_billed
+            FROM home h, barangay b, city c, job_order_size jos, project_type pt, expertise e, rate_type rt, job_post jp
+            LEFT JOIN job_order jo on jp.id = jo.job_post_id 
+            LEFT JOIN rating r on jo.id = r.job_order_id 
+            LEFT JOIN hh_user u on jo.worker_id = u.user_id
+            LEFT JOIN bill on jo.id = bill.job_order_id
+            WHERE jp.home_id = h.id
+            AND h.barangay_id = b.id
+            AND b.city_id = c.id
+            AND jp.job_size_id = jos.id
+            AND jp.required_expertise_id = pt.id
+            AND pt.expertise = e.id
+            AND jp.rate_type_id = rt.id
+            AND jp.is_deleted = 0
+            AND(
+            	jp.job_post_status_id = 4 OR jo.job_order_status_id = 3 OR jo.job_order_status_id = 2 OR
+                (jp.job_post_status_id = 1 AND jp.preferred_date_time < CURRENT_TIMESTAMP)
+            )
+            AND jp.homeowner_id = :userid";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userid', $userID );
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+
+
+
+
+
+    public function getOngoingJobOrders($userID){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT jp.id, jp.home_id, CONCAT(h.street_no,' ', h.street_name, ', ', b.barangay_name, ', ', c.city_name,' city') as `complete_address`, jp.job_size_id, jos.job_order_size, jp.required_expertise_id, pt.type as `project_type`, e.id as `expertise_id`, e.expertise, jp.job_post_status_id, jp.job_description, jp.rate_offer, jp.rate_type_id, rt.type as `rate_type`, jp.preferred_date_time, jp.job_post_name, jo.id as `job_order_id`, CONCAT(u.first_name, ' ' ,u.last_name) as `assigned_to`, jo.job_order_status_id
+            FROM home h, barangay b, city c, job_order_size jos, project_type pt, expertise e, rate_type rt, job_post jp
+            LEFT JOIN job_order jo on jp.id = jo.job_post_id 
+            LEFT JOIN hh_user u on jo.worker_id = u.user_id
+            WHERE jp.home_id = h.id
+            AND h.barangay_id = b.id
+            AND b.city_id = c.id
+            AND jp.job_size_id = jos.id
+            AND jp.required_expertise_id = pt.id
+            AND pt.expertise = e.id
+            AND jp.rate_type_id = rt.id
+            AND jp.is_deleted = 0
+            AND jp.job_post_status_id != 1
+            AND jo.job_order_status_id = 1
+            AND jp.homeowner_id = :userid";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userid', $userID );
+                $stmt->execute();
+                $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
 
 
 

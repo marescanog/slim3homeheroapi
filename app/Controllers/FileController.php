@@ -335,11 +335,25 @@ private function generateServerResponse($status, $message){
             return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $ongoingProj['data']) );
         }
 
+        // Get ongoing job orders
+        $ongoingJobOrders =  $this->file->getOngoingJobOrders($userID);
+        // Error handling
+        if(   $ongoingJobOrders['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $ongoingJobOrders['data']) );
+        }
+
+        // Get closed projects
+        $closedProj =  $this->file->getClosedProjects($userID);
+        // Error handling
+        if(   $ongoingProj['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $closedProj['data']) );
+        }
 
         // send data back
         $data = [];
-        $data['ongoingProjects'] = $ongoingProj['data'];
-        $data['closedProjects'] = [];
+        $data['ongoingJobPosts'] = $ongoingProj['data'];
+        $data['ongoingProjects'] = $ongoingJobOrders['data'];
+        $data['closedProjects'] = $closedProj['data'];
 
         
         // Return information needed for personal info page
@@ -410,8 +424,6 @@ private function generateServerResponse($status, $message){
                 return $this->$singleBill->is500Response($response, $this->generateServerResponse(500,  $singleRating['data']) );
             }
         }
-
-
 
         // send data back
         $data = [];
