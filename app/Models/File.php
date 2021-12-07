@@ -953,7 +953,111 @@ public function cancelJobPost($jobPostID, $reason){
 }
 
 
+// =================================================
 
+// DEC 8
+
+
+
+public function getJobOrderUserID($jobOrderID){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "SELECT jo.id, jo.homeowner_id     
+        FROM job_order jo
+        WHERE jo.id = :jobOrderID";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':jobOrderID', $jobOrderID);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+public function cancelJobOrder($jobOrderID, $reason, $userID){
+    try{
+        date_default_timezone_set('Asia/Singapore');
+        $date = date('Y-m-d H:i:s');
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "UPDATE job_order jo 
+        SET 
+        jo.job_order_status_id = 3, 
+        jo.date_time_closed = :currentTime, 
+        jo.order_cancellation_reason =  :reason,
+        jo.cancelled_by =  :userID
+        WHERE jo.id = :jobOrderID;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':jobOrderID', $jobOrderID);
+            $stmt->bindparam(':currentTime',  $date);
+            $stmt->bindparam(':reason', $reason);
+            $stmt->bindparam(':userID', $userID);
+            $result = $stmt->execute();
+        }
+        $stmt=null;
+        $db=null;
+
+        // For debugging purposes
+        // $result = [];
+        // $result['jobOrder_id'] = $jobOrderID;
+        // $result['date'] = $date;
+        // $result['reason'] = $reason;
+        // $result['userID'] = $userID;
+
+        // For debugging purposes
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 

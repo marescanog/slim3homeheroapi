@@ -28,5 +28,8 @@ $app->group("/homeowner",function() use ($app){
     // This route cancels a user's job post through soft delete
     $app->post("/cancel-post/{id}", "FileController:cancelJobPost");
 
+    // This route cancels a user's job order through soft delete
+    $app->post("/cancel-order/{id}", "FileController:cancelJobOrder");
+
 });
 

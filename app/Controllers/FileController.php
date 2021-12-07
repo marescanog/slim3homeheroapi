@@ -640,6 +640,9 @@ public function cancelJobPost(Request $request,Response $response, array $args){
     if($postData['success'] !== true){
         return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $postData['data']) );
     }
+    if( $postData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Post not found") );
+    }
     if($postData['data']['homeowner_id'] != $userID){
         return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this post.") );
     }
@@ -662,6 +665,64 @@ public function cancelJobPost(Request $request,Response $response, array $args){
     // return $this->customResponse->is200Response($response,  $userID );
     // return $this->customResponse->is200Response($response, "This route works");
 }
+
+
+
+
+// =====================================================
+// Dec 8
+
+public function cancelJobOrder(Request $request,Response $response, array $args){
+
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        // return $this->customResponse->is401Response($response, $userID);
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $userID) );
+    }
+
+
+    // GET NECESSARY INFORMATION FOR CANCELLING THE POST
+    $order_id = $args['id']; 
+    $reason = CustomRequestHandler::getParam($request,"cancellation_reason");
+
+    // GET THE USER'S ORDER DATA
+    $orderData = $this->file->getJobOrderUserID($order_id);
+    // Error handling
+    if( $orderData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
+    }
+    if( $orderData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Order not found") );
+    }
+    if( $orderData['data']['homeowner_id'] != $userID){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+    }
+
+    // CANCEL THE ORDER
+    $result = $this->file->cancelJobOrder($order_id , $reason, $userID);
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $result['data']) );
+    }
+
+    $formData = [];
+    $formData['result'] =  $result;
+
+    // // Return information needed for personal info page
+     return $this->customResponse->is200Response($response, $formData);
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,   $orderData );
+    // return $this->customResponse->is200Response($response,  $userID."post_id". $post_id."reason".$reason  );
+    // return $this->customResponse->is200Response($response, "This route works");
+}
+
 
 
 
