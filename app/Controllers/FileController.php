@@ -518,11 +518,11 @@ public function updateJobPost(Request $request,Response $response, array $args){
     // VALIDATION THE INFORMATION (SECOND VALIDATION FILTER CHECK VALID VALUES)
     $this->validator->validate($request,[
         "date"=>v::date(),
-        "home_id"=>v::intval(),
-        "job_size_id"=>v::intval(),
+        "home_id"=>v::intVal(),
+        "job_size_id"=>v::intVal(),
         "job_size_id"=>v::between(1, 3),
         "rate_offer"=>v::number(),
-        "rate_type_id"=>v::intval(),
+        "rate_type_id"=>v::intVal(),
         "rate_type_id"=>v::between(1, 4),
         "time"=>v::time(),
     ]);
