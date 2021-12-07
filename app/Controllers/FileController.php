@@ -443,18 +443,225 @@ private function generateServerResponse($status, $message){
 
 
 
+// ===============================================
+// Dec 7
+
+
+public function getAllAddresses(Request $request,Response $response){
+
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,  $userID));
+    }
+
+    // GET USER DEFAULT ADDRESS
+    $defaultHomeID = $this->file->getUserDefaultAddress($userID);
+    // Error handling
+    if($defaultHomeID['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $defaultHomeID['data']) );
+    }
+
+    // GET USER ALL ADDRESS
+    $allAddress = $this->file->getUsersSavedAddresses($userID);
+    // Error handling
+    if(  $allAddress['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $allAddress['data']) );
+    }
+
+    $formData = [];
+
+    $formData["defaultHome_id"] = $defaultHomeID['data'][0]['default_home_id'];
+    $formData["allAddress"] =   $allAddress['data'];
+
+    // Return information needed for personal info page
+   // return $this->customResponse->is200Response($response,  $userID );
+     return $this->customResponse->is200Response($response, $formData);
+
+}
+
+
+
+public function updateJobPost(Request $request,Response $response, array $args){
+
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // VALIDATION THE INFORMATION (CHECK IF EMPTY)
+     $this->validator->validate($request,[
+        "date"=>v::notEmpty(),
+        "home_id"=>v::notEmpty(),
+        "job_size_id"=>v::notEmpty(),
+        "rate_offer"=>v::notEmpty(),
+        "rate_type_id"=>v::notEmpty(),
+        "time"=>v::notEmpty(),
+     ]);
+
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // VALIDATION THE INFORMATION (SECOND VALIDATION FILTER CHECK VALID VALUES)
+    $this->validator->validate($request,[
+        "date"=>v::date(),
+        "home_id"=>v::intVal(),
+        "job_size_id"=>v::intVal(),
+        "job_size_id"=>v::between(1, 3),
+        "rate_offer"=>v::number(),
+        "rate_type_id"=>v::intVal(),
+        "rate_type_id"=>v::between(1, 4),
+        "time"=>v::time(),
+    ]);
+
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+
+    // GET NECESSARY INFORMATION FOR UPDATING THE POST
+    $date = CustomRequestHandler::getParam($request,"date");
+    $time = CustomRequestHandler::getParam($request,"time");
+    // ----
+    $post_id = $args['id']; 
+    $home_id = CustomRequestHandler::getParam($request,"home_id");
+    $job_size_id = CustomRequestHandler::getParam($request,"job_size_id");
+    $job_description = CustomRequestHandler::getParam($request,"job_description");
+    $rate_offer = CustomRequestHandler::getParam($request,"rate_offer");
+    $rate_type_id = CustomRequestHandler::getParam($request,"rate_type_id");
+    $preferred_date_time = $date.' '.$time;
+    $job_post_name = CustomRequestHandler::getParam($request,"job_post_name");
+
+
+    $isValidHome = false;
+    // CHECK TO SEE IF THE HOME ID IS AMONG THE LIST OF USER'S ADDRESSES
+    // GET USER ALL ADDRESS
+    $allAddress = $this->file->getUsersSavedAddresses($userID);
+    // Error handling
+    if(  $allAddress['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $allAddress['data']) );
+    }
+    $add_arr = $allAddress['data'];
+    if(count($add_arr) == 0){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404,  "This user does not have any saved addresses. Access denied to other homeowners address."));
+    } else {
+        for($x = 0; $x < count($add_arr); $x++){
+            if($add_arr[$x]['home_id'] == $home_id){
+                $isValidHome = true;
+                break;
+            }
+        }
+    }
+    if($isValidHome == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404,  "The address cannot be found in the user's addressbook. Access denied to other homeowners address."));
+    }
+
+
+    // UPDATE POST - Everything good
+    $result = $this->file->updateProject(
+        $post_id,
+        $home_id,
+        $job_size_id,
+        $job_description,
+        $rate_offer,
+        $rate_type_id,
+        $preferred_date_time,
+        $job_post_name
+    );
+
+    // Error handling
+    if( $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(500,  $result['data']) );
+    }
+
+
+    $formData = [];
+    $formData['result'] =  $result['data'];
+
+    // // // For debugging purposes
+    // // $formData['id'] = $post_id;
+    // // $formData['home_id'] = $home_id;
+    // // $formData['job_size_id'] = $job_size_id;
+    // // $formData['job_description'] = $job_description;
+    // // $formData['rate_offer'] =  $rate_offer;
+    // // $formData['rate_type_id'] =   $rate_type_id;
+    // // $formData['preferred_date_time'] = $preferred_date_time;
+    // // $formData['job_post_name'] = $job_post_name;
+
+    // Return information needed for personal info page
+     return $this->customResponse->is200Response($response, $formData);
+
+    // // // For debugging purposes
+    // return $this->customResponse->is200Response($response,  $userID );
+    //return $this->customResponse->is200Response($response, "This route works".$args['id']);
+    // return $this->customResponse->is200Response($response,  $isValidHome);
+}
 
 
 
 
+public function cancelJobPost(Request $request,Response $response, array $args){
+
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
 
 
+    // GET NECESSARY INFORMATION FOR CANCELLING THE POST
+    $post_id = $args['id']; 
+    $reason = CustomRequestHandler::getParam($request,"cancellation_reason");
 
+    // GET THE USER'S POST DATA
+    $postData = $this->file->getJobPostUserID($post_id);
+    // Error handling
+    if($postData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $postData['data']) );
+    }
+    if($postData['data']['homeowner_id'] != $userID){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this post.") );
+    }
 
+    // CANCEL THE POST
+    $result = $this->file->cancelJobPost($post_id, $reason);
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $result['data']) );
+    }
 
+    $formData = [];
+    $formData['result'] =  $result;
 
+    // Return information needed for personal info page
+     return $this->customResponse->is200Response($response, $formData);
 
-
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  $postData );
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response, "This route works");
+}
 
 
 
