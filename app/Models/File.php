@@ -774,6 +774,91 @@ class File
 
 
 
+// Dec 7
+
+public function updateProject(
+    $post_id,
+    $home_id,
+    $job_size_id,
+    $job_description,
+    $rate_offer,
+    $rate_type_id,
+    $preferred_date_time,
+    $job_post_name
+){
+    try{
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $sql = "UPDATE job_post jp
+        SET 
+            jp.home_id = :homeID, 
+            jp.job_size_id = :jobSizeID, 
+            jp.job_description = :jobDesc, 
+            jp.rate_offer = :rateOffer, 
+            jp.rate_type_id = :rateType, 
+            jp.preferred_date_time = :prefDateTime,
+            jp.job_post_name = :jobPostName 
+        WHERE jp.id = :id";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':id', $post_id );
+            $stmt->bindparam(':homeID', $home_id );
+            $stmt->bindparam(':jobSizeID',  $job_size_id);
+            $stmt->bindparam(':jobDesc', $job_description );
+            $stmt->bindparam(':rateOffer', $rate_offer );
+            $stmt->bindparam(':rateType',  $rate_type_id );
+            $stmt->bindparam(':prefDateTime',$preferred_date_time );
+            $stmt->bindparam(':jobPostName', $job_post_name );
+            $result = $stmt->execute();
+        } else {
+            $result = "prepare statement failed";
+        }
+        $stmt=null;
+        $db=null;
+
+        // // For Debugging purposes
+        // $formData = [];
+        // $formData['id'] = $post_id;
+        // $formData['home_id'] = $home_id;
+        // $formData['job_size_id'] = $job_size_id;
+        // $formData['job_description'] = $job_description;
+        // $formData['rate_offer'] =  $rate_offer;
+        // $formData['rate_type_id'] =   $rate_type_id;
+        // $formData['preferred_date_time'] = $preferred_date_time;
+        // $formData['job_post_name'] = $job_post_name;
+        // $ModelResponse =  array(
+        //     "success"=>true,
+        //     "data"=>$formData
+        // );
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
 
 
 

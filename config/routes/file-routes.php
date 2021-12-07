@@ -22,5 +22,8 @@ $app->group("/homeowner",function() use ($app){
     // This route gets all the user's addresses
     $app->get("/get-all-addresses", "FileController:getAllAddresses");
 
+    // This route updates a user's job post
+    $app->post("/update-post/{id}", "FileController:updateJobPost");
+
 });
 
