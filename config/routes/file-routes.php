@@ -22,8 +22,11 @@ $app->group("/homeowner",function() use ($app){
     // This route gets all the user's addresses
     $app->get("/get-all-addresses", "FileController:getAllAddresses");
 
-    // This route updates a user's job post
+    // This route updates a user's job post - TODO: ADD CHECK TO SEE IF POST BELONGS TO USER (REFER TO CANCEL)
     $app->post("/update-post/{id}", "FileController:updateJobPost");
+
+    // This route cancels a user's job post through soft delete
+    $app->post("/cancel-post/{id}", "FileController:cancelJobPost");
 
 });
 

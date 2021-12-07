@@ -858,6 +858,108 @@ public function updateProject(
 }
 
 
+public function getJobPostUserID($jobPostID){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "SELECT jp.id, jp.homeowner_id     
+        FROM job_post jp
+        WHERE jp.id = :postID";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':postID', $jobPostID);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+public function cancelJobPost($jobPostID, $reason){
+    try{
+        date_default_timezone_set('Asia/Singapore');
+        $date = date('Y-m-d H:i:s');
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "UPDATE job_post jp 
+        SET 
+        jp.job_post_status_id = 4, 
+        jp.date_time_closed = :currentTime, 
+        jp.cancellation_reason =  :reason
+        WHERE jp.id = :postID;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':postID', $jobPostID);
+            $stmt->bindparam(':currentTime',  $date);
+            $stmt->bindparam(':reason', $reason);
+            $result = $stmt->execute();
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
