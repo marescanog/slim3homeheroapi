@@ -444,9 +444,46 @@ private function generateServerResponse($status, $message){
 
 
 
+// Dec 7
 
 
+public function getAllAddresses(Request $request,Response $response){
 
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // GET USER DEFAULT ADDRESS
+    $defaultHomeID = $this->file->getUserDefaultAddress($userID);
+    // Error handling
+    if($defaultHomeID['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $defaultHomeID['data']) );
+    }
+
+    // GET USER ALL ADDRESS
+    $allAddress = $this->file->getUsersSavedAddresses($userID);
+    // Error handling
+    if(  $allAddress['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $allAddress['data']) );
+    }
+
+    $formData = [];
+
+    $formData["defaultHome_id"] = $defaultHomeID['data'][0]['default_home_id'];
+    $formData["allAddress"] =   $allAddress['data'];
+
+    // Return information needed for personal info page
+   // return $this->customResponse->is200Response($response,  $userID );
+     return $this->customResponse->is200Response($response, $formData);
+
+}
 
 
 

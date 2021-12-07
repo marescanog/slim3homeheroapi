@@ -11,8 +11,6 @@ $app->post("/add-address","FileController:addAddress");
 $app->post("/add-project","FileController:addProject");
 
 
-
-
 $app->group("/homeowner",function() use ($app){
     
     // This route gets ongoing and current projects
@@ -20,6 +18,9 @@ $app->group("/homeowner",function() use ($app){
 
     // This route includes job post, job order, job bill and review details.
     $app->get("/get-single-project-complete-info/{id}","FileController:getSingleProject");
+
+    // This route gets all the user's addresses
+    $app->get("/get-all-addresses", "FileController:getAllAddresses");
 
 });
 
