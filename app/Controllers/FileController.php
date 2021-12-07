@@ -457,21 +457,21 @@ public function getAllAddresses(Request $request,Response $response){
 
     // Error handling
     if(is_array( $userID) && array_key_exists("status", $userID)){
-        return $this->customResponse->is401Response($response, $userID);
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,  $userID));
     }
 
     // GET USER DEFAULT ADDRESS
     $defaultHomeID = $this->file->getUserDefaultAddress($userID);
     // Error handling
     if($defaultHomeID['success'] !== true){
-        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $defaultHomeID['data']) );
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $defaultHomeID['data']) );
     }
 
     // GET USER ALL ADDRESS
     $allAddress = $this->file->getUsersSavedAddresses($userID);
     // Error handling
     if(  $allAddress['success'] !== true){
-        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $allAddress['data']) );
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $allAddress['data']) );
     }
 
     $formData = [];

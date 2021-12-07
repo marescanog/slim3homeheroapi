@@ -179,10 +179,12 @@ class File
 
             // CREATE query
             // $sql = "SELECT * FROM `home_details` WHERE homeowner_id = :userid";
-            $sql = "SELECT hd.home_id, hd.homeowner_id, h.street_no, h.street_name
-            FROM `home_details` hd, home h
+            $sql = "SELECT hd.home_id, hd.homeowner_id, h.street_no, h.street_name, CONCAT(h.street_no,' ', h.street_name, ', ', b.barangay_name, ', ', c.city_name,' city') as `complete_address`
+            FROM `home_details` hd, home h, barangay b, city c
             WHERE hd.homeowner_id = :userid
-            and  hd.home_id = h.id";
+            AND h.barangay_id = b.id
+            AND b.city_id = c.id
+            AND  hd.home_id = h.id";
 
             // Prepare statement
             $stmt =  $conn->prepare($sql);
