@@ -1182,7 +1182,7 @@ public function checkJobOrderIssues($order_id)
         $conn = $db->connect();
 
         // CREATE query
-        $sql = "SELECT ji.job_order_id, ji.support_ticket_id, st.issue_id, stsub.subcategory, st.status as `status_id`, ststat.status, st.assigned_agent, st.last_updated_on, st.author_Description 
+        $sql = "SELECT ji.job_order_id, ji.support_ticket_id, st.issue_id, stsub.subcategory, st.status as `status_id`, ststat.status, st.assigned_agent, st.last_updated_on, st.author_Description, st.created_on
         FROM job_order_issues ji, support_ticket st, support_ticket_subcategory stsub, support_ticket_status ststat
         WHERE job_order_id = :jobOrderID 
         AND ji.support_ticket_id = st.id
@@ -1349,9 +1349,48 @@ public function checkJobOrderIssues($order_id)
     }
     
 
+public function updatePostSchedule($post_id, $preferred_date_time){
+        try {
 
+            $db = new DB();
+            $conn = $db->connect();
 
+            $sql = "UPDATE job_post jp 
+            SET 
+            jp.preferred_date_time = :newSched 
+            WHERE jp.id = :postID;";
 
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':newSched', $preferred_date_time);
+                $stmt->bindparam(':postID', $post_id);
+                $result = $stmt->execute();
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+}
+
+    
 
 
 

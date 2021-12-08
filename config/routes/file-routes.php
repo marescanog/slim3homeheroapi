@@ -41,5 +41,8 @@ $app->group("/homeowner",function() use ($app){
     // type - 1 (REPORT WORKER)
     // type - 2 (REPORT JOB ISSUE)
     $app->post("/report-job-issue/{type}/{id}", "FileController:reportJobIssue");
+
+    // This updates the schedule of an existing POST
+    $app->post("/update-schedule/{id}","FileController:updateSchedule");
 });
 

@@ -1006,6 +1006,89 @@ public function reportJobIssue(Request $request,Response $response, array $args)
 
 
 
+public function updateSchedule(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Validation for schedule date & time
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "date"=>v::notEmpty(),
+            "time"=>v::notEmpty()
+        ]);
+    
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+    
+        // Check if date time
+        $this->validator->validate($request,[
+            // Check if empty
+            "date"=>v::date(),
+            "time"=>v::time()
+        ]);
+    
+        // Error Handling
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // GET NECESSARY INFORMATION FOR CREATING SUPPORT TICKET & Validation
+    $post_id = $args['id']; 
+    $date = CustomRequestHandler::getParam($request,"date");
+    $time = CustomRequestHandler::getParam($request,"time");
+    $preferred_date_time = $date.' '.$time;
+
+    // Get the post and check if it is the userID (Validate)
+    // GET THE USER'S POST DATA
+    $postData = $this->file->getSingleJobPost($post_id);
+    // Error handling
+    if( $postData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $postData['data']) );
+    }
+    if( $postData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Post not found") );
+    }
+    if( $postData['data']['homeowner_id'] != $userID){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+    }
+
+    // Update the job POST schedule information
+    $result = $this->file->updatePostSchedule($post_id, $preferred_date_time);
+    // Error handling
+    if( $result['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $result['data']) );
+    }
+
+    $formData = [];
+    $formData['result'] = "";
+
+
+    // // Return information needed for personal info page
+    return $this->customResponse->is200Response($response, $result);
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  $postData );
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
 
 
 
