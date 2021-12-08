@@ -50,5 +50,11 @@ $app->group("/homeowner",function() use ($app){
 
     // This creates a new rating for a job order
     $app->post("/save-rating/{orderid}","FileController:saveRating");
+
+    // This checks if a billing issue has already been filed, returns false if it does not and the billing & support ticket information if it has
+    $app->get("/has-billing-issue/{orderid}","FileController:hasBillingIssue");
+
+    // This creates a support ticket for the billing issue
+    $app->post("/report-billing-issue/{orderid}","FileController:createBillingIssue");
 });
 

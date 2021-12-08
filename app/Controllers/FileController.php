@@ -884,8 +884,8 @@ public function hasJobIssue(Request $request,Response $response, array $args){
     // CHECK IF THE DB ALREADY HAS A SUPPORT TICKET CREATED LINKED TO THE JOB ORDER
     $supportTicket = $this->file->checkJobOrderIssues($order_id);
     // Error handling
-    if( $orderData['success'] !== true){
-        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
+    if( $supportTicket['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $supportTicket['data']) );
     }
 
     // GET THE LAST ACTION OF THE SUPPORT TICKET
@@ -1245,9 +1245,162 @@ public function saveRating(Request $request,Response $response, array $args){
 }
 
 
+// =============================================================================
+// DEC 9
+
+public function hasBillingIssue(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // GET NECESSARY INFORMATION FOR Validation
+    $order_id = $args['orderid']; 
+
+    // GET THE USER'S ORDER DATA
+    $orderData = $this->file->getJobOrderUserID($order_id);
+    // Error handling, if order belongs to user
+    if( $orderData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
+    }
+    if( $orderData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Order not found") );
+    }
+    if( $orderData['data']['homeowner_id'] != $userID){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+    }
+
+    // CHECK DB IF BILL WAS ALREADY GENERATED
+    $billData = $this->file->getSingleBill($order_id);
+    // Error handling
+    if( $billData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $billData['data']) );
+    }
+    if( $billData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Bill not found") );
+    }
+
+    // CHECK IF THE DB ALREADY HAS A SUPPORT TICKET CREATED LINKED TO THE BILL
+    $supportTicket = $this->file->checkBillingIssues($billData['data']['id']);
+    // Error handling
+    if( $supportTicket['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $supportTicket['data']) );
+    }
+
+    $formData = [];
+    $formData['bill_data'] =  $billData['data'];
+    $formData['support_ticket_info'] =  $supportTicket['data'];
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // // For debugging
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+    // return $this->customResponse->is200Response($response,  $args['type']);
+}
 
 
 
+
+public function createBillingIssue(Request $request,Response $response, array $args){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+    
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+    
+        // GET NECESSARY INFORMATION FOR Validation
+        $order_id = $args['orderid']; 
+        $reason = CustomRequestHandler::getParam($request,"author_description");
+    
+        // GET THE USER'S ORDER DATA
+        $orderData = $this->file->getJobOrderUserID($order_id);
+        // Error handling, if order belongs to user
+        if( $orderData['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
+        }
+        if( $orderData['data'] == false){
+            return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Order not found") );
+        }
+        if( $orderData['data']['homeowner_id'] != $userID){
+            return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+        }
+    
+        // CHECK DB IF BILL WAS ALREADY GENERATED
+        $billData = $this->file->getSingleBill($order_id);
+        // Error handling
+        if( $billData['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $billData['data']) );
+        }
+        if( $billData['data'] == false){
+            return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Bill not found") );
+        }
+    
+        // CHECK IF THE DB ALREADY HAS A SUPPORT TICKET CREATED LINKED TO THE BILL
+        $supportTicket = $this->file->checkBillingIssues($billData['data']['id']);
+        // Error handling
+        if( $supportTicket['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $supportTicket['data']) );
+        }
+    
+        // // IF THERE IS NO SUPPORT TICKET CREATE ONE, OTHERWISE GET LAST ACTION
+        $lastAction = null;
+        $newSupportTicketCreated = false;
+        if($supportTicket['data'] != false){
+            // GET LAST ACTION
+            $lastAction = $this->file->getSupportTicketLastAction($supportTicket['data']['support_ticket_id']);
+            // Error handling
+            if( $lastAction['success'] !== true){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $lastAction['data']) );
+            }
+        } else {
+            $message = $reason;
+            $systemMessage = " SUBMITTED A BILLING ISSUE";
+            $issueID = 4;
+    
+            // CREATE A SUPPORT TICKET
+            $newSupportTicketCreated = $this->file->createBillingIssueTicket(
+                $userID,    // author
+                $issueID,          // subcategory
+                $message,   // authorDesc
+                "HOMEOWNER#".$userID.$systemMessage, // systemDesc
+                0,          // has images
+                $billData['data']['id']   // billID
+            );
+            // Error handling
+            if( $newSupportTicketCreated['success'] !== true){
+                return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $newSupportTicketCreated['data']) );
+            }
+        }
+    
+        $formData = [];
+        $formData['bill_data'] =  $billData['data'];
+        $formData['support_ticket_info'] =  $supportTicket['data'];
+        $formData['lastSupportTicketAction'] =  $lastAction == null ? null : $lastAction['data'];
+        $formData['newSupportTicketCreated'] =  $newSupportTicketCreated;
+    
+    
+    
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response,  $formData);
+    
+        // // For debugging
+        // return $this->customResponse->is200Response($response,  $userID );
+        // return $this->customResponse->is200Response($response,  "This route works");
+        // return $this->customResponse->is200Response($response,  $args['type']);
+}
 
 
 

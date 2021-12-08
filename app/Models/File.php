@@ -1545,6 +1545,135 @@ public function completeCashPayment($order_id){
 
 
 
+    public function checkBillingIssues($bill_id){
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "SELECT bi.bill_id, bi.support_ticket_id, st.issue_id, stsub.subcategory, st.status as `status_id`, ststat.status, st.assigned_agent, st.last_updated_on, st.author_Description, st.created_on
+        FROM bill_issues bi, support_ticket st, support_ticket_subcategory stsub, support_ticket_status ststat
+        WHERE bi.bill_id = :billID 
+        AND bi.support_ticket_id = st.id
+        AND st.issue_id = stsub.id
+        AND st.status = ststat.id
+        AND bi.is_deleted = 0;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':billID', $bill_id);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+        $stmt = null;
+        $db = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+public function createBillingIssueTicket(
+    $author, 
+    $subcategory, 
+    $authorDescription, 
+    $systemDescription, 
+    $hasImages = 0,
+    $bill_id
+){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = " SET @@session.time_zone = '+08:00'; 
+                    BEGIN;
+                    INSERT INTO support_ticket (author, issue_id, system_Description, author_Description, has_Images) 
+                    values(:author,:issueID, :sysDesc, :authDesc, :hasImages);
+
+                    SET @supportTicketID:=LAST_INSERT_ID();
+
+                    INSERT INTO ticket_actions (action_taken, system_generated_description, support_ticket)
+                        VALUES(1, :sysDesc, @supportTicketID);
+
+                    INSERT INTO bill_issues (bill_id, support_ticket_id) values (:billID, @supportTicketID);
+
+                    COMMIT;
+                ";
+
+        
+        //Create also an action in the table
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':author', $author);
+            $stmt->bindparam(':issueID', $subcategory);
+            $stmt->bindparam(':sysDesc', $systemDescription);
+            $stmt->bindparam(':authDesc', $authorDescription);
+            $stmt->bindparam(':hasImages',  $hasImages);
+            $stmt->bindparam(':billID',   $bill_id);
+            $result = $stmt->execute();
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
