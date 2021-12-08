@@ -1182,7 +1182,7 @@ public function checkJobOrderIssues($order_id)
         $conn = $db->connect();
 
         // CREATE query
-        $sql = "SELECT ji.job_order_id, ji.support_ticket_id, st.issue_id, stsub.subcategory, st.status, ststat.status, st.assigned_agent, st.last_updated_on, st.author_Description 
+        $sql = "SELECT ji.job_order_id, ji.support_ticket_id, st.issue_id, stsub.subcategory, st.status as `status_id`, ststat.status, st.assigned_agent, st.last_updated_on, st.author_Description 
         FROM job_order_issues ji, support_ticket st, support_ticket_subcategory stsub, support_ticket_status ststat
         WHERE job_order_id = :jobOrderID 
         AND ji.support_ticket_id = st.id
@@ -1274,6 +1274,84 @@ public function checkJobOrderIssues($order_id)
             return $ModelResponse;
         }
     }
+
+
+
+
+
+    public function createJobIssueTicket(
+        $author, 
+        $subcategory, 
+        $authorDescription, 
+        $systemDescription, 
+        $hasImages = 0,
+        $order_id
+    ){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = " SET @@session.time_zone = '+08:00'; 
+                        BEGIN;
+                        INSERT INTO support_ticket (author, issue_id, system_Description, author_Description, has_Images) 
+                        values(:author,:issueID, :sysDesc, :authDesc, :hasImages);
+
+                        SET @supportTicketID:=LAST_INSERT_ID();
+
+                        INSERT INTO ticket_actions (action_taken, system_generated_description, support_ticket)
+                            VALUES(1, :sysDesc, @supportTicketID);
+
+                        INSERT INTO job_order_issues (job_order_id, support_ticket_id) values (:jobOrderID, @supportTicketID);
+
+                        COMMIT;
+                    ";
+
+            // $sql = "
+            //             INSERT INTO support_ticket (author, issue_id, system_Description, author_Description, has_Images) 
+            //                 values(:author,:issueID, :sysDesc, :authDesc, :hasImages);
+            // ";
+
+            
+            //Create also an action in the table
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':author', $author);
+                $stmt->bindparam(':issueID', $subcategory);
+                $stmt->bindparam(':sysDesc', $systemDescription);
+                $stmt->bindparam(':authDesc', $authorDescription);
+                $stmt->bindparam(':hasImages',  $hasImages);
+                $stmt->bindparam(':jobOrderID',   $order_id);
+                $result = $stmt->execute();
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+    
+
+
+
+
 
 
 

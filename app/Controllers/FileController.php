@@ -888,7 +888,7 @@ public function hasJobIssue(Request $request,Response $response, array $args){
         return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
     }
 
-    // CHECK IF THE DB ALREADY HAS A SUPPORT TICKET CREATED LINKED TO THE JOB ORDER
+    // GET THE LAST ACTION OF THE SUPPORT TICKET
     $lastAction = null;
     if($supportTicket['data'] != false){
         $lastAction = $this->file->getSupportTicketLastAction($supportTicket['data']['support_ticket_id']);
@@ -928,13 +928,13 @@ public function reportJobIssue(Request $request,Response $response, array $args)
         return $this->customResponse->is401Response($response, $userID);
     }
 
-    // GET NECESSARY INFORMATION FOR CANCELLING THE POST & Validation
+    // GET NECESSARY INFORMATION FOR CREATING SUPPORT TICKET & Validation
     $order_id = $args['id']; 
-    $reason = CustomRequestHandler::getParam($request,"cancellation_reason");
+    $reason = CustomRequestHandler::getParam($request,"author_description");
 
     // GET THE USER'S ORDER DATA
     $orderData = $this->file->getJobOrderUserID($order_id);
-    // Error handling
+    // Error handling, if order belongs to user
     if( $orderData['success'] !== true){
         return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
     }
@@ -945,19 +945,57 @@ public function reportJobIssue(Request $request,Response $response, array $args)
         return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
     }
 
-    // // CHECK IF THE DB ALREADY HAS A SUPPORT TICKET CREATED LINKED TO THE JOB ORDER
-    // $supportTicket = $this->file->checkJobOrderIssues($order_id);
-    // // Error handling
-    // if( $orderData['success'] !== true){
-    //     return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
-    // }
+    // CHECK IF THE DB ALREADY HAS A SUPPORT TICKET CREATED LINKED TO THE JOB ORDER
+    $supportTicket = $this->file->checkJobOrderIssues($order_id);
+    // Error handling
+    if( $orderData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
+    }
+
+    // IF THERE IS NO SUPPORT TICKET CREATE ONE, OTHERWISE GET LAST ACTION
+    $lastAction = null;
+    $newSupportTicketCreated = false;
+    if($supportTicket['data'] != false){
+        // GET LAST ACTION
+        $lastAction = $this->file->getSupportTicketLastAction($supportTicket['data']['support_ticket_id']);
+        // Error handling
+        if( $lastAction['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $lastAction['data']) );
+        }
+    } else {
+        $message = "Worker did not show up for scheduled job post.";
+
+        if($reason != null && $reason != ""){
+            $message = $message." Additional information: ".$reason;
+        }
+
+        // CREATE A SUPPORT TICKET
+        $newSupportTicketCreated = $this->file->createJobIssueTicket(
+            $userID,    // author
+            7,          // subcategory
+            $message,   // authorDesc
+            "HOMEOWNER#".$userID." SUBMITTED A JOB ISSUE - WORKER NO SHOW", // systemDesc
+            0,          // has images
+            $order_id   // orderID
+        );
+        // Error handling
+        if( $newSupportTicketCreated['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $newSupportTicketCreated['data']) );
+        }
+    }
+
+    $formData = [];
+    $formData['support_ticket_info'] =  $supportTicket['data'];
+    $formData['lastSupportTicketAction'] =  $lastAction == null ? null : $lastAction['data'];
+    $formData['newSupportTicketCreated'] =  $newSupportTicketCreated;
 
 
 
     // Return information needed for personal info page
-    return $this->customResponse->is200Response($response,  $userID );
+    return $this->customResponse->is200Response($response,  $formData);
 
     // For debugging
+    // return $this->customResponse->is200Response($response,  $userID );
     // return $this->customResponse->is200Response($response,  "This route works");
 }
 
