@@ -47,5 +47,8 @@ $app->group("/homeowner",function() use ($app){
 
     // This updates bill to confirm paid
     $app->post("/confirm-payment/{orderid}","FileController:confirmPayment");
+
+    // This creates a new rating for a job order
+    $app->post("/save-rating/{orderid}","FileController:saveRating");
 });
 

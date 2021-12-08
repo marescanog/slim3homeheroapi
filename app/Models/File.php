@@ -965,7 +965,7 @@ public function getJobOrderUserID($jobOrderID){
         $conn = $db->connect();
 
         // CREATE query
-        $sql = "SELECT jo.id, jo.homeowner_id, jo.job_post_id   
+        $sql = "SELECT jo.id, jo.homeowner_id, jo.job_post_id, jo.worker_id  
         FROM job_order jo
         WHERE jo.id = :jobOrderID";
 
@@ -1435,6 +1435,114 @@ public function completeCashPayment($order_id){
             return $ModelResponse;
         }
     }
+
+
+    public function hasRating($order_id){
+        try {
+            $result = "";
+
+            $sql = "SELECT * FROM rating r where r.job_order_id = :jobOrderID";
+
+            $db = new DB();
+            $conn = $db->connect();
+            
+            //Create also an action in the table
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':jobOrderID', $order_id);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+    public function saveRating(
+                        $order_id, 
+                        $userID, 
+                        $workerID, 
+                        $quality,
+                        $professionalism,
+                        $reliability,
+                        $punctuality,
+                        $comment
+                    ){
+        try {
+            $result = "";
+            $db = new DB();
+            $conn = $db->connect();
+
+
+            $sql = "
+            BEGIN;
+                INSERT INTO rating (job_order_id, created_by, rated_worker, overall_quality, professionalism, reliability, punctuality, comment) 
+                values(:jobOrderID, :createdBy, :workerID, :qual, :prof, :rel, :punct, :comm);
+                
+                UPDATE job_order jo SET jo.isRated = 1 WHERE jo.id = :jobOrderID;
+            COMMIT;
+            ";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':jobOrderID', $order_id);
+                $stmt->bindparam(':createdBy', $userID);
+                $stmt->bindparam(':workerID', $workerID);
+                $stmt->bindparam(':qual', $quality);
+                $stmt->bindparam(':prof', $professionalism);
+                $stmt->bindparam(':rel', $reliability);
+                $stmt->bindparam(':punct', $punctuality);
+                $stmt->bindparam(':comm', $comment);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
 
 
 
