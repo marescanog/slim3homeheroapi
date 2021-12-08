@@ -38,6 +38,8 @@ $app->group("/homeowner",function() use ($app){
     $app->get("/has-job-issue/{id}", "FileController:hasJobIssue");
 
     // When a job order has expired and the worker did not start, this route allows the user to cancel the job order and repost another one
-    $app->post("/report-job-issue/{id}", "FileController:reportJobIssue");
+    // type - 1 (REPORT WORKER)
+    // type - 2 (REPORT JOB ISSUE)
+    $app->post("/report-job-issue/{type}/{id}", "FileController:reportJobIssue");
 });
 

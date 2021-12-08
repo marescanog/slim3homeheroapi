@@ -930,6 +930,7 @@ public function reportJobIssue(Request $request,Response $response, array $args)
 
     // GET NECESSARY INFORMATION FOR CREATING SUPPORT TICKET & Validation
     $order_id = $args['id']; 
+    $type = $args['type']; 
     $reason = CustomRequestHandler::getParam($request,"author_description");
 
     // GET THE USER'S ORDER DATA
@@ -963,7 +964,9 @@ public function reportJobIssue(Request $request,Response $response, array $args)
             return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $lastAction['data']) );
         }
     } else {
-        $message = "Worker did not show up for scheduled job post.";
+        $message = $type == 1 ? "Worker did not show up for scheduled job post." : "";
+        $systemMessage = $type == 1 ? " SUBMITTED A JOB ISSUE - WORKER NO SHOW" : " SUBMITTED A JOB ORDER ISSUE";
+        $issueID = 7;
 
         if($reason != null && $reason != ""){
             $message = $message." Additional information: ".$reason;
@@ -972,9 +975,9 @@ public function reportJobIssue(Request $request,Response $response, array $args)
         // CREATE A SUPPORT TICKET
         $newSupportTicketCreated = $this->file->createJobIssueTicket(
             $userID,    // author
-            7,          // subcategory
+            $issueID,          // subcategory
             $message,   // authorDesc
-            "HOMEOWNER#".$userID." SUBMITTED A JOB ISSUE - WORKER NO SHOW", // systemDesc
+            "HOMEOWNER#".$userID.$systemMessage, // systemDesc
             0,          // has images
             $order_id   // orderID
         );
@@ -994,9 +997,10 @@ public function reportJobIssue(Request $request,Response $response, array $args)
     // Return information needed for personal info page
     return $this->customResponse->is200Response($response,  $formData);
 
-    // For debugging
+    // // For debugging
     // return $this->customResponse->is200Response($response,  $userID );
     // return $this->customResponse->is200Response($response,  "This route works");
+    // return $this->customResponse->is200Response($response,  $args['type']);
 }
 
 
