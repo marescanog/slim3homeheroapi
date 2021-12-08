@@ -1390,9 +1390,51 @@ public function updatePostSchedule($post_id, $preferred_date_time){
         }
 }
 
-    
 
+public function completeCashPayment($order_id){
+        try {
 
+            date_default_timezone_set('Asia/Singapore');
+            $date = date('Y-m-d H:i:s');
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "UPDATE bill b 
+            SET 
+            b.bill_status_id = 2, 
+            date_time_completion_paid = :currentDate
+            WHERE b.job_order_id = :orderID;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':orderID', $order_id);
+                $stmt->bindparam(':currentDate', $date);
+                $result = $stmt->execute();
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
 
 
 

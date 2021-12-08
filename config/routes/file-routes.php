@@ -44,5 +44,8 @@ $app->group("/homeowner",function() use ($app){
 
     // This updates the schedule of an existing POST
     $app->post("/update-schedule/{id}","FileController:updateSchedule");
+
+    // This updates bill to confirm paid
+    $app->post("/confirm-payment/{orderid}","FileController:confirmPayment");
 });
 
