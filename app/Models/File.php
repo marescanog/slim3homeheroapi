@@ -1174,59 +1174,143 @@ public function cancelOrder_DuplicatePost(
 
 
 
+public function checkJobOrderIssues($order_id)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "SELECT ji.job_order_id, ji.support_ticket_id, st.issue_id, stsub.subcategory, st.status, ststat.status, st.assigned_agent, st.last_updated_on, st.author_Description 
+        FROM job_order_issues ji, support_ticket st, support_ticket_subcategory stsub, support_ticket_status ststat
+        WHERE job_order_id = :jobOrderID 
+        AND ji.support_ticket_id = st.id
+        AND st.issue_id = stsub.id
+        AND st.status = ststat.id
+        AND ji.is_deleted = 0;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':jobOrderID', $order_id);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+        $stmt = null;
+        $db = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 
-    // @desc    Adds a user and a homeowner to the database
-    // @params  phone number, first name, last name
-    // @returns a Model Response object with the attributes "success" and "data"
-    //          sucess value is true when PDO is successful and false on failure
-    //          data value is
-    // public function createHomewner($first_name, $last_name, $phone_number, $password){
 
-    //     // Create Password Hash
-    //     $hashed_pass = password_hash($password, PASSWORD_DEFAULT);
 
-    //     try{
+
+
+    public function getSupportTicketLastAction($support_ticket_ID)
+    {
+        try {
+
+            $result = "";
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT t.id, t.action_taken, a.action, t.system_generated_description, t.action_date
+            FROM ticket_actions t, action_items a
+            WHERE t.support_ticket = :supportTicketID
+            AND t.action_taken = a.id
+            ORDER BY t.id DESC;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':supportTicketID', $support_ticket_ID);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+            
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // public function template()
+    // {
+    //     try {
+
     //         $db = new DB();
     //         $conn = $db->connect();
 
-    //         // CREATE query
-    //         $sql = "BEGIN;
-    //                 INSERT INTO hh_user(user_type_id, first_name, last_name, phone_no, password) 
-    //                     values(:utypeid,:fname,:lname,:phone,:pass);
-    //                 INSERT INTO ".$this->table." (id) VALUES (LAST_INSERT_ID());
-    //                 COMMIT;
-    //                 ";
-            
-    //         // Prepare statement
-    //         $stmt =  $conn->prepare($sql);
-    //         $utypeID = 1;
-    //         // Only fetch if prepare succeeded
-    //         if ($stmt !== false) {
-    //             $stmt->bindparam(':utypeid', $utypeID);
-    //             $stmt->bindparam(':fname', $first_name);
-    //             $stmt->bindparam(':lname', $last_name);
-    //             $stmt->bindparam(':phone', $phone_number);
-    //             $stmt->bindparam(':pass', $hashed_pass);
-    //             $result = $stmt->execute();
 
-    //         }
-    //         $stmt=null;
-    //         $db=null;
+    //         $stmt = null;
+    //         $db = null;
 
     //         $ModelResponse =  array(
-    //             "success"=>true,
-    //             "data"=>$result
+    //             "success" => true,
+    //             "data" => $result
     //         );
 
     //         return $ModelResponse;
-
     //     } catch (\PDOException $e) {
 
     //         $ModelResponse =  array(
-    //             "success"=>false,
-    //             "data"=>$e->getMessage()
+    //             "success" => false,
+    //             "data" => $e->getMessage()
     //         );
 
     //         return $ModelResponse;

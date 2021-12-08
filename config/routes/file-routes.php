@@ -33,5 +33,11 @@ $app->group("/homeowner",function() use ($app){
     
     // When a job order has expired and the worker did not start, this route allows the user to cancel the job order and repost another one
     $app->post("/cancel-repost-order/{id}", "FileController:cancelRepostOrder");
+
+    // Check if a job order already has a support ticket. Returns Suppport ticket info if true and false if none
+    $app->get("/has-job-issue/{id}", "FileController:hasJobIssue");
+
+    // When a job order has expired and the worker did not start, this route allows the user to cancel the job order and repost another one
+    $app->post("/report-job-issue/{id}", "FileController:reportJobIssue");
 });
 
