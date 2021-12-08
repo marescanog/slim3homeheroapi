@@ -724,6 +724,127 @@ public function cancelJobOrder(Request $request,Response $response, array $args)
 }
 
 
+// This function is for when the worker does not start the job order and never starts
+// So the User can cancel and repost the job post
+public function cancelRepostOrder(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Check if empty
+    $this->validator->validate($request,[
+        // Check if empty
+        "date"=>v::notEmpty(),
+        "time"=>v::notEmpty()
+    ]);
+
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // Check if date time
+    $this->validator->validate($request,[
+        // Check if empty
+        "date"=>v::date(),
+        "time"=>v::time()
+    ]);
+
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // Error Handling
+
+    // GET NECESSARY INFORMATION FOR CANCELLING THE POST & Validation
+    $order_id = $args['id']; 
+    $reason = CustomRequestHandler::getParam($request,"cancellation_reason");
+    $date = CustomRequestHandler::getParam($request,"date");
+    $time = CustomRequestHandler::getParam($request,"time");
+    $preferred_date_time = $date.' '.$time;
+
+    // GET THE USER'S ORDER DATA
+    $orderData = $this->file->getJobOrderUserID($order_id);
+    // Error handling
+    if( $orderData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
+    }
+    if( $orderData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Order not found") );
+    }
+    if( $orderData['data']['homeowner_id'] != $userID){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+    }
+
+    // // GET THE USER'S POST DATA
+    $post_id = $orderData['data']['job_post_id'];
+    $postData = $this->file->getSingleJobPost( $post_id);
+    // Error handling
+    if( $postData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $postData['data']) );
+    }
+    if( $postData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Post not found") );
+    }
+
+    // Extract Values from post data
+    $home_id = $postData['data']['home_id'];
+    $job_size_id = $postData['data']['job_size_id'];
+    $required_expertise_id = $postData['data']['required_expertise_id'];
+    $job_description = $postData['data']['job_description'];
+    $rate_offer = $postData['data']['rate_offer'];  
+    $isExactSchedule = $postData['data']['is_exact_schedule'];
+    $rate_type_id = $postData['data']['rate_type_id']; 
+    $project_name = $postData['data']['job_post_name'];
+
+    $systemGenerated = "Homehero did not show up for the scheduled job order.";
+    if($reason != "" && $reason != null){
+        $systemGenerated = $systemGenerated." Additional Details: ".$reason;
+    }
+
+    $result = "";
+    // CANCEL & REPOST
+    $result = $this->file->cancelOrder_DuplicatePost(
+        $order_id, //
+        $systemGenerated, //
+        $userID, //
+        $home_id, 
+        $job_size_id, 
+        $required_expertise_id,
+        $job_description, 
+        $rate_offer,   
+        $isExactSchedule,
+        $rate_type_id, 
+        $preferred_date_time, 
+        $project_name
+    );
+
+    // Error handling
+    if(  isset($result['success']) && $result['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $result['data']) );
+    }
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response, $result);
+
+    // // For Debugging Purposes
+    // return $this->customResponse->is200Response($response,  $postData );
+    // return $this->customResponse->is200Response($response,  $post_id );
+    // return $this->customResponse->is200Response($response,  $orderData );
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
 
 
 
@@ -732,6 +853,27 @@ public function cancelJobOrder(Request $request,Response $response, array $args)
 
 
 
+
+
+
+
+
+// public function templateQuickGrab(Request $request,Response $response){
+//     // Get the bearer token from the Auth header
+//     $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+//     // Catch the response, on success it is an ID, on fail it has status and message
+//     $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+//     // Error handling
+//     if(is_array( $userID) && array_key_exists("status", $userID)){
+//         return $this->customResponse->is401Response($response, $userID);
+//     }
+
+//     // Return information needed for personal info page
+//     return $this->customResponse->is200Response($response,  $userID );
+//     return $this->customResponse->is200Response($response,  "This route works");
+// }
 
 
 

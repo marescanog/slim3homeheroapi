@@ -30,6 +30,8 @@ $app->group("/homeowner",function() use ($app){
 
     // This route cancels a user's job order through soft delete
     $app->post("/cancel-order/{id}", "FileController:cancelJobOrder");
-
+    
+    // When a job order has expired and the worker did not start, this route allows the user to cancel the job order and repost another one
+    $app->post("/cancel-repost-order/{id}", "FileController:cancelRepostOrder");
 });
 

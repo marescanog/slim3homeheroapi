@@ -477,7 +477,7 @@ class File
             $conn = $db->connect();
 
             // CREATE query
-            $sql = "SELECT jp.id, jp.home_id, CONCAT(h.street_no,' ', h.street_name, ', ', b.barangay_name, ', ', c.city_name,' city') as `complete_address`,  jp.job_size_id, jos.job_order_size, jp.required_expertise_id, pt.type as `project_type`, e.id as `expertise_id`, e.expertise, jp.job_post_status_id, jp.job_description, jp.rate_offer, jp.rate_type_id, rt.type as `rate_type`, jp.preferred_date_time, jp.job_post_name, jp.cancellation_reason, jp.date_time_closed, jp.created_on, jp.homeowner_id
+            $sql = "SELECT jp.id, jp.home_id, CONCAT(h.street_no,' ', h.street_name, ', ', b.barangay_name, ', ', c.city_name,' city') as `complete_address`,  jp.job_size_id, jos.job_order_size, jp.required_expertise_id, pt.type as `project_type`, e.id as `expertise_id`, e.expertise, jp.job_post_status_id, jp.job_description, jp.rate_offer, jp.rate_type_id, rt.type as `rate_type`, jp.preferred_date_time, jp.job_post_name, jp.cancellation_reason, jp.date_time_closed, jp.created_on, jp.homeowner_id, jp.is_exact_schedule
             FROM `job_post` jp, home h, barangay b, city c, job_order_size jos, project_type pt, expertise e, rate_type rt
             WHERE
             jp.home_id = h.id
@@ -965,7 +965,7 @@ public function getJobOrderUserID($jobOrderID){
         $conn = $db->connect();
 
         // CREATE query
-        $sql = "SELECT jo.id, jo.homeowner_id     
+        $sql = "SELECT jo.id, jo.homeowner_id, jo.job_post_id   
         FROM job_order jo
         WHERE jo.id = :jobOrderID";
 
@@ -1063,7 +1063,112 @@ public function cancelJobOrder($jobOrderID, $reason, $userID){
 
 
 
+public function cancelOrder_DuplicatePost(
+    $jobOrderID, 
+    $reason, 
+    $userID,
+    $home_id, 
+    $job_size_id, 
+    $required_expertise_id,
+    $job_description, 
+    $rate_offer,   
+    $isExactSchedule,
+    $rate_type_id, 
+    $preferred_date_time, 
+    $project_name
+){
+    try{
+        if ( $jobOrderID == null){
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>"SQL Error: Job order ID not specified."
+            );
+            return $ModelResponse;
+        }
 
+        date_default_timezone_set('Asia/Singapore');
+        $date = date('Y-m-d H:i:s');
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "
+        SET @@session.time_zone = '+08:00';
+        BEGIN;
+        UPDATE job_order jo 
+        SET 
+        jo.job_order_status_id = 3, 
+        jo.date_time_closed = :currentTime, 
+        jo.order_cancellation_reason =  :reason,
+        jo.cancelled_by =  :userID
+        WHERE jo.id = :jobOrderID;
+
+        INSERT INTO job_post (homeowner_id, home_id, job_size_id, required_expertise_id, job_post_status_id, job_description, rate_offer, rate_type_id, is_exact_schedule, preferred_date_time, job_post_name)
+        VALUES (:userID, :homeID, :jobSize, :expert, 1, :jobdesc, :rateoffer, :ratetype, :isexact, :prefdateTime, :jobPostName);
+        COMMIT;
+        ";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':jobOrderID', $jobOrderID);
+            $stmt->bindparam(':currentTime',  $date);
+            $stmt->bindparam(':reason', $reason);
+            $stmt->bindparam(':userID', $userID);
+            $stmt->bindparam(':userID', $userID );
+            $stmt->bindparam(':homeID', $home_id);
+            $stmt->bindparam(':jobSize', $job_size_id );
+            $stmt->bindparam(':expert', $required_expertise_id );
+            $stmt->bindparam(':jobdesc',  $job_description );
+            $stmt->bindparam(':rateoffer',$rate_offer );
+            $stmt->bindparam(':ratetype', $rate_type_id );
+            $stmt->bindparam(':isexact', $isExactSchedule );
+            $stmt->bindparam(':prefdateTime', $preferred_date_time );
+            $stmt->bindparam(':jobPostName', $project_name );
+            $result = $stmt->execute();
+        }
+        $stmt=null;
+        $db=null;
+
+        // // For debugging purposes
+        // $result = [];
+        // $result['jobOrder_id'] = $jobOrderID;
+        // $result['date'] = $date;
+        // $result['reason'] = $reason;
+        // $result['userID'] = $userID;
+        // //
+        // $result['home_id'] = $home_id;
+        // $result['job_size_id'] = $job_size_id ;
+        // $result['required_expertise_id'] = $required_expertise_id;
+        // $result['job_description'] = $job_description ;
+        // $result['rate_offer'] = $rate_offer;
+        // $result['rate_type_id'] = $rate_type_id;
+        // $result['isExactSchedule'] = $isExactSchedule;
+        // $result['preferred_date_time'] = $preferred_date_time ;
+        // $result['project_name'] = $project_name;
+
+        // For debugging purposes
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 
