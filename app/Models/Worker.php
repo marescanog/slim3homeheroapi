@@ -864,7 +864,12 @@ class Worker
             if ($preference !== null) {
                 $sql = "UPDATE worker SET has_schedule_preference = :pref WHERE id = :userID;";
             } else {
-                $sql = "SELECT id, has_schedule_preference FROM `worker` WHERE id = :userID;";
+                // $sql = "SELECT id, has_schedule_preference FROM `worker` WHERE id = :userID;";
+
+                $sql = "SELECT w.id, w.has_schedule_preference, w.lead_time, w.notice_time, s.is_monday_off, s.monday_start_time, s.monday_end_time, s.is_tuesday_off, s.tuesday_start_time, s.tuesday_end_time, s.is_wednesday_off, s.wednesday_start_time, s.wednesday_end_time, s.is_thursday_off, s.thursday_start_time, s.thursday_end_time, s.is_friday_off, s.friday_start_time, s.friday_end_time, s.is_saturday_off, s.saturday_start_time, s.saturday_end_time, s.is_sunday_off, s.sunday_start_time, s.sunday_end_time
+                FROM worker w, schedule s
+                WHERE w.id = :userID
+                AND w.id = s.id;";
             }
 
             // Prepare statement
@@ -1400,4 +1405,158 @@ class Worker
             return $ModelResponse;
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Dec 10
+// @desc   save worker's specific schedule
+public function specific_worker_schedule_preference(
+    $userID, $sched_pref,
+    $e_Fri, $e_Mon, $e_Sat, $e_Sun, $e_Thu, $e_Tue, $e_Wed,
+    $s_Fri, $s_Mon, $s_Sat, $s_Sun, $s_Thu, $s_Tue, $s_Wed,
+    $d_Fri, $d_Mon, $d_Sat, $d_Sun, $d_Thu, $d_Tue, $d_Wed,
+    $lead_time, $notice_time
+){
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "BEGIN;
+
+        UPDATE schedule s SET 
+
+        s.is_monday_off = :dMon,
+        s.monday_start_time = :sMon,
+        s.monday_end_time = :eMon,
+
+        s.is_tuesday_off = :dTue,
+        s.tuesday_start_time = :sTue,
+        s.tuesday_end_time = :eTue,
+
+        s.is_wednesday_off = :dWed,
+        s.wednesday_start_time = :sWed,
+        s.wednesday_end_time = :eWed,
+
+        s.is_thursday_off = :dThu,
+        s.thursday_start_time = :sThu,
+        s.thursday_end_time = :eThu,
+
+        s.is_friday_off = :dFri,
+        s.friday_start_time = :sFri,
+        s.friday_end_time = :eFri,
+
+        s.is_saturday_off = :dSat,
+        s.saturday_start_time = :sSat,
+        s.saturday_end_time = :eSat,
+
+        s.is_sunday_off = :dSun,
+        s.sunday_start_time = :sSun,
+        s.sunday_end_time = :eSun
+
+        WHERE s.id = :userID;
+
+        UPDATE worker w SET w.has_schedule_preference = :schedPref,
+        w.lead_Time = :lTime,
+        w.notice_Time = :nTime
+        WHERE w.id = :userID2;
+
+        COMMIT;
+        ";
+
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+
+            $stmt->bindparam(':dMon',  $d_Mon);
+            $stmt->bindparam(':sMon',  $s_Mon);
+            $stmt->bindparam(':eMon',  $e_Mon);
+
+            $stmt->bindparam(':dTue',  $d_Tue);
+            $stmt->bindparam(':sTue',  $s_Tue);
+            $stmt->bindparam(':eTue',  $e_Tue);
+
+            $stmt->bindparam(':dWed',  $d_Wed);
+            $stmt->bindparam(':sWed',  $s_Wed);
+            $stmt->bindparam(':eWed',  $e_Wed);
+
+            $stmt->bindparam(':dThu',  $d_Thu);
+            $stmt->bindparam(':sThu',  $s_Thu);
+            $stmt->bindparam(':eThu',  $e_Thu);
+
+            $stmt->bindparam(':dFri',  $d_Fri);
+            $stmt->bindparam(':sFri',  $s_Fri);
+            $stmt->bindparam(':eFri',  $e_Fri);
+
+            $stmt->bindparam(':dSat',  $d_Sat);
+            $stmt->bindparam(':sSat',  $s_Sat);
+            $stmt->bindparam(':eSat',  $e_Sat);
+
+            $stmt->bindparam(':dSun',  $d_Sun);
+            $stmt->bindparam(':sSun',  $s_Sun);
+            $stmt->bindparam(':eSun',  $e_Sun);
+
+            $stmt->bindparam(':userID', $userID);
+
+            $stmt->bindparam(':schedPref', $sched_pref);
+            $stmt->bindparam(':lTime', $lead_time);
+            $stmt->bindparam(':nTime', $notice_time);
+            $stmt->bindparam(':userID2', $userID);
+            
+            $result = $stmt->execute();
+        }
+
+        $stmt = null;
+        $db = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

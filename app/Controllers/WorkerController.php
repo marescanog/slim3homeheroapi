@@ -436,9 +436,47 @@ class WorkerController
          if($result['success'] == false){
              return $this->customResponse->is500Response($response, $result['data']);
          }
+
+         $data = $result['data'];
+
+         $formattedData = [];
+         $formattedData["id"] = $data["id"];
+         $formattedData["has_schedule_preference"] = $data["has_schedule_preference"];
+
+         $scheduleData = [];
+         $scheduleData["id"] = $data["id"];
+         $scheduleData["is_monday_off"] = $data["is_monday_off"];
+         $scheduleData["monday_start_time"] = $data["monday_start_time"];
+         $scheduleData["monday_end_time"] = $data["monday_end_time"];
+         $scheduleData["is_tuesday_off"] = $data["is_tuesday_off"];
+         $scheduleData["tuesday_start_time"] = $data["tuesday_start_time"];
+         $scheduleData["tuesday_end_time"] = $data["tuesday_end_time"];
+         $scheduleData["is_wednesday_off"] = $data["is_wednesday_off"];
+         $scheduleData["wednesday_start_time"] = $data["wednesday_start_time"];
+         $scheduleData["wednesday_end_time"] = $data["wednesday_end_time"];
+         $scheduleData["is_thursday_off"] = $data["is_thursday_off"];
+         $scheduleData["thursday_start_time"] = $data["thursday_start_time"];
+         $scheduleData["thursday_end_time"] = $data["thursday_end_time"];
+         $scheduleData["is_friday_off"] = $data["is_friday_off"];
+         $scheduleData["friday_start_time"] = $data["friday_start_time"];
+         $scheduleData["friday_end_time"] = $data["friday_end_time"];
+         $scheduleData["is_saturday_off"] = $data["is_saturday_off"];
+         $scheduleData["saturday_start_time"] = $data["saturday_start_time"];
+         $scheduleData["saturday_end_time"] = $data["saturday_end_time"];
+         $scheduleData["is_sunday_off"] = $data["is_sunday_off"];
+         $scheduleData["sunday_start_time"] = $data["sunday_start_time"];
+         $scheduleData["sunday_end_time"] = $data["sunday_end_time"];
+
+         $formattedData["schedule_data"] = $scheduleData;
+
+         $lead_notice_time_data = [];
+         $lead_notice_time_data["notice_time"] = $data["notice_time"]; 
+         $lead_notice_time_data["lead_time"] = $data["lead_time"]; 
+
+         $formattedData["lead_notice_time_data"] =  $lead_notice_time_data ;
  
          // Return information needed for personal info page
-         return $this->customResponse->is200Response($response, $result['data'] );
+         return $this->customResponse->is200Response($response, $formattedData  );
     }
 
     // == Hurry mode: Re-review Later - Nov 28
@@ -902,6 +940,122 @@ class WorkerController
     }
 
 
+    // =================================================================================
+    // =================================================================================
+    // =================================================================================
+    //  Dec 10
+
+    public function save_specific_schedule(Request $request,Response $response){
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
+
+
+        // VALIDATE VALUES RECEIVED FROM USER
+        $this->validator->validate($request,[
+            // Check Values Validity and if empty
+            "end-time-Fri"=>v::notEmpty(),
+            "end-time-Mon"=>v::notEmpty(),
+            "end-time-Sat"=>v::notEmpty(),
+            "end-time-Sun"=>v::notEmpty(),
+            "end-time-Thu"=>v::notEmpty(),
+            "end-time-Tue"=>v::notEmpty(),
+            "end-time-Wed"=>v::notEmpty(),
+            "start-time-Fri"=>v::notEmpty(),
+            "start-time-Mon"=>v::notEmpty(),
+            "start-time-Sat"=>v::notEmpty(),
+            "start-time-Sun"=>v::notEmpty(),
+            "start-time-Thu"=>v::notEmpty(),
+            "start-time-Tue"=>v::notEmpty(),
+            "start-time-Wed"=>v::notEmpty(),
+            "lead_time"=>v::notEmpty(),
+            "notice_time"=>v::notEmpty(),
+        ]);
+
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+        $this->validator->validate($request,[
+            // Check Values Validity and if empty
+            "end-time-Fri"=>v::time(),
+            "end-time-Mon"=>v::time(),
+            "end-time-Sat"=>v::time(),
+            "end-time-Sun"=>v::time(),
+            "end-time-Thu"=>v::time(),
+            "end-time-Tue"=>v::time(),
+            "end-time-Wed"=>v::time(),
+            "start-time-Fri"=>v::time(),
+            "start-time-Mon"=>v::time(),
+            "start-time-Sat"=>v::time(),
+            "start-time-Sun"=>v::time(),
+            "start-time-Thu"=>v::time(),
+            "start-time-Tue"=>v::time(),
+            "start-time-Wed"=>v::time(),
+        ]);
+
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+        // Grab value & set values
+        $sched_pref = 1;
+        $e_Fri = CustomRequestHandler::getParam($request,"end-time-Fri");
+        $e_Mon = CustomRequestHandler::getParam($request,"end-time-Mon");
+        $e_Sat = CustomRequestHandler::getParam($request,"end-time-Sat");
+        $e_Sun = CustomRequestHandler::getParam($request,"end-time-Sun");
+        $e_Thu = CustomRequestHandler::getParam($request,"end-time-Thu");
+        $e_Tue = CustomRequestHandler::getParam($request,"end-time-Tue");
+        $e_Wed = CustomRequestHandler::getParam($request,"end-time-Wed");
+        $s_Fri = CustomRequestHandler::getParam($request,"start-time-Fri");
+        $s_Mon = CustomRequestHandler::getParam($request,"start-time-Mon");
+        $s_Sat = CustomRequestHandler::getParam($request,"start-time-Sat");
+        $s_Sun = CustomRequestHandler::getParam($request,"start-time-Sun");
+        $s_Thu = CustomRequestHandler::getParam($request,"start-time-Thu");
+        $s_Tue = CustomRequestHandler::getParam($request,"start-time-Tue");
+        $s_Wed = CustomRequestHandler::getParam($request,"start-time-Wed");
+        $d_Fri = CustomRequestHandler::getParam($request,"dayoff-input-Fri");
+        $d_Mon = CustomRequestHandler::getParam($request,"dayoff-input-Mon");
+        $d_Tue = CustomRequestHandler::getParam($request,"dayoff-input-Tue");
+        $d_Wed = CustomRequestHandler::getParam($request,"dayoff-input-Wed");
+        $d_Thu = CustomRequestHandler::getParam($request,"dayoff-input-Thu");
+        $d_Sat = CustomRequestHandler::getParam($request,"dayoff-input-Sat");
+        $d_Sun = CustomRequestHandler::getParam($request,"dayoff-input-Sun");
+        $lead_time = CustomRequestHandler::getParam($request,"lead_time");
+        $notice_time = CustomRequestHandler::getParam($request,"notice_time");
+
+        $result = "";
+        // SAVE VALUES INTO DB
+        $result = $this->worker->specific_worker_schedule_preference($userID, $sched_pref,
+            $e_Fri, $e_Mon, $e_Sat, $e_Sun, $e_Thu, $e_Tue, $e_Wed,
+            $s_Fri, $s_Mon, $s_Sat, $s_Sun, $s_Thu, $s_Tue, $s_Wed,
+            $d_Fri, $d_Mon, $d_Sat, $d_Sun, $d_Thu, $d_Tue, $d_Wed,
+            $lead_time, $notice_time
+        );
+        if($result['success'] == false){
+            return $this->customResponse->is500Response($response, $result['data']);
+        }
+
+        // Return information needed for personal info page
+        return $this->customResponse->is200Response($response,  $result );
+
+        // For Debugging purposes
+        // return $this->customResponse->is200Response($response,  $userID );
+        // return $this->customResponse->is200Response($response,  "This route works");
+    }
 
 
 
