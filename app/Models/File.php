@@ -1749,10 +1749,184 @@ public function getProfilePic($userID)
 
 
 
+public function getTotalJobPosts($userID)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $sql = "SELECT COUNT(*) AS total_job_posts 
+        FROM job_post
+        WHERE homeowner_id = :userID
+        AND is_deleted = 0;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 
 
+public function getTotalCompletedProjects($userID)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $sql = "SELECT COUNT(*) as `total_completed_projects` 
+        FROM job_order jo
+        WHERE jo.homeowner_id = :userID
+        AND jo.is_deleted = 0
+        and jo.job_order_status_id = 2;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+public function getTotalCancelledProjects($userID)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $sql = "SELECT COUNT(*) as `total_cancelled_projects`
+        FROM job_post jp
+        LEFT JOIN job_order jo ON  jp.id =  jo.job_post_id
+        WHERE jp.homeowner_id = :userID
+        AND (jo.job_order_status_id = 3 OR jp.job_post_status_id = 4)";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+public function getMostPostedCategory($userID)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $sql = "SELECT e.expertise, count(jp.id) as totalCount
+        FROM job_post jp, project_type pt, expertise e
+        WHERE homeowner_id = :userID
+        AND jp.required_expertise_id = pt.id
+        AND e.id = pt.expertise
+        GROUP BY e.id
+        ORDER BY totalCount DESC
+        LIMIT 1;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 

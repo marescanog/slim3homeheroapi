@@ -1436,9 +1436,37 @@ public function getAccountSummary(Request $request,Response $response){
         return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $accInfoResult['data']) );
     }
 
+    // Get Total Job Posts Made
+    $totPostResult = $this->file->getTotalJobPosts($userID);
+    if(  $totPostResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $totPostResult['data']) );
+    }
+
+    // Get Total Completed Projects
+    $completedProjResult = $this->file->getTotalCompletedProjects($userID);
+    if(  $completedProjResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $completedProjResult['data']) );
+    }
+
+    // Get Most Posted category
+    $mostPostedCatResult = $this->file->getMostPostedCategory($userID);
+    if(  $mostPostedCatResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $mostPostedCatResult['data']) );
+    } 
+
+    // Get Total Cancelleted projects
+    $cancelledProjResult = $this->file->getTotalCancelledProjects($userID);
+    if(  $cancelledProjResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $cancelledProjResult['data']) );
+    } 
+
     $formData = [];
     $formData['profilePic'] = $profPicResult['data'];
     $formData['accInfo'] = $accInfoResult['data'];
+    $formData['total_job_posts'] = $totPostResult['data']['total_job_posts'];
+    $formData['total_completed_projects'] = $completedProjResult['data']['total_completed_projects'];
+    $formData['most_posted_category'] = $mostPostedCatResult['data'] == false ? "You don't have any posted projects yet" : $mostPostedCatResult['data']['expertise'];
+    $formData['total_cancelled_projects'] =  $cancelledProjResult['data']['total_cancelled_projects'];
 
     // Return information needed for personal info page
     return $this->customResponse->is200Response($response,   $formData );
