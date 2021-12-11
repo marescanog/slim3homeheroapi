@@ -1409,6 +1409,48 @@ public function createBillingIssue(Request $request,Response $response, array $a
 
 
 
+// =============================================================
+// Dec 11
+
+public function getAccountSummary(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Grab Profile Picture
+    $profPicResult = $this->file->getProfilePic($userID);
+    if(   $profPicResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $profPicResult['data']) );
+    }
+
+    // Grab User Information
+    $accInfoResult = $this->file->getAccInfo($userID);
+    if(  $accInfoResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $accInfoResult['data']) );
+    }
+
+    $formData = [];
+    $formData['profilePic'] = $profPicResult['data'];
+    $formData['accInfo'] = $accInfoResult['data'];
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,   $formData );
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
 
 
 

@@ -56,5 +56,10 @@ $app->group("/homeowner",function() use ($app){
 
     // This creates a support ticket for the billing issue
     $app->post("/report-billing-issue/{orderid}","FileController:createBillingIssue");
+
+
+
+    // Get Account Summary
+    $app->get("/get-account-summary","FileController:getAccountSummary");
 });
 
