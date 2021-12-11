@@ -1460,6 +1460,13 @@ public function getAccountSummary(Request $request,Response $response){
         return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $cancelledProjResult['data']) );
     } 
 
+    // GET USER ALL ADDRESS
+    $allAddress = $this->file->getUsersSavedAddresses($userID);
+    // Error handling
+    if(  $allAddress['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $allAddress['data']) );
+    }
+
     $formData = [];
     $formData['profilePic'] = $profPicResult['data'];
     $formData['accInfo'] = $accInfoResult['data'];
@@ -1467,6 +1474,7 @@ public function getAccountSummary(Request $request,Response $response){
     $formData['total_completed_projects'] = $completedProjResult['data']['total_completed_projects'];
     $formData['most_posted_category'] = $mostPostedCatResult['data'] == false ? "You don't have any posted projects yet" : $mostPostedCatResult['data']['expertise'];
     $formData['total_cancelled_projects'] =  $cancelledProjResult['data']['total_cancelled_projects'];
+    $formData['all_addresses'] =  $allAddress['data'];
 
     // Return information needed for personal info page
     return $this->customResponse->is200Response($response,   $formData );
