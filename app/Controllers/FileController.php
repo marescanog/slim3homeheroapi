@@ -1485,6 +1485,99 @@ public function getAccountSummary(Request $request,Response $response){
 }
 
 
+// =========================================================================
+// DEC 11 - NIGHT TIME
+
+
+public function getFormForEditAddress(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // GET NECESSARY INFORMATION FOR Validation
+    $home_id = $args['homeid']; 
+
+    // GET USER SINGLE ADDRESS
+    $singleAddress = $this->file->getSingleAddress($home_id);
+    // Error handling
+    if(  $singleAddress['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $singleAddress['data']) );
+    }
+
+    // VERIFY IF IT IS FOUND
+    if(  $singleAddress['data'] ==  false ){
+        return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "The address cannot be found") );
+    }
+
+    // VERIFY IF IT IS USER'S ADDRESS
+    if(  $singleAddress['data']['homeowner_id'] !==  $userID ){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   "The user does not have access to this address") );
+    }
+
+
+
+    // GET CITIES
+    $cities = $this->file->getCities();
+    // Error handling
+    if($cities['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $cities['data']) );
+    }
+
+    // GET BARANGAY
+    $barangay = $this->file->getBarangays();
+    // Error handling
+    if($barangay['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $barangay['data']) );
+    }
+
+
+    // GET HOMETYPE
+    $hometype = $this->file->getHomeTypes();
+    // Error handling
+    if($hometype['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $hometype['data']) );
+    }
+
+    $formData = [];
+
+    // $formData["defaultHome"] = $defaultHomeID['data'];
+    $formData["home_addr"] = $singleAddress['data'];
+    $formData["cities"] = $cities['data'];
+    $formData["barangays"] = $barangay['data'] ;
+    $formData["hometype"] = $hometype['data'];
+
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response, $formData );
+
+    // For debugging purposes
+    //     return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

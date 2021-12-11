@@ -1934,6 +1934,58 @@ public function getMostPostedCategory($userID)
 
 
 
+// DEC 11 NIGHT TIME
+
+
+public function getSingleAddress($homeID)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $sql = "SELECT h.id, h.street_no, h.street_name, h.barangay_id, h.home_type, hd.homeowner_id, hd.extra_address_info, b.city_id
+        FROM home h, home_details hd, barangay b 
+        WHERE h.id = :homeID
+        AND h.id = hd.home_id
+        AND h.barangay_id = b.id;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':homeID', $homeID);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
+
 
 
 

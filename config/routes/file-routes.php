@@ -61,5 +61,8 @@ $app->group("/homeowner",function() use ($app){
 
     // Get Account Summary
     $app->get("/get-account-summary","FileController:getAccountSummary");
+
+    // Get Address Info
+    $app->get("/populate-edit-address/{homeid}","FileController:getFormForEditAddress");
 });
 
