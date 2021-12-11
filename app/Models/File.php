@@ -2040,6 +2040,65 @@ public function updateAddress($userID, $street_no, $street_name,  $barangay_id, 
 
 
 
+public function deleteAddress($userID, $homeID){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = " 
+        BEGIN;                
+            UPDATE home h SET h.is_deleted = 1 WHERE h.id = :homeID;
+
+            UPDATE home_details hd SET hd.is_deleted = 1
+            WHERE hd.home_id = :homeID2 AND hd.homeowner_id = :userID;
+        COMMIT;
+        ";
+        
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':homeID', $homeID );
+            $stmt->bindparam(':homeID2', $homeID );
+            $stmt->bindparam(':userID', $userID );
+            $result = $stmt->execute();
+        } else {
+            $result = "PDO Error";
+        }
+
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1643,6 +1643,65 @@ public function updateAddress(Request $request,Response $response, array $args){
 
 
 
+public function deleteAddress(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+
+    // Get all necessary parameters
+    // Add Home ID Args
+    $home_id = $args['homeid'];
+
+    // Verify if the home belongs to the user
+    // GET USER SINGLE ADDRESS
+    $singleAddress = $this->file->getSingleAddress($home_id);
+    // Error handling
+    if(  $singleAddress['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $singleAddress['data']) );
+    }
+
+    // VERIFY IF IT IS FOUND
+    if(  $singleAddress['data'] ==  false ){
+        return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "The address cannot be found") );
+    }
+
+    // VERIFY IF IT IS USER'S ADDRESS
+    if(  $singleAddress['data']['homeowner_id'] !==  $userID ){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   "The user does not have access to this address") );
+    }
+
+    $result ="";
+    // DELETE address
+    $result = $this->file->deleteAddress($userID, $home_id );
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
+    }
+
+
+    // // // Return information needed for add project
+    return $this->customResponse->is200Response($response,  $result);
+
+    // FOR DEBUGGING PURPOSES
+    //    return $this->customResponse->is200Response($response,  $userID);
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+
+
+
+
 
 
 
