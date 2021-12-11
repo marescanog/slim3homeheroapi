@@ -2090,9 +2090,51 @@ public function deleteAddress($userID, $homeID){
 }
 
 
+// ===================================================
+// DEC 12
 
 
+public function updateUserName($userID, $firstName, $lastName){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
 
+        // CREATE query
+        $sql = "UPDATE hh_user hh SET hh.first_name = :fname, hh.last_name = :lname WHERE hh.user_id = :userID;";
+        
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':fname', $firstName );
+            $stmt->bindparam(':lname', $lastName );
+            $stmt->bindparam(':userID', $userID );
+            $result = $stmt->execute();
+        } else {
+            $result = "PDO Error";
+        }
+
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 

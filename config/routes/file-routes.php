@@ -70,5 +70,8 @@ $app->group("/homeowner",function() use ($app){
 
     // Update Address Info
     $app->post("/delete-address/{homeid}","FileController:deleteAddress");
+
+    // Update Name
+    $app->post("/profile-update-name","FileController:updateName");
 });
 

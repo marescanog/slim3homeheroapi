@@ -1700,6 +1700,60 @@ public function deleteAddress(Request $request,Response $response, array $args){
 
 
 
+// -----------------------------
+// DEC 12
+
+
+public function updateName(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Validate Parameters and check if empty
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "first_name"=>v::notEmpty(),
+            "last_name"=>v::notEmpty()
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+    
+    // Grab parameters
+    $first_name = CustomRequestHandler::getParam($request,"first_name");
+    $last_name = CustomRequestHandler::getParam($request,"last_name");
+
+    $result ="";
+    // Update Name
+    $result = $this->file->updateUserName($userID, $first_name, $last_name);
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
+    }
+
+
+    // // // // Return information needed for add project
+    return $this->customResponse->is200Response($response,  $result);
+
+    // FOR DEBUGGING PURPOSES
+    //    return $this->customResponse->is200Response($response,  $userID);
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
 
 
 
