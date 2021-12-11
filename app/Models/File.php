@@ -527,7 +527,7 @@ class File
             $conn = $db->connect();
 
             // CREATE query
-            $sql = "SELECT jo.id,jo.created_on as `assigned_on`, jo.worker_id,  CONCAT(u.first_name, ' ', u.last_name) as `assigned_worker`, jo.date_time_start, jo.date_time_closed
+            $sql = "SELECT jo.id,jo.created_on as `assigned_on`, jo.worker_id,  CONCAT(u.first_name, ' ', u.last_name) as `assigned_worker`, jo.date_time_start, jo.date_time_closed, jo.cancelled_by, jo.homeowner_id, jo.order_cancellation_reason 
             FROM `job_post` jp, `job_order` jo
             JOIN hh_user u ON jo.worker_id = u.user_id
             WHERE jo.job_post_id = jp.id
