@@ -64,5 +64,8 @@ $app->group("/homeowner",function() use ($app){
 
     // Get Address Info
     $app->get("/populate-edit-address/{homeid}","FileController:getFormForEditAddress");
+
+    // Update Address Info
+    $app->post("/update-address/{homeid}","FileController:updateAddress");
 });
 

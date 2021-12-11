@@ -1567,7 +1567,77 @@ public function getFormForEditAddress(Request $request,Response $response, array
 
 
 
+public function updateAddress(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
 
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    //  Validate Data
+    // Check if empty
+    $this->validator->validate($request,[
+        // Check if empty
+        "street_no"=>v::notEmpty(),
+        "street_name"=>v::notEmpty(),
+        "barangay_id"=>v::notEmpty(),
+        "home_type"=>v::notEmpty(),
+    ]);
+
+    // Return Validation Errors
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+    }
+
+    // Get all necessary parameters
+    $street_no = CustomRequestHandler::getParam($request,"street_no");
+    $street_name = CustomRequestHandler::getParam($request,"street_name");
+    $barangay_id = CustomRequestHandler::getParam($request,"barangay_id");
+    $home_type = CustomRequestHandler::getParam($request,"home_type");
+    $extra_address_info = CustomRequestHandler::getParam($request,"extra_address_info");
+    // Add Home ID Args
+    $home_id = $args['homeid'];
+
+    // Verify if the home belongs to the user
+    // GET USER SINGLE ADDRESS
+    $singleAddress = $this->file->getSingleAddress($home_id);
+    // Error handling
+    if(  $singleAddress['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $singleAddress['data']) );
+    }
+
+    // VERIFY IF IT IS FOUND
+    if(  $singleAddress['data'] ==  false ){
+        return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "The address cannot be found") );
+    }
+
+    // VERIFY IF IT IS USER'S ADDRESS
+    if(  $singleAddress['data']['homeowner_id'] !==  $userID ){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   "The user does not have access to this address") );
+    }
+
+    // Update address
+    $result = $this->file->updateAddress($userID, $street_no, $street_name,  $barangay_id,$home_type, $extra_address_info, $home_id );
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
+    }
+
+
+    // // Return information needed for add project
+    return $this->customResponse->is200Response($response,  $result);
+
+    // FOR DEBUGGING PURPOSES
+    //    return $this->customResponse->is200Response($response,  $userID);
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
 
 
 

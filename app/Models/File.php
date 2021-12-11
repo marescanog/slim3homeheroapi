@@ -1981,7 +1981,59 @@ public function getSingleAddress($homeID)
 
 
 
+public function updateAddress($userID, $street_no, $street_name,  $barangay_id,  $home_type, $extra_address_info, $homeID ){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
 
+        // CREATE query
+        $sql = " 
+        BEGIN;                
+            UPDATE home h SET street_no = :streetNo, street_name = :streetName, barangay_id = :barangayID, home_type = :homeType WHERE h.id = :homeID;
+
+            UPDATE home_details hd SET hd.extra_address_info = :extraAdd
+            WHERE hd.home_id = :homeID2 AND hd.homeowner_id = :userID;
+        COMMIT;
+        ";
+        
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':streetNo', $street_no );
+            $stmt->bindparam(':streetName', $street_name);
+            $stmt->bindparam(':barangayID', $barangay_id );
+            $stmt->bindparam(':homeType', $home_type );
+            $stmt->bindparam(':homeID', $homeID );
+            $stmt->bindparam(':extraAdd', $extra_address_info );
+            $stmt->bindparam(':homeID2', $homeID );
+            $stmt->bindparam(':userID', $userID );
+            $result = $stmt->execute();
+        } else {
+            $result = "PDO Error";
+        }
+
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 
