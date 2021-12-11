@@ -2138,6 +2138,58 @@ public function updateUserName($userID, $firstName, $lastName){
 
 
 
+public function saveProfilePicFileLocation($userID, $file_location){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "BEGIN;
+                    UPDATE profile_pics p SET p.is_current_used = 0, p.is_deleted = 1 WHERE p.user_id = :userID;
+                    INSERT INTO profile_pics (user_id, file_path) VALUES(:userID2, :fpath);
+                COMMIT;
+                ";
+        
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID );
+            $stmt->bindparam(':fpath', $file_location );
+            $stmt->bindparam(':userID2', $userID );
+            $result = $stmt->execute();
+        } else {
+            $result = "PDO Error";
+        }
+
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
 
 
 

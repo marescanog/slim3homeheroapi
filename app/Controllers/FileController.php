@@ -1755,6 +1755,61 @@ public function updateName(Request $request,Response $response){
 
 
 
+public function saveProfilePicLocation(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // ENSURE THAT FILE NAME AND FILE PATH ARE NOT BLANK
+    // Validate Parameters and check if empty
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "file_location"=>v::notEmpty(),
+            "newFileName"=>v::notEmpty()
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+    // GET FILE NAME AND FILE PATH
+    // Grab parameters
+    $file_location = CustomRequestHandler::getParam($request,"file_location");
+    $newFileName = CustomRequestHandler::getParam($request,"newFileName");
+    $filepath = $file_location.$newFileName;
+
+    // Save into Database
+    $result = "";
+    $result = $this->file->saveProfilePicFileLocation($userID, $filepath);
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $filepath );
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+
+
 
 
 

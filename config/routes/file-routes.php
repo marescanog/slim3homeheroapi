@@ -73,5 +73,8 @@ $app->group("/homeowner",function() use ($app){
 
     // Update Name
     $app->post("/profile-update-name","FileController:updateName");
+
+    // Save profile pic location
+    $app->post("/save-profile-pic-location","FileController:saveProfilePicLocation");
 });
 
