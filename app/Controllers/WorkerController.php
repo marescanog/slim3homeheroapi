@@ -887,6 +887,52 @@ class WorkerController
             }
             $data['cities'] =  $citiesString;
 
+            // GET SCHED VALUES FROM DB
+            $sched_result = $this->worker->get_save_worker_schedule_preference($userID);
+            if($sched_result['success'] == false){
+                return $this->customResponse->is500Response($response, $sched_result['data']);
+            }
+
+            $data_sched = $sched_result['data'];
+
+            $formattedData = [];
+            $formattedData["id"] = $data_sched["id"];
+            $formattedData["has_schedule_preference"] = $data_sched["has_schedule_preference"];
+   
+            $scheduleData = [];
+            $scheduleData["id"] = $data_sched["id"];
+            $scheduleData["is_monday_off"] = $data_sched["is_monday_off"];
+            $scheduleData["monday_start_time"] = $data_sched["monday_start_time"];
+            $scheduleData["monday_end_time"] = $data_sched["monday_end_time"];
+            $scheduleData["is_tuesday_off"] = $data_sched["is_tuesday_off"];
+            $scheduleData["tuesday_start_time"] = $data_sched["tuesday_start_time"];
+            $scheduleData["tuesday_end_time"] = $data_sched["tuesday_end_time"];
+            $scheduleData["is_wednesday_off"] = $data_sched["is_wednesday_off"];
+            $scheduleData["wednesday_start_time"] = $data_sched["wednesday_start_time"];
+            $scheduleData["wednesday_end_time"] = $data_sched["wednesday_end_time"];
+            $scheduleData["is_thursday_off"] = $data_sched["is_thursday_off"];
+            $scheduleData["thursday_start_time"] = $data_sched["thursday_start_time"];
+            $scheduleData["thursday_end_time"] = $data_sched["thursday_end_time"];
+            $scheduleData["is_friday_off"] = $data_sched["is_friday_off"];
+            $scheduleData["friday_start_time"] = $data_sched["friday_start_time"];
+            $scheduleData["friday_end_time"] = $data_sched["friday_end_time"];
+            $scheduleData["is_saturday_off"] = $data_sched["is_saturday_off"];
+            $scheduleData["saturday_start_time"] = $data_sched["saturday_start_time"];
+            $scheduleData["saturday_end_time"] = $data_sched["saturday_end_time"];
+            $scheduleData["is_sunday_off"] = $data_sched["is_sunday_off"];
+            $scheduleData["sunday_start_time"] = $data_sched["sunday_start_time"];
+            $scheduleData["sunday_end_time"] = $data_sched["sunday_end_time"];
+   
+            $formattedData["schedule_data"] = $scheduleData;
+   
+            $lead_notice_time_data = [];
+            $lead_notice_time_data["notice_time"] = $data_sched["notice_time"]; 
+            $lead_notice_time_data["lead_time"] = $data_sched["lead_time"]; 
+   
+            $formattedData["lead_notice_time_data"] =  $lead_notice_time_data ;
+
+
+
             // Get list of Certifications
             // <TODO> since we don't have save fature for certifications yet.
             $certificationsList = [];
@@ -905,6 +951,8 @@ class WorkerController
             // $data['booking_lead'] = "1 month/s";
             // $data['notice_lead'] = "3 day/s";
             // $data['cities'] = "Cebu City, mandaue, Talisay";
+             $data['schedule_data'] =  $formattedData['schedule_data'];
+             $data['lead_notice_time_data'] =  $formattedData['lead_notice_time_data'];
 
         // Return information needed for personal info page
         return $this->customResponse->is200Response($response,  $data );
