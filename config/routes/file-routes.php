@@ -77,7 +77,13 @@ $app->group("/homeowner",function() use ($app){
     // Save profile pic location
     $app->post("/save-profile-pic-location","FileController:saveProfilePicLocation");
 
-    // Save profile pic location
+    // Change password
     $app->post("/change-password","FileController:changePassword");
+
+    // VERIFY phone number before changing
+    $app->post("/change-phone-verify","FileController:changePhoneVerify");
+
+    // Update phone number (Verification steps have passed)
+    $app->post("/update-phone-number","FileController:updatePhoneNumber");
 });
 

@@ -1906,6 +1906,132 @@ public function changePassword(Request $request,Response $response){
 
 
 
+public function changePhoneVerify(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+        // make sure phone and password is not empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "phone"=>v::notEmpty(),
+            "phone_pass"=>v::notEmpty()
+        ]);
+
+        // SAVE DATA IN VARIABLES
+        $phone = CustomRequestHandler::getParam($request,"phone");
+        $phone_pass = CustomRequestHandler::getParam($request,"phone_pass");
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Check if user exists in the database via phone number
+        // Get the user object associated with phone number
+        $userObject = $this->user->getUserAccountsByPhone($phone);
+        if($userObject["data"] != false){
+            // there is no user associated with this phone number
+            return $this->customResponse->is400Response($response,  "There is a user associated with this phone number");
+        } 
+
+        // Check if passwords match
+        // Retrieve current password from DB (user object)
+        $userObj = $this->user->getUserByID($userID);
+        // Error handling
+        if(  $userObj['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $userObj['data']) );
+        }
+
+        // Check if current password matches the current password in db
+        $isMatch = password_verify($phone_pass, $userObj['data']['password']);
+        if(!$isMatch){
+            return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "Incorrect password. Please re-enter your current password.") );
+        }
+
+        $result = [];
+        $result["success"] = true;
+        $result["data"] = "You may now proceed with the SMS verification";
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $result );
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+// Only update the phone number once it has gone through initial verification, then SMS verification
+public function updatePhoneNumber(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // make sure phone and password is not empty
+    $this->validator->validate($request,[
+        // Check if empty
+        "phone"=>v::notEmpty()
+    ]);
+
+    // SAVE DATA IN VARIABLES
+    $phone = CustomRequestHandler::getParam($request,"phone");
+
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // Check if user exists in the database via phone number
+    // Get the user object associated with phone number
+    $userObject = $this->user->getUserAccountsByPhone($phone);
+    if($userObject["data"] != false){
+        // there is no user associated with this phone number
+        return $this->customResponse->is400Response($response,  "There is a user associated with this phone number");
+    } 
+
+    // Update the phone number in the database
+    $result = "";
+    $result = $this->user->updateNewPhone($userID, $phone);
+    // Error handling
+    if(   $result['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $result['data']) );
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $result);
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userObject );
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+
+
+
 
 
 
