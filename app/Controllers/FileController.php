@@ -4,6 +4,7 @@
 namespace App\Controllers;
 
 use App\Models\File;
+use App\Models\User;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -17,6 +18,8 @@ class FileController
 
     protected $file;
 
+    protected $user;
+
     protected  $validator;
 
     public function  __construct()
@@ -24,6 +27,8 @@ class FileController
         $this->customResponse = new CustomResponse();
 
         $this->file = new File();
+
+        $this->user = new User();
 
         $this->validator = new Validator();
     }
@@ -1401,6 +1406,508 @@ public function createBillingIssue(Request $request,Response $response, array $a
         // return $this->customResponse->is200Response($response,  "This route works");
         // return $this->customResponse->is200Response($response,  $args['type']);
 }
+
+
+
+
+
+
+
+
+// =============================================================
+// Dec 11
+
+public function getAccountSummary(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Grab Profile Picture
+    $profPicResult = $this->file->getProfilePic($userID);
+    if(   $profPicResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $profPicResult['data']) );
+    }
+
+    // Grab User Information
+    $accInfoResult = $this->file->getAccInfo($userID);
+    if(  $accInfoResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $accInfoResult['data']) );
+    }
+
+    // Get Total Job Posts Made
+    $totPostResult = $this->file->getTotalJobPosts($userID);
+    if(  $totPostResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $totPostResult['data']) );
+    }
+
+    // Get Total Completed Projects
+    $completedProjResult = $this->file->getTotalCompletedProjects($userID);
+    if(  $completedProjResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $completedProjResult['data']) );
+    }
+
+    // Get Most Posted category
+    $mostPostedCatResult = $this->file->getMostPostedCategory($userID);
+    if(  $mostPostedCatResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $mostPostedCatResult['data']) );
+    } 
+
+    // Get Total Cancelleted projects
+    $cancelledProjResult = $this->file->getTotalCancelledProjects($userID);
+    if(  $cancelledProjResult['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $cancelledProjResult['data']) );
+    } 
+
+    // GET USER ALL ADDRESS
+    $allAddress = $this->file->getUsersSavedAddresses($userID);
+    // Error handling
+    if(  $allAddress['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $allAddress['data']) );
+    }
+
+    $formData = [];
+    $formData['profilePic'] = $profPicResult['data'];
+    $formData['accInfo'] = $accInfoResult['data'];
+    $formData['total_job_posts'] = $totPostResult['data']['total_job_posts'];
+    $formData['total_completed_projects'] = $completedProjResult['data']['total_completed_projects'];
+    $formData['most_posted_category'] = $mostPostedCatResult['data'] == false ? "You don't have any posted projects yet" : $mostPostedCatResult['data']['expertise'];
+    $formData['total_cancelled_projects'] =  $cancelledProjResult['data']['total_cancelled_projects'];
+    $formData['all_addresses'] =  $allAddress['data'];
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,   $formData );
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+// =========================================================================
+// DEC 11 - NIGHT TIME
+
+
+public function getFormForEditAddress(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // GET NECESSARY INFORMATION FOR Validation
+    $home_id = $args['homeid']; 
+
+    // GET USER SINGLE ADDRESS
+    $singleAddress = $this->file->getSingleAddress($home_id);
+    // Error handling
+    if(  $singleAddress['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $singleAddress['data']) );
+    }
+
+    // VERIFY IF IT IS FOUND
+    if(  $singleAddress['data'] ==  false ){
+        return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "The address cannot be found") );
+    }
+
+    // VERIFY IF IT IS USER'S ADDRESS
+    if(  $singleAddress['data']['homeowner_id'] !==  $userID ){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   "The user does not have access to this address") );
+    }
+
+
+
+    // GET CITIES
+    $cities = $this->file->getCities();
+    // Error handling
+    if($cities['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $cities['data']) );
+    }
+
+    // GET BARANGAY
+    $barangay = $this->file->getBarangays();
+    // Error handling
+    if($barangay['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $barangay['data']) );
+    }
+
+
+    // GET HOMETYPE
+    $hometype = $this->file->getHomeTypes();
+    // Error handling
+    if($hometype['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $hometype['data']) );
+    }
+
+    $formData = [];
+
+    // $formData["defaultHome"] = $defaultHomeID['data'];
+    $formData["home_addr"] = $singleAddress['data'];
+    $formData["cities"] = $cities['data'];
+    $formData["barangays"] = $barangay['data'] ;
+    $formData["hometype"] = $hometype['data'];
+
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response, $formData );
+
+    // For debugging purposes
+    //     return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+
+public function updateAddress(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    //  Validate Data
+    // Check if empty
+    $this->validator->validate($request,[
+        // Check if empty
+        "street_no"=>v::notEmpty(),
+        "street_name"=>v::notEmpty(),
+        "barangay_id"=>v::notEmpty(),
+        "home_type"=>v::notEmpty(),
+    ]);
+
+    // Return Validation Errors
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+    }
+
+    // Get all necessary parameters
+    $street_no = CustomRequestHandler::getParam($request,"street_no");
+    $street_name = CustomRequestHandler::getParam($request,"street_name");
+    $barangay_id = CustomRequestHandler::getParam($request,"barangay_id");
+    $home_type = CustomRequestHandler::getParam($request,"home_type");
+    $extra_address_info = CustomRequestHandler::getParam($request,"extra_address_info");
+    // Add Home ID Args
+    $home_id = $args['homeid'];
+
+    // Verify if the home belongs to the user
+    // GET USER SINGLE ADDRESS
+    $singleAddress = $this->file->getSingleAddress($home_id);
+    // Error handling
+    if(  $singleAddress['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $singleAddress['data']) );
+    }
+
+    // VERIFY IF IT IS FOUND
+    if(  $singleAddress['data'] ==  false ){
+        return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "The address cannot be found") );
+    }
+
+    // VERIFY IF IT IS USER'S ADDRESS
+    if(  $singleAddress['data']['homeowner_id'] !==  $userID ){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   "The user does not have access to this address") );
+    }
+
+    // Update address
+    $result = $this->file->updateAddress($userID, $street_no, $street_name,  $barangay_id,$home_type, $extra_address_info, $home_id );
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
+    }
+
+
+    // // Return information needed for add project
+    return $this->customResponse->is200Response($response,  $result);
+
+    // FOR DEBUGGING PURPOSES
+    //    return $this->customResponse->is200Response($response,  $userID);
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+
+public function deleteAddress(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+
+    // Get all necessary parameters
+    // Add Home ID Args
+    $home_id = $args['homeid'];
+
+    // Verify if the home belongs to the user
+    // GET USER SINGLE ADDRESS
+    $singleAddress = $this->file->getSingleAddress($home_id);
+    // Error handling
+    if(  $singleAddress['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $singleAddress['data']) );
+    }
+
+    // VERIFY IF IT IS FOUND
+    if(  $singleAddress['data'] ==  false ){
+        return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "The address cannot be found") );
+    }
+
+    // VERIFY IF IT IS USER'S ADDRESS
+    if(  $singleAddress['data']['homeowner_id'] !==  $userID ){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   "The user does not have access to this address") );
+    }
+
+    $result ="";
+    // DELETE address
+    $result = $this->file->deleteAddress($userID, $home_id );
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
+    }
+
+
+    // // // Return information needed for add project
+    return $this->customResponse->is200Response($response,  $result);
+
+    // FOR DEBUGGING PURPOSES
+    //    return $this->customResponse->is200Response($response,  $userID);
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+
+
+// -----------------------------
+// DEC 12
+
+
+public function updateName(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Validate Parameters and check if empty
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "first_name"=>v::notEmpty(),
+            "last_name"=>v::notEmpty()
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+    
+    // Grab parameters
+    $first_name = CustomRequestHandler::getParam($request,"first_name");
+    $last_name = CustomRequestHandler::getParam($request,"last_name");
+
+    $result ="";
+    // Update Name
+    $result = $this->file->updateUserName($userID, $first_name, $last_name);
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
+    }
+
+
+    // // // // Return information needed for add project
+    return $this->customResponse->is200Response($response,  $result);
+
+    // FOR DEBUGGING PURPOSES
+    //    return $this->customResponse->is200Response($response,  $userID);
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+public function saveProfilePicLocation(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // ENSURE THAT FILE NAME AND FILE PATH ARE NOT BLANK
+    // Validate Parameters and check if empty
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "file_location"=>v::notEmpty(),
+            "newFileName"=>v::notEmpty()
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+    // GET FILE NAME AND FILE PATH
+    // Grab parameters
+    $file_location = CustomRequestHandler::getParam($request,"file_location");
+    $newFileName = CustomRequestHandler::getParam($request,"newFileName");
+    $filepath = $file_location.$newFileName;
+
+    // Save into Database
+    $result = "";
+    $result = $this->file->saveProfilePicFileLocation($userID, $filepath);
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $filepath );
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+
+public function changePassword(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // VALIDATE AND MAKE SURE FEILDS ARE NOT BLANK
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "current_pass"=>v::notEmpty(),
+            "new_pass"=>v::notEmpty(),
+            "confirm_pass"=>v::notEmpty()
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+        // Check new pass if above 8 characters
+        $this->validator->validate($request,[
+            // Check if empty
+            "new_pass"=>v::length(8, null),
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+        // Get the Values
+        // Grab parameters
+        $current_pass = CustomRequestHandler::getParam($request,"current_pass");
+        $new_pass = CustomRequestHandler::getParam($request,"new_pass");
+        $confirm_pass = CustomRequestHandler::getParam($request,"confirm_pass");
+
+        // Check if new pass matches confirm pass
+        if($new_pass != $confirm_pass){
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, "New password must match the confirm password field."));
+        }
+
+        // Retrieve current password from DB (user object)
+        $userObj = $this->user->getUserByID($userID);
+        // Error handling
+        if(  $userObj['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $userObj['data']) );
+        }
+
+        // Check if current password matches the current password in db
+        $isMatch = password_verify($current_pass, $userObj['data']['password']);
+        if(!$isMatch){
+            return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "Incorrect password. Please re-enter your current password.") );
+        }
+
+        // Check if new pass matches old pass, if it does return new password cannot be the same as old pass
+        $isOld = password_verify($new_pass, $userObj['data']['password']);
+        if($isOld){
+            return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "Your new password cannot be the same as your old password.") );
+        }
+        
+        // Save new password
+        $result = "";
+        $result = $this->user->changePassword($userID, $new_pass);
+        if( $result['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $result['data']) );
+        }
+
+
+    // Return information needed for personal info page
+     return $this->customResponse->is200Response($response,  $result);
+    
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  $isMatch);
+    // return $this->customResponse->is200Response($response,  $userObj);
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+
 
 
 

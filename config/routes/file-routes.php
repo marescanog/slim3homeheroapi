@@ -56,5 +56,28 @@ $app->group("/homeowner",function() use ($app){
 
     // This creates a support ticket for the billing issue
     $app->post("/report-billing-issue/{orderid}","FileController:createBillingIssue");
+
+
+
+    // Get Account Summary
+    $app->get("/get-account-summary","FileController:getAccountSummary");
+
+    // Get Address Info
+    $app->get("/populate-edit-address/{homeid}","FileController:getFormForEditAddress");
+
+    // Update Address Info
+    $app->post("/update-address/{homeid}","FileController:updateAddress");
+
+    // Update Address Info
+    $app->post("/delete-address/{homeid}","FileController:deleteAddress");
+
+    // Update Name
+    $app->post("/profile-update-name","FileController:updateName");
+
+    // Save profile pic location
+    $app->post("/save-profile-pic-location","FileController:saveProfilePicLocation");
+
+    // Save profile pic location
+    $app->post("/change-password","FileController:changePassword");
 });
 
