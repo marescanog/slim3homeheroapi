@@ -2197,7 +2197,7 @@ public function getAllWorkers(){
         // CREATE query
         // $sql = "SELECT * FROM worker";
 
-        $sql = "SELECT h.user_id, h.first_name, h.last_name, wr.default_rate, wr.default_rate_type, SUM(if(jo.job_order_status_id = 2, 1, 0)) as 'completed jobs', AVG((r.overall_quality+r.professionalism+r.reliability+r.punctuality)/4) as `rating average`, count(r.job_order_id) as `total ratings`
+        $sql = "SELECT h.user_id, h.first_name, h.last_name, wr.default_rate, wr.default_rate_type, SUM(if(jo.job_order_status_id = 2, 1, 0)) as 'completed_jobs', AVG((r.overall_quality+r.professionalism+r.reliability+r.punctuality)/4) as `rating_average`, count(r.job_order_id) as `total_ratings`
         FROM hh_user h
         LEFT JOIN job_order jo ON h.user_id = jo.worker_id
         LEFT JOIN  rating r ON jo.id = r.job_order_id
