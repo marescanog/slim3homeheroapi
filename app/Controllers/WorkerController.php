@@ -363,14 +363,20 @@ class WorkerController
         return $this->customResponse->is200Response($response,  $ModelResponse);
     }
 
-
-    // 4. Get Past Job Orders (Restrict by worker id/ only logged in workers postings & isCompleted)
-    //    - One version includes cancelled job orders
-    //    - Another version only includes successfully billed job orders
-    // 5. Get Reviews (Restrict by worker id/ only logged in workers info)
     // 6. PUT Update NBI Info - Will be handled by Worker registration Route (So just use reuse the route used in registration)
     // 7. POST add Licesce & Certificate
+
     // 8. PUT/POST add Introduction
+    // This function updates the introduction field of the worker
+    // it is referenced by /add-introduction route
+    // @param Request & Response @returns formatted response object with status & message
+    public function addIntroduction(Request $request,Response $response, array $args){
+
+
+        $ModelResponse = $this->worker->addIntroduction($args['id']);
+        
+        return $this->customResponse->is200Response($response,  $ModelResponse);
+    }
     // 9. PUT update information - uses a combination of functions from models
     // 10. PUT save featured projects
     // 11. PUT/POST add project photos (two routes are needed, one route is saving to the google cloud storage- currently there's only 1 route for save one photo and not multiple photos. The multiple photos is still pending, the other route will be your code to save information to DB)

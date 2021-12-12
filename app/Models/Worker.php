@@ -249,7 +249,7 @@ class Worker
                         // add new file entry
                         $full_sql = $full_sql . $sql_insert_files;
 
-                        $sql_insert_NBI_file_and_info_junction_with_OLD_nbiID = "INSERT INTO `NBI_files` (`NBI_id`, `file_id`) VALUES (:oldNBIID, @nbiFileNumber);";
+                        $sql_insert_NBI_file_and_info_junction_with_OLD_nbiID = "INSERT INTO `NBI_files` (`NBI_id`, `file_id`) VALUES (:oldNBIID, @nbiFileNumber );";
 
                         // Link new entries into the junction table
                         $full_sql = $full_sql . $sql_insert_NBI_file_and_info_junction_with_OLD_nbiID;
