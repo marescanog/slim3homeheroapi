@@ -323,4 +323,69 @@ class User
         }
     }
 
+
+
+
+
+
+    public function changePassword($userID, $new_pass){
+        try{
+
+            // Create Password Hash
+            $hashed_pass = password_hash($new_pass, PASSWORD_DEFAULT);
+
+            $db = new DB();
+            $conn = $db->connect();
+    
+            // CREATE query
+            $sql = "UPDATE hh_user h SET h.password = :hashPass WHERE h.user_id = :userID;";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':hashPass', $hashed_pass );
+                $stmt->bindparam(':userID', $userID );
+                $result = $stmt->execute();
+            } else {
+                $result = "PDO Error";
+            }
+    
+            $stmt=null;
+            $db=null;
+    
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+    
+            return $ModelResponse;
+    
+        } catch (\PDOException $e) {
+    
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+    
+            return $ModelResponse;
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

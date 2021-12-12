@@ -76,5 +76,8 @@ $app->group("/homeowner",function() use ($app){
 
     // Save profile pic location
     $app->post("/save-profile-pic-location","FileController:saveProfilePicLocation");
+
+    // Save profile pic location
+    $app->post("/change-password","FileController:changePassword");
 });
 

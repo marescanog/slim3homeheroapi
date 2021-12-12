@@ -4,6 +4,7 @@
 namespace App\Controllers;
 
 use App\Models\File;
+use App\Models\User;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -17,6 +18,8 @@ class FileController
 
     protected $file;
 
+    protected $user;
+
     protected  $validator;
 
     public function  __construct()
@@ -24,6 +27,8 @@ class FileController
         $this->customResponse = new CustomResponse();
 
         $this->file = new File();
+
+        $this->user = new User();
 
         $this->validator = new Validator();
     }
@@ -1805,6 +1810,99 @@ public function saveProfilePicLocation(Request $request,Response $response){
     // return $this->customResponse->is200Response($response,  "This route works");
 }
 
+
+
+
+
+public function changePassword(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // VALIDATE AND MAKE SURE FEILDS ARE NOT BLANK
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "current_pass"=>v::notEmpty(),
+            "new_pass"=>v::notEmpty(),
+            "confirm_pass"=>v::notEmpty()
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+        // Check new pass if above 8 characters
+        $this->validator->validate($request,[
+            // Check if empty
+            "new_pass"=>v::length(8, null),
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+        // Get the Values
+        // Grab parameters
+        $current_pass = CustomRequestHandler::getParam($request,"current_pass");
+        $new_pass = CustomRequestHandler::getParam($request,"new_pass");
+        $confirm_pass = CustomRequestHandler::getParam($request,"confirm_pass");
+
+        // Check if new pass matches confirm pass
+        if($new_pass != $confirm_pass){
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, "New password must match the confirm password field."));
+        }
+
+        // Retrieve current password from DB (user object)
+        $userObj = $this->user->getUserByID($userID);
+        // Error handling
+        if(  $userObj['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $userObj['data']) );
+        }
+
+        // Check if current password matches the current password in db
+        $isMatch = password_verify($current_pass, $userObj['data']['password']);
+        if(!$isMatch){
+            return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "Incorrect password. Please re-enter your current password.") );
+        }
+
+        // Check if new pass matches old pass, if it does return new password cannot be the same as old pass
+        $isOld = password_verify($new_pass, $userObj['data']['password']);
+        if($isOld){
+            return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "Your new password cannot be the same as your old password.") );
+        }
+        
+        // Save new password
+        $result = "";
+        $result = $this->user->changePassword($userID, $new_pass);
+        if( $result['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $result['data']) );
+        }
+
+
+    // Return information needed for personal info page
+     return $this->customResponse->is200Response($response,  $result);
+    
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  $isMatch);
+    // return $this->customResponse->is200Response($response,  $userObj);
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
 
 
 
