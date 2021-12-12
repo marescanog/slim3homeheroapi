@@ -1927,7 +1927,7 @@ public function changePhoneVerify(Request $request,Response $response){
 
         // SAVE DATA IN VARIABLES
         $phone = CustomRequestHandler::getParam($request,"phone");
-        $phone_pass = CustomRequestHandler::getParam($request,"phone_pass");
+        $current_pass = CustomRequestHandler::getParam($request,"phone_pass");
 
         // Returns a response when validator detects a rule breach
         if($this->validator->failed())
@@ -1953,7 +1953,7 @@ public function changePhoneVerify(Request $request,Response $response){
         }
 
         // Check if current password matches the current password in db
-        $isMatch = password_verify($phone_pass, $userObj['data']['password']);
+        $isMatch = password_verify($current_pass, $userObj['data']['password']);
         if(!$isMatch){
             return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "Incorrect password. Please re-enter your current password.") );
         }
@@ -1964,7 +1964,7 @@ public function changePhoneVerify(Request $request,Response $response){
 
 
     // Return information needed for personal info page
-    return $this->customResponse->is200Response($response,  $result );
+    return $this->customResponse->is200Response($response,   $result  );
 
     // For Debugging purposes
     // return $this->customResponse->is200Response($response,  $userID );
@@ -2028,7 +2028,63 @@ public function updatePhoneNumber(Request $request,Response $response){
 
 
 
+public function getHomeheroes(Request $request,Response $response){
+    // Get all workers
+    $workers = $this->file->getAllWorkers();
+    // Error Handling
+    if(   $workers['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $workers['data']) );
+    }
+    $wd = $workers['data'];
 
+    // Get All City Preferences per worker
+    $cityPer_worker = $this->file->cityPreferencePerWorker();
+    // Error Handling
+    if(   $cityPer_worker['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $cityPer_worker['data']) );
+    }
+    $cpw = $cityPer_worker["data"];
+
+    // Get All Skills per worker
+    $skillset_per_worker = $this->file->skillsetPerWorker();
+    // Error Handling
+    if(  $skillset_per_worker['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $skillset_per_worker['data']) );
+    }
+    $spw = $skillset_per_worker["data"];
+
+    
+    // TODO, GET PROFILE PIC ADDRESS PER WORKER
+
+
+
+    $formData = [];
+
+    for($x = 0; $x < count($wd); $x++){
+        $data = [];
+        $data['worker_info'] = $wd[$x];
+        $data['city_info'] = null;
+        $data['skillset_info'] = null;
+        // I know this is not the best code since it is ON^2, but it is the only solution I can think of
+        for($y = 0; $y < count( $cpw); $y++){
+            if($cpw[$y]['worker_id'] == $wd[$x]["user_id"]){
+                $data['city_info'] = $cpw[$y]["cities"];
+            }
+        }
+        for($y = 0; $y < count( $spw); $y++){
+            if($spw[$y]['worker_id'] == $wd[$x]["user_id"]){
+                $data['skillset_info'] = $spw[$y]["skills"];
+            }
+        }
+        array_push($formData, $data);
+    }
+
+
+    return $this->customResponse->is200Response($response, $formData );
+
+    // For Debugging Purposes 
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
 
 
 

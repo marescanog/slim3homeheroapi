@@ -85,5 +85,8 @@ $app->group("/homeowner",function() use ($app){
 
     // Update phone number (Verification steps have passed)
     $app->post("/update-phone-number","FileController:updatePhoneNumber");
+
+    // Update phone number (Verification steps have passed)
+    $app->get("/get-homeheroes","FileController:getHomeheroes");
 });
 
