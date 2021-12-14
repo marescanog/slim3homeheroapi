@@ -2548,6 +2548,54 @@ public function profilepicPerWorker(){
 
 
 
+// Schedule matching is discontinued for now
+    public function getWorkerSchedulePreference($workerID){
+        try {
+            $result = "";
+            $db = new DB();
+            $conn = $db->connect();
+            
+            // CREATE query
+            $sql = "SELECT * 
+            FROM schedule s, worker w
+            WHERE s.id = w.id 
+            AND s.id = :workerID;";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':workerID', $workerID );
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            } else {
+                $result = "PDO Error";
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
 
 
 

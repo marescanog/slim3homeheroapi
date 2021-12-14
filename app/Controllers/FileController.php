@@ -2173,6 +2173,59 @@ public function sendProjectToWorker(Request $request,Response $response, array $
     }
 
 
+    $formData = [];
+    $formData['hasbeen_Notified_before'] = false;
+    $formData['notification_status'] = null;
+    // $formData['isAvailable'] = true;
+    // $formData['error'] = "";
+
+    // sCHEDULE MATCH IS
+    // DISCONTINUED FOR NOW
+    // 
+    // // Check worker schedule
+    // $worker_schedule = $this->file->getWorkerSchedulePreference( $worker_ID);
+    // // Error handling
+    // if($worker_schedule['success'] !== true){
+    //     return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $worker_schedule['data']) );
+    // }
+    // // if worker is does not have schedule preference 7 notification time is anytime
+    // //  also if cannot find schedule (The worker can add a schedule preference anytime)
+    // $wSched = $worker_schedule['data'] ;
+    // if($wSched == false || ($wSched['notice_time'] == "Anytime" && $wSched['has_schedule_preference'] == 0)){
+    //     $formData['isAvailable'] = true;
+    // } else {
+    //     // break down the worker's schedule, convert into date time for comparison
+    //     $noticeTime = $wSched['notice_time'];
+    //     $p_sched = $jp_res['data']['preferred_date_time'];
+    //     $jobSched = date_create($p_sched);
+    //     $workerSched = date_create("Y-m-d");
+    //     $today = date_create("Y-m-d");
+
+    //     $isWithinNotice = true;
+    //     $isWithinSchedule = true;
+    //     $daysDifference = null;
+    //     // Check if it is within the notice time of worker
+    //     if($noticeTime !== "Anytime"){
+    //         $daysOffset_String = "+$noticeTime days";
+    //         try{
+
+    //             $leadTimePreference=date_create('y:m:d', strtotime( $preference_string));
+    //             // $daysDifference=(new DateTime("Y-m-d"))->diff($leadTimePreference)->days;
+    //             // if($leadTimePreference < $jobSched || $jobSched < $leadTimePreference){
+    //             //     $isWithinSchedule = false;
+    //             // }
+    //         } catch(Exception $e) {
+    //             $isWithinNotice = true;
+    //             $formData['error'] = $formData['error'].", ".$e->getMessage();
+    //         }
+    //     }
+    //     // Check if it the day off of the worker
+    //         // Get the day of the schedule
+            
+    //     // Check if it is within the schedule time period of the worker
+    // }
+
+
     // Check if the worker has already been notified by the homeowner of this project
     // if it is in the DB then return the project data, otherwise save it into the Database
     $hasNotified = $this->file->hasWorkerBeenNotifiedOfProject($userID,  $worker_ID,  $project_id);
@@ -2181,9 +2234,7 @@ public function sendProjectToWorker(Request $request,Response $response, array $
         return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $hasNotified['data']) );
     }
     
-    $formData = [];
-    $formData['hasbeen_Notified_before'] = false;
-    $formData['notification_status'] = null;
+
     if($hasNotified['data'] == false){
         // Save into the database
         $savedResult = $this->file->saveHomeownerNotifcation($userID,  $worker_ID,  $project_id);
@@ -2202,13 +2253,16 @@ public function sendProjectToWorker(Request $request,Response $response, array $
         }
         $formData['hasbeen_Notified_before'] = true; 
         // If it is not found in the worker declined table, that means the worker has not responded to it yet.
-        $formData['notification_status'] = $statusResult['data']==false?'Pending response from worker':'Declined by worker';
+        $formData['notification_status'] = $statusResult['data']==false?'Pending response from worker':'Declined by worker. Please try another worker.';
     }
 
     // Return information needed for personal info page
     return $this->customResponse->is200Response($response,  $formData);
 
-    // For Debugging purposes
+    // For Debugging purposes  $jp_res
+    // return $this->customResponse->is200Response($response,   $worker_schedule);
+    // return $this->customResponse->is200Response($response,     $daysDifference);
+    // return $this->customResponse->is200Response($response,   $jp_res['data']['preferred_date_time']);
     // return $this->customResponse->is200Response($response, $userID);
     // return $this->customResponse->is200Response($response,  "This route works".$args['workerID']);
 }
