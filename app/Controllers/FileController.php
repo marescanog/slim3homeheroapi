@@ -2099,6 +2099,129 @@ public function getHomeheroes(Request $request,Response $response){
 }
 
 
+public function getUsersProjects(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Get ongoing projects
+    $ongoingProj =  $this->file->getOngoingProjects($userID);
+    // Error handling
+    if(   $ongoingProj['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $ongoingProj['data']) );
+    }
+
+    // send data back
+    $data = [];
+    $data['ongoingJobPosts'] = $ongoingProj['data'];
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response, $data);
+}
+
+
+
+public function sendProjectToWorker(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Validate & Grab the variables needed for the query 
+    // make user has selected a project ID
+    $this->validator->validate($request,[
+        // Check if empty
+        "project_id"=>v::notEmpty()
+    ]);
+
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // SAVE DATA IN VARIABLES
+    $project_id = CustomRequestHandler::getParam($request,"project_id");
+    $worker_ID = $args['workerID'];
+
+    // Validate if the post belongs to the user
+    $jp_res = $this->file->getSingleJobPost($project_id);
+    // Error handling
+    if(   $jp_res['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $jp_res['data']) );
+    }
+    // check if found
+    if(   $jp_res['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "The post was not found. Please try again") );
+    }
+    // check if users post
+    if(   $jp_res['data']['homeowner_id'] != $userID){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "The user does not have access to this post"));
+    }
+
+
+    // Check if the worker has already been notified by the homeowner of this project
+    // if it is in the DB then return the project data, otherwise save it into the Database
+    $hasNotified = $this->file->hasWorkerBeenNotifiedOfProject($userID,  $worker_ID,  $project_id);
+    // Error handling
+    if(    $hasNotified['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $hasNotified['data']) );
+    }
+    
+    $formData = [];
+    $formData['hasbeen_Notified_before'] = false;
+    $formData['notification_status'] = null;
+    if($hasNotified['data'] == false){
+        // Save into the database
+        $savedResult = $this->file->saveHomeownerNotifcation($userID,  $worker_ID,  $project_id);
+        // Error handling
+        if($savedResult['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $savedResult['data']) );
+        }
+        $formData['hasbeen_Notified_before'] = false;
+        $formData['notification_status'] = 'Sent notification to worker';
+    } else {
+        // Pull from the database
+        $statusResult = $this->file->checkHomeownerNotifcationStatus($userID,  $worker_ID,  $project_id);
+        // Error handling
+        if($statusResult['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $statusResult['data']) );
+        }
+        $formData['hasbeen_Notified_before'] = true; 
+        // If it is not found in the worker declined table, that means the worker has not responded to it yet.
+        $formData['notification_status'] = $statusResult['data']==false?'Pending response from worker':'Declined by worker';
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response, $userID);
+    // return $this->customResponse->is200Response($response,  "This route works".$args['workerID']);
+}
+
+
+
+
+
+
+
+
+
+
 
 
 
