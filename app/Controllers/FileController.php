@@ -2054,8 +2054,13 @@ public function getHomeheroes(Request $request,Response $response){
     $spw = $skillset_per_worker["data"];
 
     
-    // TODO, GET PROFILE PIC ADDRESS PER WORKER
-
+    // GET PROFILE PIC ADDRESS PER WORKER
+    $picture_per_worker = $this->file->profilepicPerWorker();
+    // Error Handling
+    if( $picture_per_worker['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $picture_per_worker['data']) );
+    }
+    $pppw = $picture_per_worker["data"];
 
 
     $formData = [];
@@ -2065,15 +2070,22 @@ public function getHomeheroes(Request $request,Response $response){
         $data['worker_info'] = $wd[$x];
         $data['city_info'] = null;
         $data['skillset_info'] = null;
+        $data['profile_pic'] = false;
         // I know this is not the best code since it is ON^2, but it is the only solution I can think of
         for($y = 0; $y < count( $cpw); $y++){
             if($cpw[$y]['worker_id'] == $wd[$x]["user_id"]){
                 $data['city_info'] = $cpw[$y]["cities"];
             }
         }
+        // Seperate loops cause each has different counts
         for($y = 0; $y < count( $spw); $y++){
             if($spw[$y]['worker_id'] == $wd[$x]["user_id"]){
                 $data['skillset_info'] = $spw[$y]["skills"];
+            }
+        }
+        for($y = 0; $y < count( $pppw); $y++){
+            if($pppw[$y]['user_id'] == $wd[$x]["user_id"]){
+                $data['profile_pic'] = $pppw[$y]["file_path"];
             }
         }
         array_push($formData, $data);

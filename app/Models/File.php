@@ -2346,6 +2346,55 @@ public function skillsetPerWorker(){
 
 
 
+public function profilepicPerWorker(){
+    try{
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        // $sql = "SELECT * FROM worker";
+
+        $sql = "SELECT h.user_id, p.file_path
+        FROM hh_user h 
+        LEFT JOIN profile_pics p ON p.user_id = h.user_id
+        WHERE h.user_type_id = 2
+        AND h.user_status_id = 2
+        AND p.is_current_used = 1
+        ;";
+        
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } else {
+            $result = "PDO Error";
+        }
+
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 
