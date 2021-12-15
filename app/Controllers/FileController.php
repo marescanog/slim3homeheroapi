@@ -2099,6 +2099,268 @@ public function getHomeheroes(Request $request,Response $response){
 }
 
 
+public function getUsersProjects(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Get ongoing projects
+    $ongoingProj =  $this->file->getOngoingProjects($userID);
+    // Error handling
+    if(   $ongoingProj['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $ongoingProj['data']) );
+    }
+
+    // send data back
+    $data = [];
+    $data['ongoingJobPosts'] = $ongoingProj['data'];
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response, $data);
+}
+
+
+
+public function sendProjectToWorker(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Validate & Grab the variables needed for the query 
+    // make user has selected a project ID
+    $this->validator->validate($request,[
+        // Check if empty
+        "project_id"=>v::notEmpty()
+    ]);
+
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // SAVE DATA IN VARIABLES
+    $project_id = CustomRequestHandler::getParam($request,"project_id");
+    $worker_ID = $args['workerID'];
+
+    // Validate if the post belongs to the user
+    $jp_res = $this->file->getSingleJobPost($project_id);
+    // Error handling
+    if(   $jp_res['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $jp_res['data']) );
+    }
+    // check if found
+    if(   $jp_res['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "The post was not found. Please try again") );
+    }
+    // check if users post
+    if(   $jp_res['data']['homeowner_id'] != $userID){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "The user does not have access to this post"));
+    }
+
+
+    $formData = [];
+    $formData['hasbeen_Notified_before'] = false;
+    $formData['notification_status'] = null;
+    // $formData['isAvailable'] = true;
+    // $formData['error'] = "";
+
+    // sCHEDULE MATCH IS
+    // DISCONTINUED FOR NOW
+    // 
+    // // Check worker schedule
+    // $worker_schedule = $this->file->getWorkerSchedulePreference( $worker_ID);
+    // // Error handling
+    // if($worker_schedule['success'] !== true){
+    //     return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $worker_schedule['data']) );
+    // }
+    // // if worker is does not have schedule preference 7 notification time is anytime
+    // //  also if cannot find schedule (The worker can add a schedule preference anytime)
+    // $wSched = $worker_schedule['data'] ;
+    // if($wSched == false || ($wSched['notice_time'] == "Anytime" && $wSched['has_schedule_preference'] == 0)){
+    //     $formData['isAvailable'] = true;
+    // } else {
+    //     // break down the worker's schedule, convert into date time for comparison
+    //     $noticeTime = $wSched['notice_time'];
+    //     $p_sched = $jp_res['data']['preferred_date_time'];
+    //     $jobSched = date_create($p_sched);
+    //     $workerSched = date_create("Y-m-d");
+    //     $today = date_create("Y-m-d");
+
+    //     $isWithinNotice = true;
+    //     $isWithinSchedule = true;
+    //     $daysDifference = null;
+    //     // Check if it is within the notice time of worker
+    //     if($noticeTime !== "Anytime"){
+    //         $daysOffset_String = "+$noticeTime days";
+    //         try{
+
+    //             $leadTimePreference=date_create('y:m:d', strtotime( $preference_string));
+    //             // $daysDifference=(new DateTime("Y-m-d"))->diff($leadTimePreference)->days;
+    //             // if($leadTimePreference < $jobSched || $jobSched < $leadTimePreference){
+    //             //     $isWithinSchedule = false;
+    //             // }
+    //         } catch(Exception $e) {
+    //             $isWithinNotice = true;
+    //             $formData['error'] = $formData['error'].", ".$e->getMessage();
+    //         }
+    //     }
+    //     // Check if it the day off of the worker
+    //         // Get the day of the schedule
+            
+    //     // Check if it is within the schedule time period of the worker
+    // }
+
+
+    // Check if the worker has already been notified by the homeowner of this project
+    // if it is in the DB then return the project data, otherwise save it into the Database
+    $hasNotified = $this->file->hasWorkerBeenNotifiedOfProject($userID,  $worker_ID,  $project_id);
+    // Error handling
+    if(    $hasNotified['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $hasNotified['data']) );
+    }
+    
+
+    if($hasNotified['data'] == false){
+        // Save into the database
+        $savedResult = $this->file->saveHomeownerNotifcation($userID,  $worker_ID,  $project_id);
+        // Error handling
+        if($savedResult['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $savedResult['data']) );
+        }
+        $formData['hasbeen_Notified_before'] = false;
+        $formData['notification_status'] = 'Sent notification to worker';
+    } else {
+        // Pull from the database
+        $statusResult = $this->file->checkHomeownerNotifcationStatus($userID,  $worker_ID,  $project_id);
+        // Error handling
+        if($statusResult['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $statusResult['data']) );
+        }
+        $formData['hasbeen_Notified_before'] = true; 
+        // If it is not found in the worker declined table, that means the worker has not responded to it yet.
+        $formData['notification_status'] = $statusResult['data']==false?'Pending response from worker':'Declined by worker. Please try another worker.';
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // For Debugging purposes  $jp_res
+    // return $this->customResponse->is200Response($response,   $worker_schedule);
+    // return $this->customResponse->is200Response($response,     $daysDifference);
+    // return $this->customResponse->is200Response($response,   $jp_res['data']['preferred_date_time']);
+    // return $this->customResponse->is200Response($response, $userID);
+    // return $this->customResponse->is200Response($response,  "This route works".$args['workerID']);
+}
+
+
+
+
+
+public function getServiceAreas(Request $request,Response $response){
+
+    // simple Call for all cities
+    $cities = $this->file->getCities();
+    // Error handling
+    if(    $cities['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $cities['data']) );
+    }
+
+    // simple Call for all barangays
+    $barangays = $this->file->getBarangays();
+    // Error handling
+    if(    $barangays['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $barangays['data']) );
+    }
+
+    $formData = [];
+    $formData['cities'] = $cities['data'];
+    $formData['barangays'] = $barangays['data'];
+
+    $formData['All_Areas'] = [];
+
+    for($x = 0 ; $x < count($formData['cities']) ; $x++){
+        $obj = [];
+        $obj['city'] = $formData['cities'][$x]['city_name'];
+        $obj['barangays'] = [];
+
+        for($y = 0; $y < count($formData['barangays']);$y++){
+            if($formData['cities'][$x]['id'] == $formData['barangays'][$y]['city_id']){
+                array_push($obj['barangays'], $formData['barangays'][$y]['barangay_name']);
+            }
+
+        }
+        array_push($formData['All_Areas'], $obj);
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+public function getProjectTypes(Request $request,Response $response){
+
+    // simple Call for all project Categories
+    $categories = $this->file->getProjectCategories();
+    // Error handling
+    if(    $categories['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $categories['data']) );
+    }
+
+    // simple Call for all project Types
+    $projectTypes = $this->file->getProjectTypes();
+    // Error handling
+    if(    $projectTypes['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $projectTypes['data']) );
+    }
+
+    $formData = [];
+    $formData['categories'] = $categories['data'];
+    $formData['project_types'] = $projectTypes['data'];
+
+    $formData['All_Services'] = [];
+
+    for($x = 0 ; $x < count($formData['categories']) ; $x++){
+        $obj = [];
+        $obj['category'] = $formData['categories'][$x]['expertise'];
+        $obj['subcategory'] = [];
+
+        for($y = 0; $y < count($formData['project_types']);$y++){
+            if($formData['categories'][$x]['id'] == $formData['project_types'][$y]['expertise']){
+                array_push($obj['subcategory'], $formData['project_types'][$y]['type']);
+            }
+
+        }
+        array_push($formData['All_Services'], $obj);
+    }
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
 
 
 

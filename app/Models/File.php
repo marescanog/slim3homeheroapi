@@ -730,7 +730,7 @@ class File
             $conn = $db->connect();
 
             // CREATE query
-            $sql = "SELECT jp.id, jp.home_id, CONCAT(h.street_no,' ', h.street_name, ', ', b.barangay_name, ', ', c.city_name,' city') as `complete_address`, jp.job_size_id, jos.job_order_size, jp.required_expertise_id, pt.type as `project_type`, e.id as `expertise_id`, e.expertise, jp.job_post_status_id, jp.job_description, jp.rate_offer, jp.rate_type_id, rt.type as `rate_type`, jp.preferred_date_time, jp.job_post_name, jo.id as `job_order_id`, CONCAT(u.first_name, ' ' ,u.last_name) as `assigned_to`, jo.job_order_status_id, jo.date_time_start
+            $sql = "SELECT jp.id, jp.home_id, CONCAT(h.street_no,' ', h.street_name, ', ', b.barangay_name, ', ', c.city_name,' city') as `complete_address`, jp.job_size_id, jos.job_order_size, jp.required_expertise_id, pt.type as `project_type`, e.id as `expertise_id`, e.expertise, jp.job_post_status_id, jp.job_description, jp.rate_offer, jp.rate_type_id, rt.type as `rate_type`, jp.preferred_date_time, jp.job_post_name, jo.id as `job_order_id`, CONCAT(u.first_name, ' ' ,u.last_name) as `assigned_to`, jo.job_order_status_id, jo.date_time_start, u.phone_no
             FROM home h, barangay b, city c, job_order_size jos, project_type pt, expertise e, rate_type rt, job_post jp
             LEFT JOIN job_order jo on jp.id = jo.job_post_id 
             LEFT JOIN hh_user u on jo.worker_id = u.user_id
@@ -2307,7 +2307,7 @@ public function skillsetPerWorker(){
         FROM project_type pt, `skillset` s
         LEFT JOIN worker w ON w.id = s.worker_id
         WHERE s.skill = pt.id
-        GROUP BY w.id
+        GROUP BY s.worker_id
         ;";
         
         // Prepare statement
@@ -2395,6 +2395,287 @@ public function profilepicPerWorker(){
         return $ModelResponse;
     }
 }
+
+
+// Dec 14
+
+    public function hasWorkerBeenNotifiedOfProject($userID, $workerID, $projectID){
+        try {
+            $result = "";
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT * 
+            FROM homeowner_notification h 
+            WHERE h.homeowner_id = :userID
+            AND h.worker_id = :workerID
+            AND h.post_id = :projectID
+            ;";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID );
+                $stmt->bindparam(':workerID', $workerID );
+                $stmt->bindparam(':projectID', $projectID );
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            } else {
+                $result = "PDO Error";
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+
+    public function saveHomeownerNotifcation($userID, $workerID, $projectID){
+        try {
+            $result = "";
+            $db = new DB();
+            $conn = $db->connect();
+            
+            // CREATE query
+            $sql = "INSERT INTO homeowner_notification (homeowner_id, worker_id, post_id)
+                    VALUES(:userID, :workerID, :projectID);";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID );
+                $stmt->bindparam(':workerID', $workerID );
+                $stmt->bindparam(':projectID', $projectID );
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            } else {
+                $result = "PDO Error";
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+
+    public function checkHomeownerNotifcationStatus($userID, $workerID, $projectID){
+        try {
+            $result = "";
+            $db = new DB();
+            $conn = $db->connect();
+            
+            // CREATE query
+            $sql = "SELECT * FROM 
+            homeowner_notification  hn, worker_decline_post wd
+            WHERE hn.homeowner_id = :userID
+            AND hn.post_id = :projectID
+            AND hn.worker_id = :workerID
+            AND hn.worker_id = wd.worker_id
+            AND hn.post_id = wd.post_id";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID );
+                $stmt->bindparam(':workerID', $workerID );
+                $stmt->bindparam(':projectID', $projectID );
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            } else {
+                $result = "PDO Error";
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+// Schedule matching is discontinued for now
+    public function getWorkerSchedulePreference($workerID){
+        try {
+            $result = "";
+            $db = new DB();
+            $conn = $db->connect();
+            
+            // CREATE query
+            $sql = "SELECT * 
+            FROM schedule s, worker w
+            WHERE s.id = w.id 
+            AND s.id = :workerID;";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':workerID', $workerID );
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            } else {
+                $result = "PDO Error";
+            }
+
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+//  Dec 15
+
+public function getProjectTypes(){
+
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "SELECT id, expertise, type from project_type";
+        
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->execute();
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+public function getProjectCategories(){
+
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "SELECT id, expertise from expertise";
+        
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->execute();
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
 
 
 

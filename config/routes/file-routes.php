@@ -86,7 +86,18 @@ $app->group("/homeowner",function() use ($app){
     // Update phone number (Verification steps have passed)
     $app->post("/update-phone-number","FileController:updatePhoneNumber");
 
-    // Update phone number (Verification steps have passed)
+    // Get All homeheroes who are active
     $app->get("/get-homeheroes","FileController:getHomeheroes");
+
+    // Get All the projects of the user
+    $app->get("/get-my-projects","FileController:getUsersProjects");
+
+    // Send the project to the worker
+    $app->post("/send-project/{workerID}","FileController:sendProjectToWorker");
 });
 
+// Get All cities
+$app->get("/get-service-areas","FileController:getServiceAreas");
+
+// Get All project types
+$app->get("/get-project-types","FileController:getProjectTypes");
