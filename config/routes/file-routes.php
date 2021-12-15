@@ -70,5 +70,34 @@ $app->group("/homeowner",function() use ($app){
 
     // Update Address Info
     $app->post("/delete-address/{homeid}","FileController:deleteAddress");
+
+    // Update Name
+    $app->post("/profile-update-name","FileController:updateName");
+
+    // Save profile pic location
+    $app->post("/save-profile-pic-location","FileController:saveProfilePicLocation");
+
+    // Change password
+    $app->post("/change-password","FileController:changePassword");
+
+    // VERIFY phone number before changing
+    $app->post("/change-phone-verify","FileController:changePhoneVerify");
+
+    // Update phone number (Verification steps have passed)
+    $app->post("/update-phone-number","FileController:updatePhoneNumber");
+
+    // Get All homeheroes who are active
+    $app->get("/get-homeheroes","FileController:getHomeheroes");
+
+    // Get All the projects of the user
+    $app->get("/get-my-projects","FileController:getUsersProjects");
+
+    // Send the project to the worker
+    $app->post("/send-project/{workerID}","FileController:sendProjectToWorker");
 });
 
+// Get All cities
+$app->get("/get-service-areas","FileController:getServiceAreas");
+
+// Get All project types
+$app->get("/get-project-types","FileController:getProjectTypes");

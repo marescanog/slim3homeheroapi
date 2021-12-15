@@ -4,6 +4,7 @@
 namespace App\Controllers;
 
 use App\Models\File;
+use App\Models\User;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -17,6 +18,8 @@ class FileController
 
     protected $file;
 
+    protected $user;
+
     protected  $validator;
 
     public function  __construct()
@@ -24,6 +27,8 @@ class FileController
         $this->customResponse = new CustomResponse();
 
         $this->file = new File();
+
+        $this->user = new User();
 
         $this->validator = new Validator();
     }
@@ -1695,6 +1700,664 @@ public function deleteAddress(Request $request,Response $response, array $args){
     // return $this->customResponse->is200Response($response,  "This route works");
 }
 
+
+
+
+
+
+// -----------------------------
+// DEC 12
+
+
+public function updateName(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Validate Parameters and check if empty
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "first_name"=>v::notEmpty(),
+            "last_name"=>v::notEmpty()
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+    
+    // Grab parameters
+    $first_name = CustomRequestHandler::getParam($request,"first_name");
+    $last_name = CustomRequestHandler::getParam($request,"last_name");
+
+    $result ="";
+    // Update Name
+    $result = $this->file->updateUserName($userID, $first_name, $last_name);
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
+    }
+
+
+    // // // // Return information needed for add project
+    return $this->customResponse->is200Response($response,  $result);
+
+    // FOR DEBUGGING PURPOSES
+    //    return $this->customResponse->is200Response($response,  $userID);
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+public function saveProfilePicLocation(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // ENSURE THAT FILE NAME AND FILE PATH ARE NOT BLANK
+    // Validate Parameters and check if empty
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "file_location"=>v::notEmpty(),
+            "newFileName"=>v::notEmpty()
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+    // GET FILE NAME AND FILE PATH
+    // Grab parameters
+    $file_location = CustomRequestHandler::getParam($request,"file_location");
+    $newFileName = CustomRequestHandler::getParam($request,"newFileName");
+    $filepath = $file_location.$newFileName;
+
+    // Save into Database
+    $result = "";
+    $result = $this->file->saveProfilePicFileLocation($userID, $filepath);
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401,   $result['data']) );
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $filepath );
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+
+
+public function changePassword(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // VALIDATE AND MAKE SURE FEILDS ARE NOT BLANK
+        // Check if empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "current_pass"=>v::notEmpty(),
+            "new_pass"=>v::notEmpty(),
+            "confirm_pass"=>v::notEmpty()
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+        // Check new pass if above 8 characters
+        $this->validator->validate($request,[
+            // Check if empty
+            "new_pass"=>v::length(8, null),
+        ]);
+    
+        // Return Validation Errors
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, $responseMessage));
+        }
+
+        // Get the Values
+        // Grab parameters
+        $current_pass = CustomRequestHandler::getParam($request,"current_pass");
+        $new_pass = CustomRequestHandler::getParam($request,"new_pass");
+        $confirm_pass = CustomRequestHandler::getParam($request,"confirm_pass");
+
+        // Check if new pass matches confirm pass
+        if($new_pass != $confirm_pass){
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, "New password must match the confirm password field."));
+        }
+
+        // Retrieve current password from DB (user object)
+        $userObj = $this->user->getUserByID($userID);
+        // Error handling
+        if(  $userObj['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $userObj['data']) );
+        }
+
+        // Check if current password matches the current password in db
+        $isMatch = password_verify($current_pass, $userObj['data']['password']);
+        if(!$isMatch){
+            return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "Incorrect password. Please re-enter your current password.") );
+        }
+
+        // Check if new pass matches old pass, if it does return new password cannot be the same as old pass
+        $isOld = password_verify($new_pass, $userObj['data']['password']);
+        if($isOld){
+            return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "Your new password cannot be the same as your old password.") );
+        }
+        
+        // Save new password
+        $result = "";
+        $result = $this->user->changePassword($userID, $new_pass);
+        if( $result['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $result['data']) );
+        }
+
+
+    // Return information needed for personal info page
+     return $this->customResponse->is200Response($response,  $result);
+    
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  $isMatch);
+    // return $this->customResponse->is200Response($response,  $userObj);
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+public function changePhoneVerify(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+        // make sure phone and password is not empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "phone"=>v::notEmpty(),
+            "phone_pass"=>v::notEmpty()
+        ]);
+
+        // SAVE DATA IN VARIABLES
+        $phone = CustomRequestHandler::getParam($request,"phone");
+        $current_pass = CustomRequestHandler::getParam($request,"phone_pass");
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Check if user exists in the database via phone number
+        // Get the user object associated with phone number
+        $userObject = $this->user->getUserAccountsByPhone($phone);
+        if($userObject["data"] != false){
+            // there is no user associated with this phone number
+            return $this->customResponse->is400Response($response,  "There is a user associated with this phone number");
+        } 
+
+        // Check if passwords match
+        // Retrieve current password from DB (user object)
+        $userObj = $this->user->getUserByID($userID);
+        // Error handling
+        if(  $userObj['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $userObj['data']) );
+        }
+
+        // Check if current password matches the current password in db
+        $isMatch = password_verify($current_pass, $userObj['data']['password']);
+        if(!$isMatch){
+            return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "Incorrect password. Please re-enter your current password.") );
+        }
+
+        $result = [];
+        $result["success"] = true;
+        $result["data"] = "You may now proceed with the SMS verification";
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,   $result  );
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+// Only update the phone number once it has gone through initial verification, then SMS verification
+public function updatePhoneNumber(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // make sure phone and password is not empty
+    $this->validator->validate($request,[
+        // Check if empty
+        "phone"=>v::notEmpty()
+    ]);
+
+    // SAVE DATA IN VARIABLES
+    $phone = CustomRequestHandler::getParam($request,"phone");
+
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // Check if user exists in the database via phone number
+    // Get the user object associated with phone number
+    $userObject = $this->user->getUserAccountsByPhone($phone);
+    if($userObject["data"] != false){
+        // there is no user associated with this phone number
+        return $this->customResponse->is400Response($response,  "There is a user associated with this phone number");
+    } 
+
+    // Update the phone number in the database
+    $result = "";
+    $result = $this->user->updateNewPhone($userID, $phone);
+    // Error handling
+    if(   $result['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $result['data']) );
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $result);
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userObject );
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+public function getHomeheroes(Request $request,Response $response){
+    // Get all workers
+    $workers = $this->file->getAllWorkers();
+    // Error Handling
+    if(   $workers['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $workers['data']) );
+    }
+    $wd = $workers['data'];
+
+    // Get All City Preferences per worker
+    $cityPer_worker = $this->file->cityPreferencePerWorker();
+    // Error Handling
+    if(   $cityPer_worker['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $cityPer_worker['data']) );
+    }
+    $cpw = $cityPer_worker["data"];
+
+    // Get All Skills per worker
+    $skillset_per_worker = $this->file->skillsetPerWorker();
+    // Error Handling
+    if(  $skillset_per_worker['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $skillset_per_worker['data']) );
+    }
+    $spw = $skillset_per_worker["data"];
+
+    
+    // GET PROFILE PIC ADDRESS PER WORKER
+    $picture_per_worker = $this->file->profilepicPerWorker();
+    // Error Handling
+    if( $picture_per_worker['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $picture_per_worker['data']) );
+    }
+    $pppw = $picture_per_worker["data"];
+
+
+    $formData = [];
+
+    for($x = 0; $x < count($wd); $x++){
+        $data = [];
+        $data['worker_info'] = $wd[$x];
+        $data['city_info'] = null;
+        $data['skillset_info'] = null;
+        $data['profile_pic'] = false;
+        // I know this is not the best code since it is ON^2, but it is the only solution I can think of
+        for($y = 0; $y < count( $cpw); $y++){
+            if($cpw[$y]['worker_id'] == $wd[$x]["user_id"]){
+                $data['city_info'] = $cpw[$y]["cities"];
+            }
+        }
+        // Seperate loops cause each has different counts
+        for($y = 0; $y < count( $spw); $y++){
+            if($spw[$y]['worker_id'] == $wd[$x]["user_id"]){
+                $data['skillset_info'] = $spw[$y]["skills"];
+            }
+        }
+        for($y = 0; $y < count( $pppw); $y++){
+            if($pppw[$y]['user_id'] == $wd[$x]["user_id"]){
+                $data['profile_pic'] = $pppw[$y]["file_path"];
+            }
+        }
+        array_push($formData, $data);
+    }
+
+
+    return $this->customResponse->is200Response($response, $formData );
+
+    // For Debugging Purposes 
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+public function getUsersProjects(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Get ongoing projects
+    $ongoingProj =  $this->file->getOngoingProjects($userID);
+    // Error handling
+    if(   $ongoingProj['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $ongoingProj['data']) );
+    }
+
+    // send data back
+    $data = [];
+    $data['ongoingJobPosts'] = $ongoingProj['data'];
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response, $data);
+}
+
+
+
+public function sendProjectToWorker(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // Validate & Grab the variables needed for the query 
+    // make user has selected a project ID
+    $this->validator->validate($request,[
+        // Check if empty
+        "project_id"=>v::notEmpty()
+    ]);
+
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // SAVE DATA IN VARIABLES
+    $project_id = CustomRequestHandler::getParam($request,"project_id");
+    $worker_ID = $args['workerID'];
+
+    // Validate if the post belongs to the user
+    $jp_res = $this->file->getSingleJobPost($project_id);
+    // Error handling
+    if(   $jp_res['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $jp_res['data']) );
+    }
+    // check if found
+    if(   $jp_res['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "The post was not found. Please try again") );
+    }
+    // check if users post
+    if(   $jp_res['data']['homeowner_id'] != $userID){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "The user does not have access to this post"));
+    }
+
+
+    $formData = [];
+    $formData['hasbeen_Notified_before'] = false;
+    $formData['notification_status'] = null;
+    // $formData['isAvailable'] = true;
+    // $formData['error'] = "";
+
+    // sCHEDULE MATCH IS
+    // DISCONTINUED FOR NOW
+    // 
+    // // Check worker schedule
+    // $worker_schedule = $this->file->getWorkerSchedulePreference( $worker_ID);
+    // // Error handling
+    // if($worker_schedule['success'] !== true){
+    //     return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $worker_schedule['data']) );
+    // }
+    // // if worker is does not have schedule preference 7 notification time is anytime
+    // //  also if cannot find schedule (The worker can add a schedule preference anytime)
+    // $wSched = $worker_schedule['data'] ;
+    // if($wSched == false || ($wSched['notice_time'] == "Anytime" && $wSched['has_schedule_preference'] == 0)){
+    //     $formData['isAvailable'] = true;
+    // } else {
+    //     // break down the worker's schedule, convert into date time for comparison
+    //     $noticeTime = $wSched['notice_time'];
+    //     $p_sched = $jp_res['data']['preferred_date_time'];
+    //     $jobSched = date_create($p_sched);
+    //     $workerSched = date_create("Y-m-d");
+    //     $today = date_create("Y-m-d");
+
+    //     $isWithinNotice = true;
+    //     $isWithinSchedule = true;
+    //     $daysDifference = null;
+    //     // Check if it is within the notice time of worker
+    //     if($noticeTime !== "Anytime"){
+    //         $daysOffset_String = "+$noticeTime days";
+    //         try{
+
+    //             $leadTimePreference=date_create('y:m:d', strtotime( $preference_string));
+    //             // $daysDifference=(new DateTime("Y-m-d"))->diff($leadTimePreference)->days;
+    //             // if($leadTimePreference < $jobSched || $jobSched < $leadTimePreference){
+    //             //     $isWithinSchedule = false;
+    //             // }
+    //         } catch(Exception $e) {
+    //             $isWithinNotice = true;
+    //             $formData['error'] = $formData['error'].", ".$e->getMessage();
+    //         }
+    //     }
+    //     // Check if it the day off of the worker
+    //         // Get the day of the schedule
+            
+    //     // Check if it is within the schedule time period of the worker
+    // }
+
+
+    // Check if the worker has already been notified by the homeowner of this project
+    // if it is in the DB then return the project data, otherwise save it into the Database
+    $hasNotified = $this->file->hasWorkerBeenNotifiedOfProject($userID,  $worker_ID,  $project_id);
+    // Error handling
+    if(    $hasNotified['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $hasNotified['data']) );
+    }
+    
+
+    if($hasNotified['data'] == false){
+        // Save into the database
+        $savedResult = $this->file->saveHomeownerNotifcation($userID,  $worker_ID,  $project_id);
+        // Error handling
+        if($savedResult['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $savedResult['data']) );
+        }
+        $formData['hasbeen_Notified_before'] = false;
+        $formData['notification_status'] = 'Sent notification to worker';
+    } else {
+        // Pull from the database
+        $statusResult = $this->file->checkHomeownerNotifcationStatus($userID,  $worker_ID,  $project_id);
+        // Error handling
+        if($statusResult['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $statusResult['data']) );
+        }
+        $formData['hasbeen_Notified_before'] = true; 
+        // If it is not found in the worker declined table, that means the worker has not responded to it yet.
+        $formData['notification_status'] = $statusResult['data']==false?'Pending response from worker':'Declined by worker. Please try another worker.';
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // For Debugging purposes  $jp_res
+    // return $this->customResponse->is200Response($response,   $worker_schedule);
+    // return $this->customResponse->is200Response($response,     $daysDifference);
+    // return $this->customResponse->is200Response($response,   $jp_res['data']['preferred_date_time']);
+    // return $this->customResponse->is200Response($response, $userID);
+    // return $this->customResponse->is200Response($response,  "This route works".$args['workerID']);
+}
+
+
+
+
+
+public function getServiceAreas(Request $request,Response $response){
+
+    // simple Call for all cities
+    $cities = $this->file->getCities();
+    // Error handling
+    if(    $cities['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $cities['data']) );
+    }
+
+    // simple Call for all barangays
+    $barangays = $this->file->getBarangays();
+    // Error handling
+    if(    $barangays['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $barangays['data']) );
+    }
+
+    $formData = [];
+    $formData['cities'] = $cities['data'];
+    $formData['barangays'] = $barangays['data'];
+
+    $formData['All_Areas'] = [];
+
+    for($x = 0 ; $x < count($formData['cities']) ; $x++){
+        $obj = [];
+        $obj['city'] = $formData['cities'][$x]['city_name'];
+        $obj['barangays'] = [];
+
+        for($y = 0; $y < count($formData['barangays']);$y++){
+            if($formData['cities'][$x]['id'] == $formData['barangays'][$y]['city_id']){
+                array_push($obj['barangays'], $formData['barangays'][$y]['barangay_name']);
+            }
+
+        }
+        array_push($formData['All_Areas'], $obj);
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+public function getProjectTypes(Request $request,Response $response){
+
+    // simple Call for all project Categories
+    $categories = $this->file->getProjectCategories();
+    // Error handling
+    if(    $categories['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $categories['data']) );
+    }
+
+    // simple Call for all project Types
+    $projectTypes = $this->file->getProjectTypes();
+    // Error handling
+    if(    $projectTypes['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $projectTypes['data']) );
+    }
+
+    $formData = [];
+    $formData['categories'] = $categories['data'];
+    $formData['project_types'] = $projectTypes['data'];
+
+    $formData['All_Services'] = [];
+
+    for($x = 0 ; $x < count($formData['categories']) ; $x++){
+        $obj = [];
+        $obj['category'] = $formData['categories'][$x]['expertise'];
+        $obj['subcategory'] = [];
+
+        for($y = 0; $y < count($formData['project_types']);$y++){
+            if($formData['categories'][$x]['id'] == $formData['project_types'][$y]['expertise']){
+                array_push($obj['subcategory'], $formData['project_types'][$y]['type']);
+            }
+
+        }
+        array_push($formData['All_Services'], $obj);
+    }
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
 
 
 
