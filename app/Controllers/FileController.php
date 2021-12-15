@@ -1906,6 +1906,200 @@ public function changePassword(Request $request,Response $response){
 
 
 
+public function changePhoneVerify(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+        // make sure phone and password is not empty
+        $this->validator->validate($request,[
+            // Check if empty
+            "phone"=>v::notEmpty(),
+            "phone_pass"=>v::notEmpty()
+        ]);
+
+        // SAVE DATA IN VARIABLES
+        $phone = CustomRequestHandler::getParam($request,"phone");
+        $current_pass = CustomRequestHandler::getParam($request,"phone_pass");
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Check if user exists in the database via phone number
+        // Get the user object associated with phone number
+        $userObject = $this->user->getUserAccountsByPhone($phone);
+        if($userObject["data"] != false){
+            // there is no user associated with this phone number
+            return $this->customResponse->is400Response($response,  "There is a user associated with this phone number");
+        } 
+
+        // Check if passwords match
+        // Retrieve current password from DB (user object)
+        $userObj = $this->user->getUserByID($userID);
+        // Error handling
+        if(  $userObj['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $userObj['data']) );
+        }
+
+        // Check if current password matches the current password in db
+        $isMatch = password_verify($current_pass, $userObj['data']['password']);
+        if(!$isMatch){
+            return $this->customResponse->is400Response($response, $this->generateServerResponse(400,   "Incorrect password. Please re-enter your current password.") );
+        }
+
+        $result = [];
+        $result["success"] = true;
+        $result["data"] = "You may now proceed with the SMS verification";
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,   $result  );
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+// Only update the phone number once it has gone through initial verification, then SMS verification
+public function updatePhoneNumber(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Catch the response, on success it is an ID, on fail it has status and message
+    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+    // Error handling
+    if(is_array( $userID) && array_key_exists("status", $userID)){
+        return $this->customResponse->is401Response($response, $userID);
+    }
+
+    // make sure phone and password is not empty
+    $this->validator->validate($request,[
+        // Check if empty
+        "phone"=>v::notEmpty()
+    ]);
+
+    // SAVE DATA IN VARIABLES
+    $phone = CustomRequestHandler::getParam($request,"phone");
+
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // Check if user exists in the database via phone number
+    // Get the user object associated with phone number
+    $userObject = $this->user->getUserAccountsByPhone($phone);
+    if($userObject["data"] != false){
+        // there is no user associated with this phone number
+        return $this->customResponse->is400Response($response,  "There is a user associated with this phone number");
+    } 
+
+    // Update the phone number in the database
+    $result = "";
+    $result = $this->user->updateNewPhone($userID, $phone);
+    // Error handling
+    if(   $result['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $result['data']) );
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $result);
+
+    // For Debugging purposes
+    // return $this->customResponse->is200Response($response,  $userObject );
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
+public function getHomeheroes(Request $request,Response $response){
+    // Get all workers
+    $workers = $this->file->getAllWorkers();
+    // Error Handling
+    if(   $workers['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $workers['data']) );
+    }
+    $wd = $workers['data'];
+
+    // Get All City Preferences per worker
+    $cityPer_worker = $this->file->cityPreferencePerWorker();
+    // Error Handling
+    if(   $cityPer_worker['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $cityPer_worker['data']) );
+    }
+    $cpw = $cityPer_worker["data"];
+
+    // Get All Skills per worker
+    $skillset_per_worker = $this->file->skillsetPerWorker();
+    // Error Handling
+    if(  $skillset_per_worker['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $skillset_per_worker['data']) );
+    }
+    $spw = $skillset_per_worker["data"];
+
+    
+    // GET PROFILE PIC ADDRESS PER WORKER
+    $picture_per_worker = $this->file->profilepicPerWorker();
+    // Error Handling
+    if( $picture_per_worker['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $picture_per_worker['data']) );
+    }
+    $pppw = $picture_per_worker["data"];
+
+
+    $formData = [];
+
+    for($x = 0; $x < count($wd); $x++){
+        $data = [];
+        $data['worker_info'] = $wd[$x];
+        $data['city_info'] = null;
+        $data['skillset_info'] = null;
+        $data['profile_pic'] = false;
+        // I know this is not the best code since it is ON^2, but it is the only solution I can think of
+        for($y = 0; $y < count( $cpw); $y++){
+            if($cpw[$y]['worker_id'] == $wd[$x]["user_id"]){
+                $data['city_info'] = $cpw[$y]["cities"];
+            }
+        }
+        // Seperate loops cause each has different counts
+        for($y = 0; $y < count( $spw); $y++){
+            if($spw[$y]['worker_id'] == $wd[$x]["user_id"]){
+                $data['skillset_info'] = $spw[$y]["skills"];
+            }
+        }
+        for($y = 0; $y < count( $pppw); $y++){
+            if($pppw[$y]['user_id'] == $wd[$x]["user_id"]){
+                $data['profile_pic'] = $pppw[$y]["file_path"];
+            }
+        }
+        array_push($formData, $data);
+    }
+
+
+    return $this->customResponse->is200Response($response, $formData );
+
+    // For Debugging Purposes 
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
+
+
+
 
 
 

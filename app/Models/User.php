@@ -379,6 +379,52 @@ class User
 
 
 
+    public function updateNewPhone($userID, $new_phone){
+        try{
+
+            $db = new DB();
+            $conn = $db->connect();
+    
+            // CREATE query
+            $sql = "UPDATE hh_user h SET h.phone_no = :newPhone WHERE h.user_id = :userID;";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':newPhone', $new_phone);
+                $stmt->bindparam(':userID', $userID );
+                $result = $stmt->execute();
+            } else {
+                $result = "PDO Error";
+            }
+    
+            $stmt=null;
+            $db=null;
+    
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+    
+            return $ModelResponse;
+    
+        } catch (\PDOException $e) {
+    
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+    
+            return $ModelResponse;
+        }
+    }
+
+
+
+
 
 
 
