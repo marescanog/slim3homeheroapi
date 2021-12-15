@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Homeowner;
 use App\Models\Support;
 use App\Models\Worker;
+use App\Models\File;
 use App\Requests\CustomRequestHandler;
 use App\Response\CustomResponse;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -27,6 +28,8 @@ class AuthController
 
     protected  $worker;
 
+    protected  $file;
+
     protected  $validator;
 
     public function  __construct()
@@ -40,6 +43,8 @@ class AuthController
         $this->support = new Support();
 
         $this->worker = new Worker();
+
+        $this->file = new File();
 
         $this->validator = new Validator();
     }
@@ -1146,11 +1151,13 @@ public function decodeLoginToken(Request $request,Response $response){
         }
 
         $resData['token'] = $generated_jwt;
+        $resData['id'] = $userData['user_id']; //temporary addition by Wayne for session id for worker module
         $resData['status'] = 200;
         $resData['first_name'] = ucfirst($userData['first_name']);
         $resData['initials'] = substr($userData['first_name'], 0, 1).substr($userData['last_name'], 0, 1);
         $resData['role'] = null;
         $resData['email'] = null;
+        $resData['profile_pic_location'] = false;
 
         if($userType == 3 || $userType == 4){
             // Get Data from Support Model
@@ -1158,6 +1165,16 @@ public function decodeLoginToken(Request $request,Response $response){
             $resData['role'] = null;
             $resData['email'] = null;
         }
+
+        // GET PROFILE PICTURE
+        $profPicResult = $this->file->getProfilePic($userData['user_id']);
+        if(   $profPicResult['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,    $profPicResult['data']) );
+        }
+
+        if($profPicResult['data'] !=  false){
+            $resData['profile_pic_location'] = $profPicResult['data']['file_path'];
+        } 
 
         $responseMessage =  array(
             "data"=> $resData,

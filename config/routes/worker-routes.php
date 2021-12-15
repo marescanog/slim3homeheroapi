@@ -6,6 +6,7 @@ $app->group("/registration",function() use ($app){
 
     $app->get("/general-schedule","WorkerController:get_general_schedule");
     $app->post("/save-general-schedule","WorkerController:save_general_schedule");
+    $app->post("/save-specific-schedule","WorkerController:save_specific_schedule");
 
     $app->get("/preferred-cities","WorkerController:get_preferred_cities");
     $app->post("/save-preferred-cities","WorkerController:save_preferred_cities");
