@@ -2271,8 +2271,93 @@ public function sendProjectToWorker(Request $request,Response $response, array $
 
 
 
+public function getServiceAreas(Request $request,Response $response){
+
+    // simple Call for all cities
+    $cities = $this->file->getCities();
+    // Error handling
+    if(    $cities['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $cities['data']) );
+    }
+
+    // simple Call for all barangays
+    $barangays = $this->file->getBarangays();
+    // Error handling
+    if(    $barangays['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $barangays['data']) );
+    }
+
+    $formData = [];
+    $formData['cities'] = $cities['data'];
+    $formData['barangays'] = $barangays['data'];
+
+    $formData['All_Areas'] = [];
+
+    for($x = 0 ; $x < count($formData['cities']) ; $x++){
+        $obj = [];
+        $obj['city'] = $formData['cities'][$x]['city_name'];
+        $obj['barangays'] = [];
+
+        for($y = 0; $y < count($formData['barangays']);$y++){
+            if($formData['cities'][$x]['id'] == $formData['barangays'][$y]['city_id']){
+                array_push($obj['barangays'], $formData['barangays'][$y]['barangay_name']);
+            }
+
+        }
+        array_push($formData['All_Areas'], $obj);
+    }
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
 
 
+public function getProjectTypes(Request $request,Response $response){
+
+    // simple Call for all project Categories
+    $categories = $this->file->getProjectCategories();
+    // Error handling
+    if(    $categories['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $categories['data']) );
+    }
+
+    // simple Call for all project Types
+    $projectTypes = $this->file->getProjectTypes();
+    // Error handling
+    if(    $projectTypes['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $projectTypes['data']) );
+    }
+
+    $formData = [];
+    $formData['categories'] = $categories['data'];
+    $formData['project_types'] = $projectTypes['data'];
+
+    $formData['All_Services'] = [];
+
+    for($x = 0 ; $x < count($formData['categories']) ; $x++){
+        $obj = [];
+        $obj['category'] = $formData['categories'][$x]['expertise'];
+        $obj['subcategory'] = [];
+
+        for($y = 0; $y < count($formData['project_types']);$y++){
+            if($formData['categories'][$x]['id'] == $formData['project_types'][$y]['expertise']){
+                array_push($obj['subcategory'], $formData['project_types'][$y]['type']);
+            }
+
+        }
+        array_push($formData['All_Services'], $obj);
+    }
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,  "This route works");
+}
 
 
 

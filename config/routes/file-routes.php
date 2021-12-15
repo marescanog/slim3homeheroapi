@@ -96,3 +96,8 @@ $app->group("/homeowner",function() use ($app){
     $app->post("/send-project/{workerID}","FileController:sendProjectToWorker");
 });
 
+// Get All cities
+$app->get("/get-service-areas","FileController:getServiceAreas");
+
+// Get All project types
+$app->get("/get-project-types","FileController:getProjectTypes");

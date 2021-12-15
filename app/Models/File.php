@@ -2596,6 +2596,90 @@ public function profilepicPerWorker(){
 
 
 
+//  Dec 15
+
+public function getProjectTypes(){
+
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "SELECT id, expertise, type from project_type";
+        
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->execute();
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+public function getProjectCategories(){
+
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "SELECT id, expertise from expertise";
+        
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->execute();
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
+
 
 
 
