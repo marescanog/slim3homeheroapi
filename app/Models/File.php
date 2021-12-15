@@ -2307,7 +2307,7 @@ public function skillsetPerWorker(){
         FROM project_type pt, `skillset` s
         LEFT JOIN worker w ON w.id = s.worker_id
         WHERE s.skill = pt.id
-        GROUP BY w.id
+        GROUP BY s.worker_id
         ;";
         
         // Prepare statement
