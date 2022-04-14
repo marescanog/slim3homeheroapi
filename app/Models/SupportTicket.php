@@ -137,8 +137,84 @@ class SupportTicket
         }
 
 
+// ===================================================================
+//  April 14 2022
 
+// Get all NEW tickets, Get by support ID, Get by role
+// @desc    gets all new tickets or counts all new tickets
+//          LIMITS to 1000 tickets unless specified
+// @params  optional role, optional id (with id/role pulls data role-specific and id-specific, without ID/Role Pulls/Counts All)
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+// Note, For pagination select count all
+public function get_Tickets($status = 1, $count = true, $id = null, $role = null, $end = 1000, $start = 0){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
 
+        // Registration/Verification, Customer Support, Technical Support
+        $roleSubTypes = ["1,2,3","4,5,6,7,8,9","10,11,12,13,14,15,16"];
+
+        // New, Ongoing, Resolved
+        $statusTypes = ["status = 1","status = 2","status IN (3,4)"];
+
+        // CREATE query
+        $sql = "";
+        $result = "";
+        $sqlType = $count == true ? "COUNT(*)":"*";    
+        $filterType = "";
+
+        if($id != null){
+            $filterType =" AND assigned_agent=:id";   
+        } else if($role != null) {
+            $filterType =" AND issue_id IN (".$roleSubTypes[$role-1].")";
+        }
+
+        // GET NEW TICKETS
+        // GET NEW TICKETS -> SELECT COUNT(*) FROM `support_ticket` WHERE status = 1 AND is_Archived = 0 AND assigned_agent = 163;
+        $sql = "SELECT ".$sqlType." FROM ".$this->table.' WHERE '.$statusTypes[$status-1].' AND is_Archived = 0'.$filterType.($count == true?";":(" LIMIT ".$start.",".$end.";"));
+        
+
+        // BIND ANY RELEVANT PARAMETERS
+        if($id != null){
+            // check if statement is successful
+                $stmt =  $conn->prepare($sql);
+            if($stmt != false){
+                $stmt->bindparam(':id', $id);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }  
+        } else {
+            // query statement
+            $stmt =  $conn->query($sql);
+            // check if statement is successfil
+            if($stmt){
+                $result = $stmt->fetchAll();
+            }
+        } 
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>"Error: ".$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+
+}
 
 
 
