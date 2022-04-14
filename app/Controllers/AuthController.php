@@ -1184,5 +1184,100 @@ public function decodeLoginToken(Request $request,Response $response){
     }
 
 
+// =================================================================
+// =================================================================
+//  APRIL 14 2022 CONTINUE WORKING
+    public function supportlogin(Request $request,Response $response){
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+        $this->validator->validate($request,[
+            // Check if empty
+            "email"=>v::notEmpty(),
+            "password"=>v::notEmpty()
+        ]);
 
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Second validation
+        $this->validator->validate($request,[
+            // Check if email
+            "email"=>v::email()
+        ]);
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Store Params
+        $email = CustomRequestHandler::getParam($request,"email");
+        $password = CustomRequestHandler::getParam($request,"password");
+
+        // Get Support User Account
+        $account = $this->support->getSupportAccount($email);
+
+        // Check for query error
+        if($account['success'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+        // Check if email is found
+        if($account['data'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,"Email not found");
+        }
+
+        // Get user account by ID
+        $userID = $account['data']['id'];
+        $userAcc = $this->user->getUserByID($userID);
+
+        // Check for query error
+        if($userAcc['success'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+        // Check if user is found
+        if($userAcc['data'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,"User not found");
+        }
+
+        // Check if passwords match
+        $isPasswordMatch = password_verify($password , $userAcc['data']['password']);
+
+        if($isPasswordMatch == false){
+            return $this->customResponse->is401Response($response,"The entered password does not match");
+        }
+
+        // If Everything is correct generate a support JWT Token
+        // GENERATE JWT TOKEN
+        $generated_jwt = GenerateTokenController::generateUserToken($userID, (int) $userAcc['data']['user_type_id']);
+
+        if($generated_jwt == "" || $generated_jwt == null || empty($generated_jwt)){
+            return $this->customResponse->is500Response($response, "Unable to generate a token the login session. please refresh the page.");
+        }
+
+        $resData['token'] = $generated_jwt;
+        $resData['status'] = 200;
+        $resData['first_name'] = ucfirst($userAcc['data']['first_name']);
+        $resData['last_name'] = ucfirst($userAcc['data']['last_name']);
+        $resData['role'] = $account['data']['role_type'];
+        $resData['email'] = $email;
+        $resData['profile_pic_location'] = false;
+        $resData['id'] = $userID;
+
+        // 
+        // return $this->customResponse->is200Response($response,$account['data']['id']);
+        //  return $this->customResponse->is200Response($response,$userAcc);
+         return $this->customResponse->is200Response($response,$resData);
+    }
 }

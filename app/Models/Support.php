@@ -79,4 +79,49 @@ class Support
         }
     }
 
+
+    // @desc    Retreives the support agent account details based on email
+    // @params  email
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is the support account
+    public function getSupportAccount($email){
+
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT * FROM support_agent WHERE email=:EMAIL";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':EMAIL', $email);
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
 }

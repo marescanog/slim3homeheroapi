@@ -21,7 +21,7 @@ $app->group("/homeowner",function() use ($app){
 });
 
 // New routes
-    $app->group("/worker",function() use ($app){
+$app->group("/worker",function() use ($app){
         // Creates a hh_user entry, worker entry & schedule entry in the DB
         // Pre-verified by /auth/check-phone and /auth/verify-password
         $app->post("/create-account", "AuthController:workerCreateAccount"); // Worker: 1st Step
@@ -42,6 +42,12 @@ $app->group("/homeowner",function() use ($app){
     // DUMMY ROUTES
     $app->post("/generate-SMS-dummy", "AuthController:generateSMSDummy"); // Global, for SMS PIN
     $app->post("/verify-SMS-dummy", "AuthController:verifySMSDummy"); // Global, for SMS PIN
+
+});
+
+// New routes Apr 14
+$app->group("/support",function() use ($app){
+    $app->get("/login", "AuthController:supportlogin");
 });
 
 
