@@ -148,7 +148,7 @@ class SupportTicket
 //          sucess value is true when PDO is successful and false on failure
 //          data value is
 // Note, For pagination select count all
-public function get_Tickets($status = 1, $count = true, $id = null, $role = null, $end = 1000, $start = 0){
+public function get_Tickets($status = 1, $count = true, $id = null, $role = null, $limit = 1000, $offset = 0){
     try{
         $db = new DB();
         $conn = $db->connect();
@@ -157,7 +157,7 @@ public function get_Tickets($status = 1, $count = true, $id = null, $role = null
         $roleSubTypes = ["1,2,3","4,5,6,7,8,9","10,11,12,13,14,15,16"];
 
         // New, Ongoing, Resolved
-        $statusTypes = ["status = 1","status = 2","status IN (3,4)"];
+        $statusTypes = ["status = 1","status = 2","status IN (3,4)","is_Escalated = 1"];
 
         // CREATE query
         $sql = "";
@@ -173,7 +173,7 @@ public function get_Tickets($status = 1, $count = true, $id = null, $role = null
 
         // GET NEW TICKETS
         // GET NEW TICKETS -> SELECT COUNT(*) FROM `support_ticket` WHERE status = 1 AND is_Archived = 0 AND assigned_agent = 163;
-        $sql = "SELECT ".$sqlType." FROM ".$this->table.' WHERE '.$statusTypes[$status-1].' AND is_Archived = 0'.$filterType.($count == true?";":(" LIMIT ".$start.",".$end.";"));
+        $sql = "SELECT ".$sqlType." FROM ".$this->table.' WHERE '.$statusTypes[$status-1].' AND is_Archived = 0'.$filterType.($count == true?";":(" LIMIT ".$limit." OFFSET ".$offset.";"));
         
 
         // BIND ANY RELEVANT PARAMETERS
@@ -217,7 +217,72 @@ public function get_Tickets($status = 1, $count = true, $id = null, $role = null
 }
 
 
+// @name    gets all transferred tickets from the database based on agent ID
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function get_transferred_tickets($count = false,$id = null,$limit=1000,$offset=0){
 
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "";
+
+        $sqlType = $count == true ? "COUNT(*)":"*"; 
+
+        // if($id == null){
+        //     $sql = "SELECT * FROM ".$this->table;
+        //     // query statement
+        //     $stmt =  $conn->query($sql);
+
+        //     // check if statement is successfil
+        //     if($stmt){
+        //         $result = $stmt->fetchAll();
+        //     }
+
+        // } else {
+            $sql = "SELECT ".$sqlType." FROM ".$this->table." st RIGHT JOIN ticket_assignment ta ON st.id = ta.support_ticket WHERE ta.previous_agent = :id GROUP BY ta.support_ticket ".($count == true?";":(" LIMIT ".$limit." OFFSET ".$offset.";"));
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':id', $id);
+                $stmt->execute();
+                $result = $stmt->fetchAll();
+            }
+
+            $stmt=null;
+            $db=null;
+        // }
+        
+        
+        $conn=null;
+        $db=null;
+
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+
+}
 
 
 
