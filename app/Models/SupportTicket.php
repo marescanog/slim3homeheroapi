@@ -157,23 +157,23 @@ public function get_Tickets($status = 1, $count = true, $id = null, $role = null
         $roleSubTypes = ["1,2,3","4,5,6,7,8,9","10,11,12,13,14,15,16"];
 
         // New, Ongoing, Resolved
-        $statusTypes = ["status = 1","status = 2","status IN (3,4)","is_Escalated = 1"];
+        $statusTypes = ["st.status = 1","st.status = 2","st.status IN (3,4)","st.is_Escalated = 1"];
 
         // CREATE query
         $sql = "";
         $result = "";
-        $sqlType = $count == true ? "COUNT(*)":"*";    
+        $sqlType = $count == true ? "COUNT(*)":"st.id,st.author,st.issue_id,st.status,st.is_Escalated,st.is_Archived,st.assigned_agent,st.created_on,st.last_updated_on,st.assigned_on,st.has_AuthorTakenAction,hu.first_name,hu.last_name";    
         $filterType = "";
 
         if($id != null){
-            $filterType =" AND assigned_agent=:id";   
+            $filterType =" AND st.assigned_agent=:id";   
         } else if($role != null) {
-            $filterType =" AND issue_id IN (".$roleSubTypes[$role-1].")";
+            $filterType =" AND st.issue_id IN (".$roleSubTypes[$role-1].")";
         }
 
         // GET NEW TICKETS
         // GET NEW TICKETS -> SELECT COUNT(*) FROM `support_ticket` WHERE status = 1 AND is_Archived = 0 AND assigned_agent = 163;
-        $sql = "SELECT ".$sqlType." FROM ".$this->table.' WHERE '.$statusTypes[$status-1].' AND is_Archived = 0'.$filterType.($count == true?";":(" LIMIT ".$limit." OFFSET ".$offset.";"));
+        $sql = "SELECT ".$sqlType." FROM ".$this->table." st".($count == true?"":(" LEFT JOIN hh_user hu ON st.assigned_agent = hu.user_id ")).' WHERE '.$statusTypes[$status-1].' AND st.is_Archived = 0'.$filterType.($count == true?";":(" LIMIT ".$limit." OFFSET ".$offset.";"));
         
 
         // BIND ANY RELEVANT PARAMETERS
@@ -231,7 +231,7 @@ public function get_transferred_tickets($count = false,$id = null,$limit=1000,$o
         // CREATE query
         $sql = "";
 
-        $sqlType = $count == true ? "COUNT(*)":"*"; 
+        $sqlType = $count == true ? "COUNT(*)":"st.id,st.author,st.issue_id,st.status,st.is_Escalated,st.is_Archived,st.assigned_agent,st.created_on,st.last_updated_on,st.assigned_on,ta.date_assigned,ta.date_assigned,ta.newly_assigned_agent,ta.previous_agent,ta.transfer_reason,ta.support_ticket,hu.first_name,hu.last_name"; 
 
         // if($id == null){
         //     $sql = "SELECT * FROM ".$this->table;
@@ -244,7 +244,10 @@ public function get_transferred_tickets($count = false,$id = null,$limit=1000,$o
         //     }
 
         // } else {
-            $sql = "SELECT ".$sqlType." FROM ".$this->table." st RIGHT JOIN ticket_assignment ta ON st.id = ta.support_ticket WHERE ta.previous_agent = :id GROUP BY ta.support_ticket ".($count == true?";":(" LIMIT ".$limit." OFFSET ".$offset.";"));
+
+            //"st.id,st.author,st.issue_id,st.status,st.is_Escalated,st.is_Archived,st.assigned_agent,st.created_on,st.last_updated_on,st.assigned_on,st.has_AuthorTakenAction,hu.first_name,hu.last_name"
+
+            $sql = "SELECT ".$sqlType." FROM ".$this->table." st RIGHT JOIN ticket_assignment ta ON st.id = ta.support_ticket LEFT JOIN hh_user hu ON  ta.newly_assigned_agent = hu.user_id WHERE ta.previous_agent = :id GROUP BY ta.support_ticket ".($count == true?";":(" LIMIT ".$limit." OFFSET ".$offset.";"));
             // Prepare statement
             $stmt =  $conn->prepare($sql);
             $result = "";
@@ -253,7 +256,7 @@ public function get_transferred_tickets($count = false,$id = null,$limit=1000,$o
             if ($stmt !== false) {
                 $stmt->bindparam(':id', $id);
                 $stmt->execute();
-                $result = $stmt->fetchAll();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
             }
 
             $stmt=null;
