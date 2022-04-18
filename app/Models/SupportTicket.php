@@ -288,9 +288,116 @@ public function get_transferred_tickets($count = false,$id = null,$limit=1000,$o
 }
 
 
+// ===================================================================
+//  April 18 2022
 
 
+// ["general","id","name","author","category"]
+public function search($userID = null, $id = null, $category = null, $agent_name = null, $author_name = null, $limit=10, $offset=0){
+    try{
 
+        // $c_subTypes = ["-","Worker Registration","Worker Certification","User Home Verification","Billing Dispute","Rating Dispute","Job Post Issue","Job Order Issue","Complaint on other Users behavior","General Complaint","Inquiry","App Guidance","App Issues","Account Issue","Password Issue","Messaging Issue","Database Issue"];
+        // $c_issue_id = property_exists($n, 'issue_id') ? ($n->issue_id > 0 || is_numeric($n->issue_id) ? $n->issue_id :"-" ) : "-";                
+        // $c_head = "GEN";
+        // if($c_issue_id>=1&&$c_issue_id<=3){
+        //     $c_head = "REG";
+        // }
+        // if($c_issue_id>=4&&$c_issue_id<=9){
+        //     $c_head = "DIS";
+        // }
+        // if($c_issue_id>=12&&$c_issue_id<=16){
+        //     $c_head = "TEC";
+        // }   
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "";
+        $result = ""; 
+        
+        // Search by ticket ID 
+        if($id != null) {
+            // JOIN ONLY first_name and last name of hhuser since id simple search
+            $sql = "SELECT DISTINCT st.id,st.author,st.issue_id,st.status,st.is_Escalated,st.is_Archived,
+            st.assigned_agent,st.created_on,st.last_updated_on,st.assigned_on,st.has_AuthorTakenAction,
+            hu.first_name,hu.last_name, 
+            hu2.first_name as author_first_name,hu2.last_name as author_last_name
+            FROM `support_ticket` st 
+            LEFT JOIN hh_user hu ON  st.assigned_agent = hu.user_id
+            LEFT JOIN hh_user hu2 ON  st.author = hu2.user_id 
+            WHERE st.id = :id
+            GROUP BY st.id
+            ORDER BY id 
+            DESC LIMIT ".$limit." OFFSET ".$offset.";"; //limit & offset variables are already cleaned before passed. Default is 10 & 0 respectively
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':id', $id);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+        }
+        
+        // // Search by other categories
+        // if($id == null){
+        //     // DO AN OUTER JOIN INSTEAD
+        //     // Also join categories?
+        //     $sql = "SELECT * FROM ".$this->table." ORDER BY id DESC LIMIT ".$limit." OFFSET ".$offset;
+        //     // query statement
+        //     $stmt =  $conn->query($sql);
+        //     // check if statement is successfil
+        //     if($stmt){
+        //         $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        //     }
+        //     //"st.id,st.author,st.issue_id,st.status,st.is_Escalated,st.is_Archived,st.assigned_agent,st.created_on,st.last_updated_on,st.assigned_on,st.has_AuthorTakenAction,hu.first_name,hu.last_name"
+
+        //     // $sql = "SELECT ".$sqlType." FROM ".$this->table." st RIGHT JOIN ticket_assignment ta ON st.id = ta.support_ticket LEFT JOIN hh_user hu ON  ta.newly_assigned_agent = hu.user_id WHERE ta.previous_agent = :id GROUP BY ta.support_ticket ".($count == true?";":(" ORDER BY st.id DESC LIMIT ".$limit." OFFSET ".$offset.";"));
+        //     // // Prepare statement
+        //     // $stmt =  $conn->prepare($sql);
+        //     // $result = "";
+
+        //     // Only fetch if prepare succeeded
+        //     // if ($stmt !== false) {
+        //     //     $stmt->bindparam(':id', $id);
+        //     //     $stmt->execute();
+        //     //     $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        //     // }
+        // }
+
+        // // Return all 
+        // if($id == null && $category == null && $agent_name == null && $author_name == null){
+        //     $sql = "SELECT * FROM ".$this->table." ORDER BY id DESC LIMIT ".$limit." OFFSET ".$offset;
+        //     // query statement
+        //     $stmt =  $conn->query($sql);
+        //     // check if statement is successfil
+        //     if($stmt){
+        //         $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        //     }
+        // }
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+            // "data"=>"testSQL"
+        );
+        return $ModelResponse;
+
+
+    } catch (\PDOException $e) {
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+        return $ModelResponse;
+    }
+
+}
 
 
 

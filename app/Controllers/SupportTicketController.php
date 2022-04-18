@@ -74,4 +74,93 @@ class SupportTicketController
     }
 
 
+// ===================================================================
+//  April 18 2022
+
+    // Search tickets by Type
+    // ["general","id","name","author","category"]
+    public function search(Request $request,Response $response, array $args){
+        // constants
+        $typesArr = ["general","id","name","author","category"];
+
+        // Get Search Variables
+        $limit = $args['limit'];
+        $page = $args['page'];
+        $type = $args['type'];
+        $query = $args['keywords'];
+
+        // Clean Variables
+        $limit =  is_numeric($limit) ? ($limit > 1000 ? 1000 : $limit) : 10;
+        $page = (is_numeric($page) ? $page : 1);
+        $type = array_search($type, $typesArr) == FALSE ? 1 :  array_search($type, $typesArr);
+
+        // Seperate by - or space
+        $hyphen = explode( '-', $query);
+        $space = explode( '+', $query);
+        $ticketID = $args['keywords'];
+        $name = "";
+
+        if(count($hyphen) == 2){
+            $ticketID = $hyphen[1];
+        }
+
+        if(is_numeric(0+$ticketID)){
+            $ticketID = intval($ticketID);
+        }
+
+        $resData['success'] = "";
+        $resData['data'] = "";
+        // searchTicketNo($id = null, $category = null, $agent_name = null, $author_name = null, $limit=1000, $offset=0)
+        
+        function search($s_userid = null, $s_id = null, $s_category = null, $s_agent_name = null, $s_author_name = null, $s_limit=1000, $s_offset=0, $s_sticketobj) {
+            return $s_sticketobj->search($s_userid,$s_id,$s_category,$s_agent_name,$s_author_name,$s_limit,$s_offset);
+        }
+
+        switch($type){
+            case 0:
+                // Search General
+            break;
+                // Search by Ticket ID
+            case 2:
+                // Search by agent name
+                break;
+            case 3:
+                // Search by author name
+                break;
+            case 4:
+                // Search by category
+                break;
+            default:
+                // Search by Ticket ID
+                $resData = search(null,$ticketID,null,null,null,$limit,$page,$this->supportTicket);
+            break;
+        } 
+
+        // Check for query error
+        if($resData['success'] == false){
+            // return $this->customResponse->is500Response($response,$resData['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+        // Check for empty error
+        if($resData['success'] == ""){
+            return $this->customResponse->is500Response($response,"SERVER ERROR: Returns No Success type");
+        }
+
+        // Get the value of args for the search keywords
+        $this->customResponse->is200Response($response, $resData['data']);
+    }
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
 }

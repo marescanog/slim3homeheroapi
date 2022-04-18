@@ -11,6 +11,11 @@ $app->group("/ticket",function() use ($app){
     $app->get("/get-single/{id}", "SupportTicketController:getSingle");
 
 
+    $app->get("/search/{limit}/{page}/{type}/{keywords}", "SupportTicketController:search");
+
+    
+
+
 
 
 

@@ -86,6 +86,7 @@ class GenerateTokenController implements SecretKeyInterface
     {
         $now = time();
         // $future = strtotime('now',$now);
+        // $future = strtotime('+2 minutes',$now);
          $future = strtotime('+8 hour',$now);
         // $future = strtotime('+24 hour',$now);
         $secret = GenerateTokenController::JWT_SECRET_KEY;
