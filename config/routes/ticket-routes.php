@@ -13,6 +13,9 @@ $app->group("/ticket",function() use ($app){
 
     $app->get("/search/{limit}/{page}/{type}/{keywords}", "SupportTicketController:search");
 
+
+    $app->post("/get-info/{id}", "SupportTicketController:getInfo");
+
     
 
 
