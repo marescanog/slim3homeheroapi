@@ -263,8 +263,8 @@ public function getInfo(Request $request,Response $response, array $args)
     $resData = [];
 
     switch($role){
-        case 1:
-            // Registration
+        case 1: // Registration
+            // Make sure the sub issue is within range
             if($base_info["data"]["issue_id"] < 0 || $base_info["data"]["issue_id"] > 3){
                 return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "You are not authorized to access/view this ticket.") );
             }
@@ -277,17 +277,18 @@ public function getInfo(Request $request,Response $response, array $args)
                 return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
             }
 
-            // Get ticket assignment history
-            $his = $this->supportTicket->get_ticket_history($base_info["data"]["id"]);
+            // Get ticket nbi history
+            $nbi = $this->supportTicket->get_nbi_info($base_info["data"]["id"]);
             // Check for query error
             if($his['success'] == false){
-                // return $this->customResponse->is500Response($response,$his['data']);
+                // return $this->customResponse->is500Response($nbi,$his['data']);
                 return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
             }
 
             // Store info to return
             $resData["base_info"] = $base_info["data"];
             $resData["history"] = $his["data"];
+            $resData["nbi_info"] = $nbi["data"];
             break;
         case 2:
             break;

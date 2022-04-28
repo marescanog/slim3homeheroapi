@@ -525,7 +525,66 @@ public function get_ticket_history($id){
 }
 
 
+// Get ticket history info from db
+// @desc    gets nbi info db info
+// @params  support ticket id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function get_nbi_info($id){
 
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "";
+
+        $sql = "SELECT ni.id, ni.clearance_no, ni.expiration_date, ni.is_deleted, ni.worker_id, ni.created_on, ni.is_verified,
+        CONCAT(hh.last_name, ', ', hh.first_name) AS worker_name,
+        nif.file_id, f.file_name, f.file_path
+        FROM `nbi_information` ni
+        LEFT JOIN hh_user hh ON ni.worker_id = hh.user_id
+        LEFT JOIN nbi_files nif ON ni.id = nif.NBI_id
+        LEFT JOIN file f ON nif.file_id = f.id
+        WHERE support_ticket = :id
+        ORDER BY created_on DESC";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':id', $id);
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;
+        $db=null;
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+
+}
 
 
 
