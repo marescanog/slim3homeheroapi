@@ -310,6 +310,154 @@ public function getInfo(Request $request,Response $response, array $args)
 
 
 
+
+// ===================================================================
+//  April 29 2022
+
+// gets all info pn specified ticket
+public function getAllTickets(Request $request,Response $response, array $args)
+{
+    // Get the auth header and userID to get users tickets
+        // Get Email & Role Type
+        // Server side validation using Respect Validation library
+        // declare a group of rules ex. if empty, equal to etc.
+        $this->validator->validate($request,[
+            // Check if empty
+            "email"=>v::notEmpty(),
+            "page"=>v::notEmpty(),
+            "limit"=>v::notEmpty()
+        ]);
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // CHECK IF USER ID & ROLE TYPE IS PROVIDED (FOR ADMIN & SUP USERS)
+        // IF ADMIN USER CHECK IF ROLE VERIFIED
+        // Store Params
+        $email = CustomRequestHandler::getParam($request,"email");
+        $page = CustomRequestHandler::getParam($request,"page");
+        $limit = CustomRequestHandler::getParam($request,"limit");
+
+        // Get user ID with email
+        $account = $this->supportAgent->getSupportAccount($email);
+
+        // Check for query error
+        if($account['success'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+        // Check if email is found
+        if($account['data'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,"Email not found");
+        }
+
+        // Get user account by ID
+        $userID = $account['data']['id'];
+        $role = $account['data']['role_type'];
+
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Extract token by omitting "Bearer"
+        $jwt = substr(trim($bearer_token),9);
+
+        // Decode token to get user ID
+        // Verify Token
+        $result =  GenerateTokenController::AuthenticateUserID($jwt, $userID);
+
+        if($result['status'] !== true){
+            return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $result['message']) );
+        }
+
+        // For pagination - determine results size
+        // ex page 3 = 1-10, 11,20, 21-30 <- this page
+        //  Server 0-9,10-19, 20-29
+        // compute offset
+        $offset = (($page-1)*$limit); // $page, $limit
+
+
+        // For pagination - determine total size/pages
+        // =================================================
+        // New
+            $totalNew = $this->supportTicket->get_Tickets(1,true,null,$role);
+            // Check for query error
+            if($totalNew['success'] == false){
+                // return $this->customResponse->is500Response($response,$totalNew['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+        // Ongoing
+        $totalOngoing = $this->supportTicket->get_Tickets(2,true,null,$role);
+        // Check for query error
+        if($totalNew['success'] == false){
+            // return $this->customResponse->is500Response($response,$totalOngoing['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+
+
+
+        // For page data - determine total size/pages
+        // =================================================
+        // Get necessary info
+            // New
+            $newTickets = $this->supportTicket->get_Tickets(1,false,null,$role,$limit,$offset);
+            // Check for query error
+            if($newTickets['success'] == false){
+                // return $this->customResponse->is500Response($response,$ongoingTickets['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            // Ongoing
+            $ongoingTickets = $this->supportTicket->get_Tickets(2,false,null,$role,$limit,$offset);
+            // Check for query error
+            if($ongoingTickets['success'] == false){
+                // return $this->customResponse->is500Response($response,$ongoingTickets['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            // Completed
+            $completedTickets = $this->supportTicket->get_Tickets(3,false,null,$role,$limit,$offset);
+            // Check for query error
+            if($completedTickets['success'] == false){
+                // return $this->customResponse->is500Response($response,$completedTickets['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            // Escalations
+            // Transfers
+
+
+        $resData = [];
+        $resData["new_total"] = $totalNew["data"][0]["COUNT(*)"];
+        $resData["ongoing_total"] = $totalOngoing["data"][0]["COUNT(*)"];
+        $resData["new"] = $newTickets["data"];
+        $resData["ongoing"] = $ongoingTickets["data"];
+
+    // verify if user is allowed to access this ticket
+    $this->customResponse->is200Response($response,  $resData);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
 
 

@@ -17,8 +17,7 @@ $app->group("/ticket",function() use ($app){
     $app->post("/get-info/{id}", "SupportTicketController:getInfo");
 
     
-
-
+    $app->post("/all","SupportTicketController:getAllTickets");
 
 
 
