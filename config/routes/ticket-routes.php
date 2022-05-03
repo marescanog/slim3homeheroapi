@@ -19,6 +19,9 @@ $app->group("/ticket",function() use ($app){
     
     $app->post("/all","SupportTicketController:getAllTickets");
 
+    
+    $app->post("/assign/{id}","SupportTicketController:assignTicket");
+
 
 
 

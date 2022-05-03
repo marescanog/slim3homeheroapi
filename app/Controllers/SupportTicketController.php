@@ -159,7 +159,7 @@ class SupportTicketController
         }
 
         // Get the value of args for the search keywords
-        $this->customResponse->is200Response($response, $resData['data']);
+        return $this->customResponse->is200Response($response, $resData['data']);
     }
 
 
@@ -304,7 +304,7 @@ public function getInfo(Request $request,Response $response, array $args)
     }
 
     // verify if user is allowed to access this ticket
-    $this->customResponse->is200Response($response, $resData);
+    return $this->customResponse->is200Response($response, $resData);
 }
 
 
@@ -437,9 +437,167 @@ public function getAllTickets(Request $request,Response $response, array $args)
         $resData["ongoing"] = $ongoingTickets["data"];
 
     // verify if user is allowed to access this ticket
-    $this->customResponse->is200Response($response,  $resData);
+    return $this->customResponse->is200Response($response,  $resData);
 }
 
+
+
+// ===================================================================
+//  May 4 2022
+
+// assigns a ticket to an agent
+public function assignTicket(Request $request,Response $response, array $args)
+{
+
+    // Get ticket parameter for ticket information
+    $ticket_id = $args['id'];
+
+    // Extract from db
+    $base_info = $this->supportTicket->get_ticket_base_info($ticket_id);
+
+    // Check for query error
+    if($base_info['success'] == false){
+        // return $this->customResponse->is500Response($response,$base_info['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+
+    // Check if not found
+    if($base_info['data'] == false){
+        // return $this->customResponse->is500Response($response,$base_info['data']);
+        return $this->customResponse->is404Response($response,"Ticket Not found.");
+    }
+
+    // Only on new ticket but otherwise if it is a transfer ignore (Fix later)
+    // Check if ticket has already been assigned
+    if($base_info["data"]["assigned_agent"]){
+        // return $this->customResponse->is500Response($response,$base_info['data']);
+        return $this->customResponse->is401Response($response,"Ticket already assgined to another agent.");
+    }
+
+    // Check if the user is allowed to assign the ticket to themselves
+    // Get role data
+    // Get Email
+    // Server side validation using Respect Validation library
+    // declare a group of rules ex. if empty, equal to etc.
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty()
+    ]);
+
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // VERIFY ACCOUNT & CHECK ROLE TYPE
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    $type = CustomRequestHandler::getParam($request,"type");
+    $transferTo = CustomRequestHandler::getParam($request,"type");
+
+    // Get user ID with email
+    $account = $this->supportAgent->getSupportAccount($email);
+
+    // Check for query error
+    if($account['success'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+
+    // Check if email is found
+    if($account['data'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token unrecognized. Email not found. Please sign into your account."));
+    }
+
+    // Get user account by ID & get role type
+    $userID = $account['data']['id'];
+    $role = $account['data']['role_type'];
+
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Extract token by omitting "Bearer"
+    $jwt = substr(trim($bearer_token),9);
+
+    // Decode token to get user ID
+    // Verify Token
+    $result =  GenerateTokenController::AuthenticateUserID($jwt, $userID);
+
+    if($result['status'] !== true){
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, $result['message']) );
+    }
+
+    // After the authentication steps above
+    // Check the role type with the ticket type
+        // Registration/verification agent
+        $roleSubTypes["0"] = "0";
+        $roleSubTypes["1"] = "1";
+        $roleSubTypes["2"] = "1";
+        $roleSubTypes["3"] = "1";
+        // Customer support
+        $roleSubTypes["4"] = "2";
+        $roleSubTypes["5"] = "2";
+        $roleSubTypes["6"] = "2";
+        $roleSubTypes["7"] = "2";
+        $roleSubTypes["8"] = "2";
+        $roleSubTypes["9"] = "2";
+        // Technical support
+        $roleSubTypes["10"] = "3";
+        $roleSubTypes["11"] = "3";
+        $roleSubTypes["12"] = "3";
+        $roleSubTypes["13"] = "3";
+        $roleSubTypes["14"] = "3";
+        $roleSubTypes["15"] = "3";
+        $roleSubTypes["16"] = "3";
+        $roleFilter = $base_info["data"]["issue_id"] != null && is_numeric($base_info["data"]["issue_id"]) 
+        && $base_info["data"]["issue_id"] > 0 && $base_info["data"]["issue_id"] < 17 
+        ? number_format($base_info["data"]["issue_id"],0,"","")
+        : "0";
+
+    if($roleSubTypes[$roleFilter]!=$role && $role != 4 && $role != 6 && $role !=5){
+        return $this->customResponse->is401Response($response,  "This ticket is out of scope for your current role. Please select another ticket.");
+    }
+
+    // $transferTo - future check if this agent can handle transfer
+    // action types:  2-assigned, 4-transferred, 5-escalated
+    $actionID = $type == null ? 2 : (is_numeric($type) && ($type == 2 || $type == 4 || $type == 5) ? $type : 2);
+    $messages = [];
+    $messages["2"] = "AGENT #".$userID." ACCEPTED TICKET";
+    $messages["4"] = "AGENT #".$userID." TRANSFERRED TICKET TO AGENT #"; 
+    $messages["5"] = "AGENT #".$userID." ESCALATED TICKET TO SUPERVISOR #";
+
+    // If all is good then assign the ticket to the agent
+    // Get user ID with email
+    $assign_res = $this->supportTicket->assign_ticket($userID,$ticket_id,$actionID,$messages[$actionID],2);
+
+    if($assign_res['success'] !== true){
+        // return $this->customResponse->is500Response($response,$assign_res['data']);
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, "Something went wrong. Please try again.") );
+    }
+
+    $res = [];
+    $res["message"] = "Ticket Assignment Success";
+    $res["status"] = 200;
+
+    return $this->customResponse->is200Response($response,  $res);
+
+    
+    // Notes, neeeds adjustment/validation for the following scenarios
+    /*
+        agent transfers to another agent
+        agent escalates to supervisor
+        supervisor/admin accepts ticket (new)
+        supervisor/admin accepts ticket (old)
+        supervisor/admin transfers ticket to another agent
+    */
+    // Done 
+    /*
+        Agent accepts a new ticket
+    */
+}
 
 
 

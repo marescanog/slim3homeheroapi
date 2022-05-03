@@ -588,7 +588,76 @@ public function get_nbi_info($id){
 
 
 
+// @name    assigns a ticket with an agent ID, adds a ticket action and a new ticket assignment into table
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function assign_ticket($userID,$ticketID,$actionID=2,$description="",$stat=2,$newAgent=null,$prevAgent=null,$transferReason=null){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
 
+        // CREATE query
+        $sql = "";
+
+        $sql = "SET @@session.time_zone = '+08:00';
+        BEGIN;
+            UPDATE support_ticket s
+            SET s.status = :stat, s.assigned_agent = :userID, s.last_updated_on = now()
+            WHERE s.id = :ticketID;
+
+            INSERT INTO ticket_actions(action_taken, system_generated_description, support_ticket) VALUES (:actionID,:description,:sticketID);
+
+            INSERT INTO ticket_assignment(support_ticket, date_assigned, newly_assigned_agent, previous_agent, transfer_reason) VALUES (:sticketID2, now(), :newAgent,:prevAgent,:reason);
+        COMMIT;
+        ";
+
+        $new =  $newAgent==null?$userID:$newAgent;
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID);
+            $stmt->bindparam(':stat', $stat);
+            $stmt->bindparam(':ticketID', $ticketID);
+            $stmt->bindparam(':actionID', $actionID);
+            $stmt->bindparam(':description', $description);
+            $stmt->bindparam(':sticketID', $ticketID);
+            $stmt->bindparam(':sticketID2', $ticketID);
+            $stmt->bindparam(':newAgent', $new);
+            $stmt->bindparam(':prevAgent', $prevAgent);
+            $stmt->bindparam(':reason', $transferReason);
+            $result = $stmt->execute();
+        } else {
+            $result = "PDO Error";
+        }
+
+        $stmt=null;
+        $db=null;
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 
