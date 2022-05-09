@@ -427,11 +427,13 @@ public function get_ticket_base_info($id){
         $sql = "SELECT st.id, st.author, st.issue_id, st.status, st.is_Escalated, st.is_Archived, st.has_images, st.assigned_agent, st.created_on, st.last_updated_on, st.assigned_on, st.has_AuthorTakenAction,
         CONCAT(hh.last_name,', ',hh.first_name) as author_name,
         CONCAT(hh2.last_name,', ',hh2.first_name) as agent_name,
+        sa.email as agent_email,
         stsc.subcategory as category_text,
         stst.status as status_text
         FROM ".$this->table." st 
         LEFT JOIN  hh_user hh ON st.author = hh.user_id
         LEFT JOIN  hh_user hh2 ON st.assigned_agent = hh2.user_id
+        LEFT JOIN  support_agent sa ON hh2.user_id = sa.id
         LEFT JOIN support_ticket_subcategory stsc ON st.issue_id = stsc.id
         LEFT JOIN support_ticket_status stst ON st.status = stst.id
         WHERE st.id = :id";
@@ -659,10 +661,117 @@ public function assign_ticket($userID,$ticketID,$actionID=2,$description="",$sta
     }
 }
 
+// ===================================================================
+// May 10 2022
+
+// Get ticket history info from db
+// @desc    gets ticket history db info
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function update_worker_registration($ticketID, $workerID, $option){
+
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "";
+
+        $sql = "SELECT * FROM ticket_actions WHERE support_ticket = :id  ORDER BY id DESC;";
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':id', $id);
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;
+        $db=null;
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+
+}
 
 
 
+// Get ticket history info from db
+// @desc    gets ticket history db info
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function comment($ticketID, $workerID, $comment){
 
+    try{
+        $systemGenMessage = 'AGENT# '.$workerID.' ADDED NOTES TO TICKET# '.$ticketID;
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "";
+
+        $sql = "INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes, support_ticket)
+        VALUES (8, :sysMessage , :comment, :id);";
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':id', $ticketID);
+            $stmt->bindparam(':comment', $comment);
+            $stmt->bindparam(':sysMessage', $systemGenMessage);
+            $result = $stmt->execute();
+        }
+
+        $stmt=null;
+        $db=null;
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+
+}
 
 
 
