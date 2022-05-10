@@ -664,6 +664,10 @@ public function assign_ticket($userID,$ticketID,$actionID=2,$description="",$sta
 // ===================================================================
 // May 10 2022
 
+
+// Additional Notes:
+//      Affected Tables are:
+//          nbi_information, hh_user, support_ticket, ticket_actions
 // Get ticket history info from db
 // @desc    gets ticket history db info
 // @params  id
@@ -830,10 +834,60 @@ public function comment($ticketID, $workerID, $comment, $notify = null){
 
 
 
+// ----- May 10 ------------------------------
 
 
+// Get ticket comment history info from db
+// @desc    gets ticket history db info
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function get_ticket_comment_history($id){
 
+    try{
+        $db = new DB();
+        $conn = $db->connect();
 
+        // CREATE query
+        $sql = "";
+
+        $sql = "SELECT * FROM `ticket_actions` WHERE support_ticket = :id AND agent_notes IS NOT NULL ORDER BY id DESC;";
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':id', $id);
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;
+        $db=null;
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+
+}
 
 
 
