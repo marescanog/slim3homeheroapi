@@ -690,7 +690,7 @@ public function update_worker_registration($agentID, $ticketID, $workerID, $nbiI
             $verifyUser = 2;
         } 
 
-        $sysDes = "AGENT#".$agentID." ".($verifyNum == -1 ? "DECLINED": "APPROVED")." WORKER#".$workerID." APPLICATION";
+        $sysDes = "AGENT #".$agentID." ".($verifyNum == -1 ? "DECLINED": "APPROVED")." WORKER #".$workerID." APPLICATION";
 
         // CREATE query
         $sql = "";
