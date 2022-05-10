@@ -22,7 +22,11 @@ $app->group("/ticket",function() use ($app){
     
     $app->post("/assign/{id}","SupportTicketController:assignTicket");
 
+// TODO
+    $app->post("/add-comment/{id}","SupportTicketController:commentTicket");
 
+
+    $app->post("/update-worker-register/{id}","SupportTicketController:updateWorkerRegistration");
 
 
 

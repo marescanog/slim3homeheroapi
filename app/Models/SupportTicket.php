@@ -542,7 +542,7 @@ public function get_nbi_info($id){
         // CREATE query
         $sql = "";
 
-        $sql = "SELECT ni.id, ni.clearance_no, ni.expiration_date, ni.is_deleted, ni.worker_id, ni.created_on, ni.is_verified,
+        $sql = "SELECT ni.id, ni.clearance_no, ni.expiration_date, ni.is_deleted, ni.worker_id, ni.created_on, ni.is_verified, ni.support_ticket,
         CONCAT(hh.last_name, ', ', hh.first_name) AS worker_name,
         nif.file_id, f.file_name, f.file_path
         FROM `nbi_information` ni
@@ -670,23 +670,58 @@ public function assign_ticket($userID,$ticketID,$actionID=2,$description="",$sta
 // @returns a Model Response object with the attributes "success" and "data"
 //          sucess value is true when PDO is successful and false on failure
 //          data value is
-public function update_worker_registration($ticketID, $workerID, $option){
+public function update_worker_registration($agentID, $ticketID, $workerID, $nbiID, $option, $comment = null){
 
     try{
         $db = new DB();
         $conn = $db->connect();
 
+        $verifyNum = -1; // Default decline = -1, accept = 1, not graded = 0
+        if($option == 1){
+            $verifyNum = 1;
+        } 
+
+        $verifyUser = 3; // 1-Pending Verification, 2-Verified, 3-Declined
+        if($option == 1){
+            $verifyUser = 2;
+        } 
+
+        $sysDes = "AGENT#".$agentID." ".($verifyNum == -1 ? "DECLINED": "APPROVED")." WORKER#".$workerID." APPLICATION";
+
         // CREATE query
         $sql = "";
 
-        $sql = "SELECT * FROM ticket_actions WHERE support_ticket = :id  ORDER BY id DESC;";
+        // STEPS
+        // 1. UPDATE NBI - > verified
+        // 2. UPDATE WORKER ? USER -> verified
+        // 3. ADD ACTION
+        // 4. UPDATE TICKET CLOSED & Verified + TIME
+        $sql = "SET @@session.time_zone = '+08:00';
+        BEGIN;
+            UPDATE nbi_information ni SET ni.is_verified = :verifyNum WHERE ni.id = :nbiID;
+
+            UPDATE hh_user hh SET hh.user_status_id = :verifyUser WHERE hh.user_id = :workerID;
+
+            UPDATE support_ticket st SET st.status = 4, st.last_updated_on = now(), st.has_AuthorTakenAction = 0 WHERE st.id = :ticketID;
+
+            INSERT INTO ticket_actions(action_taken, system_generated_description,agent_notes, support_ticket) VALUES (7,:description,:notes,:sticketID);
+        COMMIT;
+        ";
+
         // Prepare statement
         $stmt =  $conn->prepare($sql);
         $result = "";
 
         // Only fetch if prepare succeeded
         if ($stmt !== false) {
-            $stmt->bindparam(':id', $id);
+            $stmt->bindparam(':nbiID', $nbiID);
+            $stmt->bindparam(':verifyNum', $verifyNum);
+            $stmt->bindparam(':workerID', $workerID);
+            $stmt->bindparam(':verifyUser', $verifyUser);
+            $stmt->bindparam(':ticketID', $ticketID);
+            $stmt->bindparam(':description', $sysDes );
+            $stmt->bindparam(':notes', $comment);
+            $stmt->bindparam(':sticketID', $ticketID);
             $stmt->execute();
             $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         }
@@ -718,24 +753,42 @@ public function update_worker_registration($ticketID, $workerID, $option){
 
 
 
+
 // Get ticket history info from db
 // @desc    gets ticket history db info
 // @params  id
 // @returns a Model Response object with the attributes "success" and "data"
 //          sucess value is true when PDO is successful and false on failure
 //          data value is
-public function comment($ticketID, $workerID, $comment){
+public function comment($ticketID, $workerID, $comment, $notify = null){
 
     try{
-        $systemGenMessage = 'AGENT# '.$workerID.' ADDED NOTES TO TICKET# '.$ticketID;
+        $systemGenMessage = 'AGENT #'.$workerID.' ADDED NOTES TO TICKET #'.$ticketID;
         $db = new DB();
         $conn = $db->connect();
 
         // CREATE query
         $sql = "";
 
-        $sql = "INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes, support_ticket)
-        VALUES (8, :sysMessage , :comment, :id);";
+        $sql = "SET @@session.time_zone = '+08:00';
+            BEGIN;
+            UPDATE support_ticket st SET st.last_updated_on = now() WHERE st.id = :ticketID;
+            INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes, support_ticket)
+            VALUES (8, :sysMessage , :comment, :id);
+            COMMIT;
+        ";
+
+        if($notify != null){
+            $systemGenMessage = 'AGENT #'.$workerID.' REQUESTED CUSTOMER FOLLOW UP FOR TICKET #'.$ticketID;
+            $sql = "SET @@session.time_zone = '+08:00';
+                BEGIN;
+                    UPDATE support_ticket st SET st.last_updated_on = now(), st.has_AuthorTakenAction = 2 WHERE st.id = :ticketID;
+                    INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes, support_ticket)
+                    VALUES (9, :sysMessage , :comment, :id);
+                COMMIT;
+            ";
+        }
+
         // Prepare statement
         $stmt =  $conn->prepare($sql);
         $result = "";
@@ -745,6 +798,7 @@ public function comment($ticketID, $workerID, $comment){
             $stmt->bindparam(':id', $ticketID);
             $stmt->bindparam(':comment', $comment);
             $stmt->bindparam(':sysMessage', $systemGenMessage);
+            $stmt->bindparam(':ticketID', $ticketID);
             $result = $stmt->execute();
         }
 

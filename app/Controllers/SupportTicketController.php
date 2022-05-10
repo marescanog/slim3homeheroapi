@@ -280,7 +280,7 @@ public function getInfo(Request $request,Response $response, array $args)
             // Get ticket nbi history
             $nbi = $this->supportTicket->get_nbi_info($base_info["data"]["id"]);
             // Check for query error
-            if($his['success'] == false){
+            if($nbi['success'] == false){
                 // return $this->customResponse->is500Response($nbi,$his['data']);
                 return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
             }
@@ -602,9 +602,171 @@ public function assignTicket(Request $request,Response $response, array $args)
 
 
 
+// ===================================================================
+//  May 6 2022
+
+// assigns a ticket to an agent
+public function updateWorkerRegistration(Request $request,Response $response, array $args)
+{
+    // -----------------------------------
+    // Get Necessary variables and params
+    // -----------------------------------
+    // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    // Get ticket parameter for ticket information
+        $ticket_id = $args['id'];
+
+    // Get Agent Email for validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty(),
+        "type"=>v::notEmpty(),
+    ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+        $this->validator->validate($request,[
+            // Check if empty
+            "type"=>v::between(1, 4),
+        ]);
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+        // Store Params
+        $comment = CustomRequestHandler::getParam($request,"comment");
+        $email = CustomRequestHandler::getParam($request,"email");
+        $type = CustomRequestHandler::getParam($request,"type");
+
+    // -----------------------------------
+    // Get Agent Information
+    // -----------------------------------
+        // Get user ID with email
+        $account = $this->supportAgent->getSupportAccount($email);
+
+        // Check for query error
+        if($account['success'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+    
+        // Check if email is found
+        if($account['data'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+        }
+    
+        // Get user account by ID & get role type
+        $agent_ID = $account['data']['id'];
+        $role = $account['data']['role_type'];
+
+    // -----------------------------------
+    // Auth Agent Information
+    // -----------------------------------
+    $auth_agent_result = $this->authenticate_agent($this->customResponse, $bearer_token, $agent_ID);
+    if($auth_agent_result['success'] != 200){
+        return $this->return_server_response($this->customResponse,$response,$auth_agent_result['error'],$auth_agent_result['success']);
+    }
+
+    // -----------------------------------
+    // Validate Ticket
+    // -----------------------------------
+    $validate_ticket_result = $this->validate_ticket($this->supportTicket, $ticket_id,2,$agent_ID);
+    if($validate_ticket_result['success'] != 200){
+        return $this->return_server_response($this->customResponse,$response,$validate_ticket_result['error'],$validate_ticket_result['success']);
+    }
+    $base_info = $validate_ticket_result['data'];
+
+    $resData = [];
+    // $resData['base_info'] = $base_info['data'];
+    $resData['ticket_ID'] = $base_info['data']['id'];
+
+    // -----------------------------------
+    // Get NBI Info of Ticket
+    // -----------------------------------
+    $nbi_res = $this->supportTicket->get_nbi_info($base_info["data"]["id"]);
+    // Check for query error
+    if( $nbi_res['success'] == false){
+        // return $this->customResponse->is500Response($nbi,$his['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+    $nbi_info = $nbi_res["data"];
+    if(count($nbi_info) <= 0){
+        return $this->customResponse->is404Response($response,"NBI Information not found. Please escalate ticket.");
+    }
+
+    $nbi_id = $nbi_info[0]["id"];
+    $worker_id =  $nbi_info[0]["worker_id"];
+    $ticket_id =  $base_info['data']['id'];
+    $agent_ID_currrent =  $base_info['data']['assigned_agent'];
+
+    // -----------------------------------
+    // Process Ticket
+    // -----------------------------------
+    switch($type){
+        case 1:
+            // Case Approve
+            // $resData['type'] = 1;
+
+            $approveRes = $this->supportTicket->update_worker_registration($agent_ID_currrent, $ticket_id, $worker_id, $nbi_id, 1,  $comment);
+            if(   $approveRes["success"] == true){
+                $resData['message'] = "Registration approved successfully!";
+            } else {
+                return $this->return_server_response($this->customResponse,$response,"An Error occured while approving the registration. Please try again.",500);
+            }
+        break;
+        case 2:
+            // Case Disapprove
+            // $resData['type'] = 2;
+            $denyRes = $this->supportTicket->update_worker_registration($agent_ID_currrent, $ticket_id, $worker_id, $nbi_id, 2,  $comment);
+            if(    $denyRes["success"] == true){
+                $resData['message'] = "Registration denied successfully.";
+            } else {
+                return $this->return_server_response($this->customResponse,$response,"An Error occured while denying the registration. Please try again.",500);
+            }
+        break;
+        case 3:
+            // Case Notify
+            // $resData['type'] = 3;
+            /*
+                has author taken action = 0, No further actions needed
+                has author taken action = 1, Ticket Just Submitted
+                has author taken action = 2, Agent Notified Author
+                has author taken action = 3, Author Notified Agent
+            */
+            if($comment == null){
+                return $this->return_server_response($this->customResponse,$response,"No comment provided. Please include a comment.",400);
+            } else {
+                $notifyRes = $this->supportTicket->comment($ticket_id, $agent_ID_currrent, $comment, 1);
+                if($notifyRes["success"] == true){
+                    $resData['message'] = "Customer notified and comment successfully added to the ticket.";
+                } else {
+                    return $this->return_server_response($this->customResponse,$response,"An Error occured while saving the comment. Please try again.",500);
+                }
+            }
+        break;
+        default:
+            // Case Option is to just Comment on Ticket "Add Info"
+            if($comment == null){
+                return $this->return_server_response($this->customResponse,$response,"No comment provided. Please include a comment.",400);
+            } else {
+                $commentRes = $this->supportTicket->comment($ticket_id, $agent_ID_currrent, $comment);
+                if($commentRes["success"] == true){
+                    $resData['message'] = "Comment was successfully added to the ticket.";
+                } else {
+                    return $this->return_server_response($this->customResponse,$response,"An Error occured while saving the comment. Please try again.",500);
+                }
+            }
+        break;
+    }
 
 
-
+    return $this->return_server_response($this->customResponse,$response,"This route works",200,$resData);   
+}
 
 
 
@@ -617,6 +779,160 @@ public function assignTicket(Request $request,Response $response, array $args)
 
 
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Helper function to perform ticket validation
+// params: ticket_ID, supportTicket obj
+// returns: object with keys data & success
+private function validate_ticket($obj_support_ticket, $p_ticket_id, $p_ticket_status = null, $p_agent_ID = null){
+    $retVal = [];
+
+    // Extract from db
+    $base_info = $obj_support_ticket->get_ticket_base_info($p_ticket_id);
+
+    // Check for query error
+    if($base_info['success'] == false){
+        $retVal['success'] = 500;
+        // $retVal['data'] = $base_info['data'];
+        $retVal['error'] = "SQLSTATE[42000]: Syntax error or access violation: Please check your query.";
+        return $retVal;
+    }
+
+    // Check if not found
+    if($base_info['data'] == false){
+        $retVal['success'] = 404;
+        // $retVal['data'] = $base_info['data'];
+        $retVal['error'] = "Ticket Not Found";
+        return $retVal;
+    }
+
+    // Check if correct status
+    $bi_stat = $base_info['data']['status'];
+    if($p_ticket_status != null && $bi_stat != $p_ticket_status){
+        $retVal['success'] = 400;
+        // $retVal['data'] = $base_info['data'];
+        $s_msg = ["This ticket has not been assigned to an agent yet.","This ticket is already assigned to an agent.","This ticket is already closed."];
+        $retVal['error'] = $s_msg[$bi_stat-1];
+        return $retVal;
+    }
+
+    // Check if it is authorized agent who will perform validation
+    if($p_agent_ID != null && $p_agent_ID != $base_info['data']['assigned_agent']){
+        // Get agent details
+        $retVal['success'] = 400;
+        $retVal['error'] = "This agent is not authorized to access this ticket. Please login to the authorized account to modify ticket.";
+        return $retVal;
+    }
+
+    $retVal['success'] = 200;
+    $retVal['error'] =  [];
+    $retVal['data'] =  $base_info;
+
+    return $retVal;
+}
+
+// Helper function to authenticate agent
+// params: email, supportTicket obj
+// returns: object with keys data & success
+public function authenticate_agent($a_customResponse,$a_bearer_token,$user_ID){
+    $retVal = [];
+    // Extract token by omitting "Bearer"
+    $jwt = substr(trim($a_bearer_token),9);
+
+    // Decode token to get user ID
+    $jwt_result =  GenerateTokenController::AuthenticateUserID($jwt, $user_ID);
+
+    if($jwt_result['status'] !== true){
+        $retVal['success'] = 401;
+        // $retVal['data'] = $jwt_result['data'];
+        $retVal['error'] = $jwt_result['message'];
+        return $retVal;
+    }
+
+    $retVal['success'] = 200;
+    $retVal['error'] =  [];
+    $retVal['data'] =  null;
+
+    return $retVal;
+}
+
+// Helper function to perform ticket validation
+// params: ticket_ID, supportTicket obj
+// returns: object with keys data & success
+private function return_server_response($r_custom_response,$r_res,  $r_message = "",$r_code = 200, $r_data=null){
+    $formatted_res = [];
+    $formatted_res['status'] = $r_code;
+    $formatted_res['message'] = $r_message;
+    $formatted_res['data'] = $r_data;
+    switch($r_code){
+        case 500:
+            return $r_custom_response->is500Response($r_res,  $formatted_res);
+        break; 
+        case 404:
+            return $r_custom_response->is404Response($r_res,  $formatted_res);
+        break;  
+        case 400:
+            return $r_custom_response->is400Response($r_res,  $formatted_res);
+        break; 
+        default:
+            return $r_custom_response->is200Response($r_res,  $formatted_res);
+        break;
+    }
+}
 
 
 }
