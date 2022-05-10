@@ -276,12 +276,17 @@ public function getInfo(Request $request,Response $response, array $args)
     $comment_his = $this->supportTicket->get_ticket_comment_history($id_ticket);
     // Check for query error
     if($comment_his['success'] == false){
-        // return $this->customResponse->is500Response($response,$his['data']);
+        // return $this->customResponse->is500Response($response,$comment_his['data']);
         return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
     }
 
     // Get ticket assignment history (Needed for All roles of tickets)
-
+    $transfer_his = $this->supportTicket->get_ticket_transfer_history($id_ticket);
+    // Check for query error
+    if($transfer_his['success'] == false){
+        // return $this->customResponse->is500Response($response,$transfer_his['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
 
     switch($role){
         // Registration
@@ -315,7 +320,8 @@ public function getInfo(Request $request,Response $response, array $args)
     }
     $resData["history"] = $his["data"];
     $resData["comments"] = $comment_his["data"];
-    
+    $resData["assignment_history"] = $transfer_his["data"];
+
     // verify if user is allowed to access this ticket
     return $this->customResponse->is200Response($response, $resData);
 }

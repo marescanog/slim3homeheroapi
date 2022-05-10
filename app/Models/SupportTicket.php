@@ -890,6 +890,71 @@ public function get_ticket_comment_history($id){
 }
 
 
+// ----- May 11 ------------------------------
+
+
+// Get ticket comment history info from db
+// @desc    gets ticket history db info
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function get_ticket_transfer_history($id){
+
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "";
+
+        $sql = "SELECT ta.id, ta.support_ticket, ta.date_assigned, ta.newly_assigned_agent, ta.previous_agent, ta.transfer_reason,
+        CONCAT(hh.last_name, ', ', hh.first_name) as new_agent_name,
+        CONCAT(hh2.last_name, ', ', hh2.first_name) as prev_agent_name,
+        tr.reason as reason_text
+        FROM `ticket_assignment` ta 
+        LEFT JOIN hh_user hh ON ta.newly_assigned_agent = hh.user_id
+        LEFT JOIN hh_user hh2 ON ta.previous_agent = hh2.user_id
+        LEFT JOIN ticket_transfer_reason tr ON ta.transfer_reason = tr.id
+        WHERE ta.support_ticket = :id
+        ORDER BY id DESC;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':id', $id);
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;
+        $db=null;
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+
+}
+
 
 
 
