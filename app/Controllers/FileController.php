@@ -982,7 +982,7 @@ public function reportJobIssue(Request $request,Response $response, array $args)
             $userID,    // author
             $issueID,          // subcategory
             $message,   // authorDesc
-            "HOMEOWNER#".$userID.$systemMessage, // systemDesc
+            "HOMEOWNER #".$userID.$systemMessage, // systemDesc
             0,          // has images
             $order_id   // orderID
         );
