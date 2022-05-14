@@ -424,7 +424,7 @@ public function get_ticket_base_info($id){
         // CREATE query
         $sql = "";
 
-        $sql = "SELECT st.id, st.author, st.issue_id, st.status, st.is_Escalated, st.is_Archived, st.has_images, st.assigned_agent, st.created_on, st.last_updated_on, st.assigned_on, st.has_AuthorTakenAction,
+        $sql = "SELECT st.id, st.author, st.issue_id, st.status, st.is_Escalated, st.is_Archived, st.has_images, st.assigned_agent, st.created_on, st.last_updated_on, st.assigned_on, st.has_AuthorTakenAction, st.author_Description,
         CONCAT(hh.last_name,', ',hh.first_name) as author_name,
         CONCAT(hh2.last_name,', ',hh2.first_name) as agent_name,
         sa.email as agent_email,
@@ -958,9 +958,115 @@ public function get_ticket_transfer_history($id){
 
 
 
+// ----- May 14 ------------------------------
 
 
+// Get bill info from db
+// @desc    gets ticket history db info
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function get_bill_info($id){
 
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "";
+
+        $sql = "SELECT bi.bill_id FROM `bill_issues` bi WHERE bi.support_ticket_id = :id;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+        $bill_id = null;
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':id', $id);
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            $bill_id = count($result) <= 0 ? null :$result[0]['bill_id'];
+        }
+
+        $d = [];
+
+        if(count($result) <= 0 && $bill_id == null){
+            $d['bill_details'] = null;
+        } else {
+            $sql2 = "SELECT b.id as bill_id, b.job_order_id, jo.job_post_id,
+            b.worker_id, hhw.first_name as worker_fname, hhw.last_name as worker_lname, hhw.phone_no as worker_phone_no,
+            b.homeowner_id, hhh.first_name as ho_fname, hhh.last_name as ho_lname, hhh.phone_no as ho_phone_no,
+            b.payment_method_id, pm.payment_method,
+            b.bill_status_id, bstat.status,
+            b.remarks as bill_remarks, b.hours_readjustment, b.total_price_billed, b.is_received_by_worker, 
+            b.created_on as bill_created_on, b.date_time_completion_paid,
+            
+            jo.job_order_status_id, jostat.status as job_order_status,
+            jo.date_time_start as job_time_start, jo.date_time_closed as job_time_end, jo.isRated, jo.is_deleted, jo.created_on as job_created_on, jo.order_cancellation_reason, jo.cancelled_by,
+            
+            jp.job_post_name, jp.job_description as post_description, jp.job_post_status_id, jpstat.status as job_post_status,
+            jp.rate_offer as post_offer, jp.rate_type_id, jprt.type as post_rate_type,
+            jp.job_size_id, josize.job_order_size,
+            jp.required_expertise_id, jpt.type as job_type, jpt.expertise as expertise_id, jpe.expertise as job_expertise,
+            jp.home_id, h.street_no, h.street_name,ht.home_type_name, hb.barangay_name, hc.city_name,
+            
+            jp.is_exact_schedule as post_is_exact_schedule, jp.preferred_date_time as post_preferred_date_time, jp.date_time_closed as post_time_closed, jp.cancellation_reason as post_cancellation_reason, jp.created_on as post_created_on
+            
+            FROM `bill` b 
+            LEFT JOIN job_order jo ON b.job_order_id = jo.id
+            LEFT JOIN job_post jp ON jo.job_post_id = jp.id
+            LEFT JOIN hh_user hhw ON b.worker_id = hhw.user_id
+            LEFT JOIN hh_user hhh ON b.homeowner_id = hhh.user_id
+            LEFT JOIN payment_method pm ON b.payment_method_id = pm.id
+            LEFT JOIN bill_status bstat ON b.bill_status_id = bstat.id
+            LEFT JOIN job_order_status jostat ON jo.job_order_status_id = jostat.id
+            LEFT JOIN job_order_size josize ON jp.job_size_id = josize.id
+            LEFT JOIN project_type jpt ON jp.required_expertise_id = jpt.id
+            LEFT JOIN expertise jpe ON jpt.expertise = jpe.id
+            LEFT JOIN job_post_status jpstat ON jp.job_post_status_id = jpstat.id
+            LEFT JOIN rate_type jprt ON jp.rate_type_id = jprt.id
+            LEFT JOIN home h ON jp.home_id = h.id
+            LEFT JOIN home_type ht ON h.home_type = ht.id
+            LEFT JOIN barangay hb ON h.barangay_id = hb.id
+            LEFT JOIN city hc ON hb.city_id = hc.id
+            WHERE b.id = :bill_ID;";
+            // Prepare statement
+            $stmt2 =  $conn->prepare($sql2);
+            $result2 = "";
+            // Only fetch if prepare succeeded
+            if ($stmt2 !== false) {
+                $stmt2->bindparam(':bill_ID', $bill_id);
+                $stmt2->execute();
+                $result2 = $stmt2->fetchAll(\PDO::FETCH_ASSOC);
+            }
+            $d['bill_details'] = $result2;
+        }
+
+        $stmt=null;
+        $db=null;
+        $conn=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>   $d
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+
+}
 
 
 

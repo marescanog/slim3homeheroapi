@@ -775,6 +775,7 @@ public function getInfo(Request $request,Response $response, array $args)
         $params = [];
         $params['ticket_ID'] =  $base_info["data"]["id"];
         $params['authorized'] =  $authorized;
+        $params['ownership'] =  $is_owner;
         $detailed_info_res = null;
 
         // Double Check Needed Data
@@ -788,6 +789,11 @@ public function getInfo(Request $request,Response $response, array $args)
             // Worker Registration
             case 1:
                 $detailed_info_res = $this->get_worker_registration($params);
+                break;
+            // -----------------------------------
+            // Billing Issue
+            case 4:
+                $detailed_info_res = $this->get_billing_issue($params);
                 break;
             // -----------------------------------
             // Job Order Issue
@@ -1054,6 +1060,52 @@ private function return_server_response($r_res,  $r_message = "",$r_code = 200, 
                     $resData['data'] = [];
                 }
                 // $resData["nbi_info"] = $nbi["data"];
+            }
+
+            return  $resData;
+        }
+        // -----------------------------------
+        //  Billing Issue
+        // -----------------------------------
+        private function get_billing_issue($params){
+            $resData = [];
+            $resData['data'] = [];
+            $resData['error'] = null;
+            $resData['status'] = null;
+            // Get Billing Details of the ticket
+            $bill = $this->supportTicket->get_bill_info($params['ticket_ID']);
+            // Check for query error
+            if($bill['success'] == false){
+                $resData['error'] = "SQLSTATE[42000]: Syntax error or access violation: Please check your query.";
+                $resData['status'] = 500;
+                // $resData['data'] = $nbi['data'];
+                return  $resData;
+            }
+            // If authorized show billing details
+            if( $params['authorized'] == true ){
+                $details = $bill['data']['bill_details'];
+                if($params['ownership'] != null && $params['ownership'] == true){
+                    $resData['data'] = $details;
+                } else {
+                    $limited_details = [];
+                    $limited_details["bill_id"] = $details[0]["bill_id"];
+                    $limited_details["job_order_id"] = null;
+                    $limited_details["job_post_id"] = null;
+                    $limited_details["worker_id"] = $details[0]["worker_id"];
+                    $limited_details["worker_fname"] = $details[0]["worker_fname"];
+                    $limited_details["worker_lname"] = $details[0]["worker_lname"];
+                    $limited_details["homeowner_id"] = $details[0]["homeowner_id"];
+                    $limited_details["ho_fname"] = $details[0]["ho_fname"];
+                    $limited_details["ho_lname"] = $details[0]["ho_lname"];
+                    $limited_details["payment_method"] = $details[0]["payment_method"];
+                    $limited_details["status"] = $details[0]["status"];
+                    $limited_details["is_received_by_worker"] = $details[0]["is_received_by_worker"];
+                    $limited_details["bill_created_on"] = $details[0]["bill_created_on"];
+                    $limited_details["date_time_completion_paid"] = $details[0]["date_time_completion_paid"];
+                    $resData['data'] = $limited_details;
+                }
+            } else {
+                $resData['data'] = [];
             }
 
             return  $resData;
