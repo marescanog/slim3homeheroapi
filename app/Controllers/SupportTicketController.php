@@ -1085,7 +1085,7 @@ private function return_server_response($r_res,  $r_message = "",$r_code = 200, 
             if( $params['authorized'] == true ){
                 $details = $bill['data']['bill_details'];
                 if($params['ownership'] != null && $params['ownership'] == true){
-                    $resData['data'] = $details;
+                    $resData['data'] = $details[0];
                 } else {
                     $limited_details = [];
                     $limited_details["bill_id"] = $details[0]["bill_id"];
@@ -1099,6 +1099,7 @@ private function return_server_response($r_res,  $r_message = "",$r_code = 200, 
                     $limited_details["ho_lname"] = $details[0]["ho_lname"];
                     $limited_details["payment_method"] = $details[0]["payment_method"];
                     $limited_details["status"] = $details[0]["status"];
+                    $limited_details["status_id"] = $details[0]["bill_status_id"];
                     $limited_details["is_received_by_worker"] = $details[0]["is_received_by_worker"];
                     $limited_details["bill_created_on"] = $details[0]["bill_created_on"];
                     $limited_details["date_time_completion_paid"] = $details[0]["date_time_completion_paid"];
