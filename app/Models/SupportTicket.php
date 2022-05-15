@@ -1079,7 +1079,7 @@ public function get_bill_info($id){
 public function process_bill($agentID, $ticketID, $paymentID = null, $statusID = null, $feeAdjust = null, $comment = null){
     try{
 
-        if($paymentID == null && $statusID == null && $feeAdjust == null){
+        if($paymentID == null && $statusID == null && ($feeAdjust == null || $feeAdjust == "0" || $feeAdjust <= 0)){
             return  array(
                 "success"=>false,
                 "data"=>"Incomplete parameters provided for update: Please provide payment method, status or fee adjustment.",
@@ -1095,7 +1095,7 @@ public function process_bill($agentID, $ticketID, $paymentID = null, $statusID =
             );
         }
 
-        if($feeAdjust == "0" || $feeAdjust <= 0){
+        if($feeAdjust != null && ($feeAdjust == "0" || $feeAdjust <= 0)){
             return  array(
                 "success"=>false,
                 "data"=>"Incomplete parameters provided for update: fee adjustment cannot be zero or negative.",
@@ -1167,7 +1167,7 @@ public function process_bill($agentID, $ticketID, $paymentID = null, $statusID =
             if($paymentID == null && $statusID == null && $feeAdjust == null){
                 return  array(
                     "success"=>false,
-                    "data"=>"Same Values Provided: Please provide a different value for payment method, status or fee adjustment.",
+                    "data"=>"Values submited are the same with current record: Please provide a different value for payment method, status or fee adjustment.",
                     "err"=>"5"
                 );
             }
@@ -1194,7 +1194,7 @@ public function process_bill($agentID, $ticketID, $paymentID = null, $statusID =
             }
 
             if($statusID != null){
-                $sysDes = $sysDes.($statusID != null ? ", " : "").$sta_mess.$sta_arr[$statusID];
+                $sysDes = $sysDes.($paymentID != null ? ", " : "").$sta_mess.$sta_arr[$statusID];
             }
 
             if($feeAdjust != null){

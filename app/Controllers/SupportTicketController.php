@@ -933,7 +933,7 @@ public function processBilling(Request $request,Response $response, array $args)
                     }
                 } else {
                     if(isset($editRes["err"])){
-                        return $this->return_server_response($response,$editRes["data"],500);
+                        return $this->return_server_response($response,$editRes["data"],400);
                     } else {
                         // return $this->return_server_response($response,$editRes,500);
                         return $this->return_server_response($response,"Something went wrong when updating the bill information. Please contact administrator to check SQL syntax.",500);
