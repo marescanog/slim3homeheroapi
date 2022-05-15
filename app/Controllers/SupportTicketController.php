@@ -942,7 +942,25 @@ public function processBilling(Request $request,Response $response, array $args)
 
                 break;
             case 2:
+                // Case Cancel Bill
                 $resData["res"] = "Cancel";
+                $editRes = $this->supportTicket->process_bill($agent_ID_currrent, $ticket_id, null, 3,  null, $comment);
+                if($editRes["success"] == true){
+                    if($editRes["data"] == null){
+                        $resData['message'] = "Bill not found!";
+                    } else {
+                        $resData['message'] = "Bill cancelled successfully!";
+                        // $resData['data'] = $editRes;
+                        $resData['data'] = $editRes['data'];
+                    }
+                } else {
+                    if(isset($editRes["err"])){
+                        return $this->return_server_response($response,$editRes["data"],400);
+                    } else {
+                        // return $this->return_server_response($response,$editRes,500);
+                        return $this->return_server_response($response,"Something went wrong when cancelling the bill. Please contact administrator to check SQL syntax.",500);
+                    }
+                }
                 break;
             case 3:
                 $resData["res"] = "Notify";
