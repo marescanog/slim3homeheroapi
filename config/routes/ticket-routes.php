@@ -29,7 +29,7 @@ $app->group("/ticket",function() use ($app){
     $app->post("/update-worker-register/{id}","SupportTicketController:updateWorkerRegistration");
 
 
-
+    $app->post("/process-bill-issue/{id}","SupportTicketController:processBilling");
 
 
 

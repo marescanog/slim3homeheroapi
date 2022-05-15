@@ -1069,7 +1069,233 @@ public function get_bill_info($id){
 }
 
 
+// Get bill info from db
+// @desc    process_bill
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+// $agent_ID_currrent, $ticket_id, $payment_method, $inpt_bill_status, $fee_adjustment, 1, $comment
+public function process_bill($agentID, $ticketID, $paymentID = null, $statusID = null, $feeAdjust = null, $comment = null){
+    try{
 
+        if($paymentID == null && $statusID == null && $feeAdjust == null){
+            return  array(
+                "success"=>false,
+                "data"=>"Incomplete parameters provided for update: Please provide payment method, status or fee adjustment.",
+                "err"=>"1"
+            );
+        }
+
+        if($comment == null){
+            return  array(
+                "success"=>false,
+                "data"=>"Incomplete parameters provided for update: Please provide a reason for editing the bill.",
+                "err"=>"2"
+            );
+        }
+
+        if($feeAdjust == "0" || $feeAdjust <= 0){
+            return  array(
+                "success"=>false,
+                "data"=>"Incomplete parameters provided for update: fee adjustment cannot be zero or negative.",
+                "err"=>"3"
+            );
+        }
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // // STEPS
+        // // 1. UPDATE BILL 
+        // // 2. ADD ACTION
+        // // 3. UPDATE TICKET CLOSED & Verified + TIME (In Another Function Since It wouldnt make sense)
+
+        // CREATE query
+        $sql_billID = "SELECT bi.bill_id FROM `bill_issues` bi WHERE bi.support_ticket_id = :id;";
+
+        // Prepare statement
+        $stmt_billID =  $conn->prepare($sql_billID);
+        $result_billID = "";
+        $bill_id = null;
+
+        // Only fetch if prepare succeeded
+        if ($stmt_billID !== false) {
+            $stmt_billID->bindparam(':id', $ticketID);
+            $stmt_billID->execute();
+            $result_billID = $stmt_billID->fetchAll(\PDO::FETCH_ASSOC);
+            $bill_id = count($result_billID) <= 0 ? null :$result_billID[0]['bill_id'];
+        }
+     
+            // CREATE query to get bill details
+            $sql_bill_info = "SELECT b.payment_method_id, b.bill_status_id, b.total_price_billed FROM `bill` b WHERE b.id = :id;";
+
+            // Prepare statement
+            $stmt_bill_info =  $conn->prepare($sql_bill_info);
+            $result_bill_info = null;
+    
+            // Only fetch if prepare succeeded
+            if ($stmt_bill_info !== false) {
+                $stmt_bill_info->bindparam(':id', $bill_id);
+                $stmt_bill_info->execute();
+                $result_bill_info = $stmt_bill_info->fetchAll(\PDO::FETCH_ASSOC);
+                $result_bill_info = count($result_bill_info) <= 0 ? null : $result_bill_info;
+            }
+
+            // If bill not found return error
+            if($bill_id == null || $result_bill_info == null){
+                return  array(
+                    "success"=>false,
+                    "data"=>"Bad Request: Bill Not Found.",
+                    "err"=>"4"
+                );
+            }
+
+            // Set To Null when values have not been changed
+            if($paymentID == $result_bill_info[0]["payment_method_id"]){
+                $paymentID = null;
+            }
+
+            if($statusID == $result_bill_info[0]["bill_status_id"]){
+                $statusID = null;
+            }
+
+            if($feeAdjust == $result_bill_info[0]["total_price_billed"]){
+                $feeAdjust = null;
+            }
+         
+            if($paymentID == null && $statusID == null && $feeAdjust == null){
+                return  array(
+                    "success"=>false,
+                    "data"=>"Same Values Provided: Please provide a different value for payment method, status or fee adjustment.",
+                    "err"=>"5"
+                );
+            }
+
+        $d = [];
+
+        // Only update bill if the bill is found
+        if(count($result_billID) <= 0 && $bill_id == null){
+            $d['update_details'] = null;
+        } else {
+            // After finding the bill ID, update the bill.
+            // Construct a System Description and sql based on
+                // $paymentID = null, $statudID = null, $feeAdjust = null
+            
+            $sysDes = "AGENT #".$agentID." MODIFIED BILL #".str_pad($bill_id, 5, "0", STR_PAD_LEFT).". (";
+            $pay_mess = "PAYMENT METHOD CHANGED TO ";
+            $pay_arr = array("","CASH","CREDIT","PAYPAL");
+            $sta_mess = "STATUS UPDATED TO ";
+            $sta_arr = array("","PENDING","PAID","CANCELLED");
+            $fee_mess = "FEE CHANGED TO ";
+
+            if($paymentID != null){
+                $sysDes = $sysDes.$pay_mess.$pay_arr[$paymentID];
+            }
+
+            if($statusID != null){
+                $sysDes = $sysDes.($statusID != null ? ", " : "").$sta_mess.$sta_arr[$statusID];
+            }
+
+            if($feeAdjust != null){
+                $sysDes = $sysDes.($statusID != null ? ", " : ($paymentID != null ? ", " : "")).$fee_mess.$feeAdjust;
+            }
+
+            $sysDes = $sysDes.")";
+            $d['update_details'] = $bill_id;
+            $d['system_description'] = $sysDes;
+
+            // // CREATE query
+            $sql = "";
+            $sql = "SET @@session.time_zone = '+08:00'; BEGIN; UPDATE bill b SET";
+
+            $pay_sql = " b.payment_method_id = :payID";
+            $stat_sql = " b.bill_status_id = :statID";
+            $fee_sql = " b.total_price_billed = :fee";
+
+            if($paymentID != null){
+                $sql = $sql.$pay_sql.($statusID != null ? ", " : ($feeAdjust != null ? ", " : ""));
+            }
+
+            if($statusID != null){
+                $sql =  $sql.$stat_sql.($feeAdjust != null ? ", " : "");
+            }
+
+            if($feeAdjust != null){
+                $sql = $sql.$fee_sql;
+            }
+
+            $sql=$sql."  WHERE b.id = :billID;
+                UPDATE support_ticket st SET st.last_updated_on = now(), st.has_AuthorTakenAction = 1 WHERE st.id = :ticketID;
+                INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes, support_ticket)
+                VALUES (3, :sysMessage , :comment, :ticketID2);
+                COMMIT;
+            ";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only bind if prepare succeeded
+            if ($stmt !== false) {
+                if($paymentID != null){
+                    $stmt->bindparam(':payID', $paymentID);
+                }
+                if($statusID != null){
+                    $stmt->bindparam(':statID', $statusID);
+                }
+                if($feeAdjust != null){
+                    $stmt->bindparam(':fee', $feeAdjust);
+                }
+                $stmt->bindparam(':billID', $bill_id);
+                $stmt->bindparam(':ticketID', $ticketID);
+                $stmt->bindparam(':sysMessage', $sysDes);
+                $stmt->bindparam(':comment', $comment);
+                $stmt->bindparam(':ticketID2', $ticketID);
+              
+                $result = $stmt->execute();
+            }
+
+            // Add Action
+            // $d['result'] = $result;
+            // $d['sql'] = $sql;
+            $params = [];
+            $params["paymentID"] = $paymentID;
+            $params["statusID"] = $statusID;
+            $params["fee"] = $feeAdjust;
+            $params["billID"] = $bill_id;
+            $params["ticketID"] = $ticketID;
+            $params["sysmessage"] = $sysDes;
+            $params["comment"] = $comment;
+            $params["ticketID2"] = $ticketID;
+        }
+
+        $stmt=null;
+        $db=null;
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result,
+            // "params"=>$params,
+            // "sql"=>$sql,
+            // "other"=>    $result_bill_info
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 

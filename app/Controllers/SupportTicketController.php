@@ -824,8 +824,149 @@ public function getInfo(Request $request,Response $response, array $args)
 
 
 
+// ===================================================================
+//  May 14, 2022
+
+// processes the billing
+public function processBilling(Request $request,Response $response, array $args)
+{
+// -----------------------------------
+// Get Necessary variables and params
+// -----------------------------------
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    // Get ticket parameter for ticket information
+    $ticket_id = $args['id'];
+
+    // Get Agent Email for validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty(),
+        "type"=>v::notEmpty()
+    ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+        $this->validator->validate($request,[
+            // Check if empty
+            "type"=>v::between(1, 4),
+        ]);
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    $type = CustomRequestHandler::getParam($request,"type");
+    $comment = CustomRequestHandler::getParam($request,"comment");
+        // Additional info for bill edit
+        $payment_method = CustomRequestHandler::getParam($request,"payment_method");
+        $inpt_bill_status = CustomRequestHandler::getParam($request,"inpt_bill_status");
+        $fee_adjustment = CustomRequestHandler::getParam($request,"fee_adjustment");
+        
+
+// -----------------------------------
+// Get Agent Information
+// -----------------------------------
+        // Get user ID with email
+        $account = $this->supportAgent->getSupportAccount($email);
+
+        // Check for query error
+        if($account['success'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+    
+        // Check if email is found
+        if($account['data'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+        }
+    
+        // Get user account by ID & get role type
+        $agent_ID = $account['data']['id'];
+        $role = $account['data']['role_type'];
+
+// -----------------------------------
+// Auth Agent Information
+// -----------------------------------
+        $auth_agent_result = $this->authenticate_agent($bearer_token, $agent_ID);
+        if($auth_agent_result['success'] != 200){
+            return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+        }
+
+// -----------------------------------
+// Validate Ticket
+// -----------------------------------
+        $validate_ticket_result = $this->validate_ticket($ticket_id,2,$agent_ID,$role);
+        if($validate_ticket_result['success'] != 200){
+            return $this->return_server_response($response,$validate_ticket_result['error'],$validate_ticket_result['success']);
+        }
+        $base_info = $validate_ticket_result['data'];
+        $is_owner = $validate_ticket_result['is_owner'];
+        $authorized = $validate_ticket_result['authorized'];
+        $ticket_id =  $base_info['data']['id'];
+        $agent_ID_currrent =  $base_info['data']['assigned_agent'];
+
+        $resData = [];
+// -----------------------------------
+// Process Ticket
+// -----------------------------------
+        switch($type){
+            case 1:
+                // Case Edit Bill
+                // $resData["res"] = "Edit";
+
+                $editRes = $this->supportTicket->process_bill($agent_ID_currrent, $ticket_id, $payment_method, $inpt_bill_status, $fee_adjustment, $comment);
+                if($editRes["success"] == true){
+                    if($editRes["data"] == null){
+                        $resData['message'] = "Bill not found!";
+                    } else {
+                        $resData['message'] = "Bill adjusted successfully!";
+                        // $resData['data'] = $editRes;
+                        $resData['data'] = $editRes['data'];
+                    }
+                } else {
+                    if(isset($editRes["err"])){
+                        return $this->return_server_response($response,$editRes["data"],500);
+                    } else {
+                        // return $this->return_server_response($response,$editRes,500);
+                        return $this->return_server_response($response,"Something went wrong when updating the bill information. Please contact administrator to check SQL syntax.",500);
+                    }
+                }
+
+                break;
+            case 2:
+                $resData["res"] = "Cancel";
+                break;
+            case 3:
+                $resData["res"] = "Notify";
+                break;
+            case 4:
+                $resData["res"] = "Comment";
+                break;
+            case 5:
+                $resData["res"] = "Close ticket";
+                break;
+            default:
+                break;
+        }
+
+
+
+    return $this->return_server_response($response,"This route works",200, $resData);  
+}
 
     
+
+
+
+
 
 
 
