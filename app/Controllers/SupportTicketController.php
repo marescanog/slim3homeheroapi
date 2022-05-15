@@ -943,7 +943,7 @@ public function processBilling(Request $request,Response $response, array $args)
                 break;
             case 2:
                 // Case Cancel Bill
-                $resData["res"] = "Cancel";
+                // $resData["res"] = "Cancel";
                 $editRes = $this->supportTicket->process_bill($agent_ID_currrent, $ticket_id, null, 3,  null, $comment);
                 if($editRes["success"] == true){
                     if($editRes["data"] == null){
@@ -963,7 +963,18 @@ public function processBilling(Request $request,Response $response, array $args)
                 }
                 break;
             case 3:
-                $resData["res"] = "Notify";
+                // Case Notify
+                // $resData["res"] = "Notify";
+                if($comment == null){
+                    return $this->return_server_response($response,"No comment provided. Please include a comment.",400);
+                } else {
+                    $notifyRes = $this->supportTicket->comment($ticket_id, $agent_ID_currrent, $comment, 1);
+                    if($notifyRes["success"] == true){
+                        $resData['message'] = "Customer notified and comment successfully added to the ticket.";
+                    } else {
+                        return $this->return_server_response($response,"An Error occured while saving the comment. Please try again.",500);
+                    }
+                }
                 break;
             case 4:
                 $resData["res"] = "Comment";
