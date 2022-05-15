@@ -852,7 +852,7 @@ public function processBilling(Request $request,Response $response, array $args)
         }
         $this->validator->validate($request,[
             // Check if empty
-            "type"=>v::between(1, 4),
+            "type"=>v::between(1, 5),
         ]);
         if($this->validator->failed())
         {
@@ -868,6 +868,7 @@ public function processBilling(Request $request,Response $response, array $args)
         $payment_method = CustomRequestHandler::getParam($request,"payment_method");
         $inpt_bill_status = CustomRequestHandler::getParam($request,"inpt_bill_status");
         $fee_adjustment = CustomRequestHandler::getParam($request,"fee_adjustment");
+        $bill_resolved = CustomRequestHandler::getParam($request,"bill_resolved");
         
 
 // -----------------------------------
@@ -977,16 +978,41 @@ public function processBilling(Request $request,Response $response, array $args)
                 }
                 break;
             case 4:
-                $resData["res"] = "Comment";
+                // Case Notify
+                // $resData["message"] = "Comment";
+                if($comment == null){
+                    return $this->return_server_response($response,"No comment provided. Please include a comment.",400);
+                } else {
+                    $commentRes = $this->supportTicket->comment($ticket_id, $agent_ID_currrent, $comment);
+                    if($commentRes["success"] == true){
+                        $resData['message'] = "Comment was successfully added to the ticket.";
+                    } else {
+                        return $this->return_server_response($response,"An Error occured while saving the comment. Please try again.",500);
+                    }
+                }
                 break;
             case 5:
-                $resData["res"] = "Close ticket";
+                // Case Notify
+                // $resData["message"] = "Close Ticket";
+                if($comment == null){
+                    return $this->return_server_response($response,"No comment provided. Please include a comment.",400);
+                }  else if( $bill_resolved == null || ($bill_resolved != 1 && $bill_resolved != 2)){
+                    return $this->return_server_response($response,"Please indicate if the support ticket has been resolved.",400);
+                } else {
+                    $closeBillTicketRes = $this->supportTicket->close_ticket($agent_ID_currrent, $ticket_id, $bill_resolved, $comment);
+                    if($closeBillTicketRes["success"] == true){
+                        $resData['message'] = "The ticket was sucesfully closed.";
+                    } else {
+                        return $this->return_server_response($response,"An Error occured when updating the ticket. Please try again.",500);
+                    }
+                }
                 break;
             default:
-                break;
+                return $this->return_server_response($response,"Something went wrong while processing your request. Please try again later.",400);
+            break;
         }
 
-
+        
 
     return $this->return_server_response($response,"This route works",200, $resData);  
 }

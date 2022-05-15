@@ -1298,6 +1298,96 @@ public function process_bill($agentID, $ticketID, $paymentID = null, $statusID =
 }
 
 
+// ----- May 15 ------------------------------
+
+
+// Update support ticket info in db with closed status
+// @desc    updates support ticket info
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function close_ticket($agentID, $ticketID, $status, $comment){
+    try{
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $stat = $status == 2 ? 4 : 3;
+
+        $sysDes = "AGENT #".$agentID." MARKED TICKET AS ".($status == 2 ? "CLOSED": "RESOLVED");
+
+        // CREATE query
+        $sql = "SET @@session.time_zone = '+08:00'; BEGIN;
+            UPDATE support_ticket st SET st.status = :status, st.last_updated_on = now(), st.has_AuthorTakenAction = 1 WHERE st.id = :ticketID; 
+            INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes, support_ticket)
+            VALUES (7, :sysMessage , :comment, :ticketID2);
+            COMMIT;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':status', $stat);
+            $stmt->bindparam(':ticketID', $ticketID);
+            $stmt->bindparam(':sysMessage',  $sysDes);
+            $stmt->bindparam(':comment', $comment);
+            $stmt->bindparam(':ticketID2', $ticketID);
+            $result = $stmt->execute();
+        }
+
+        $stmt=null;       
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    }catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
