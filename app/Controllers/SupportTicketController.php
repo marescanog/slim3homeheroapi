@@ -798,7 +798,7 @@ public function getInfo(Request $request,Response $response, array $args)
             // -----------------------------------
             // Job Order Issue
             case 7:
-                $detailed_info_res = $this->get_job_order_issue($params);
+                $detailed_info_res = $this->get_job_order_issue($params); 
                 break;
         }
         // Check for errors
@@ -1315,30 +1315,41 @@ private function return_server_response($r_res,  $r_message = "",$r_code = 200, 
             $resData['data'] = [];
             $resData['error'] = null;
             $resData['status'] = null;
-            // // Get NBI of ticket
-            // $nbi = $this->supportTicket->get_nbi_info($params['ticket_ID']);
-            // // Check for query error
-            // if($nbi['success'] == false){
-            //     $resData['error'] = "SQLSTATE[42000]: Syntax error or access violation: Please check your query.";
-            //     $resData['status'] = 500;
-            //     // $resData['data'] = $nbi['data'];
-            //     return  $resData;
-            // }
-            // // Return full ticket nbi info only if agent is authorized
+            // Get job order of ticket
+            $job_order_result = $this->supportTicket->get_joborder_from_support_ticket($params['ticket_ID']);
+            // Check for query error
+            if($job_order_result['success'] == false){
+                $resData['error'] = "SQLSTATE[42000]: Syntax error or access violation: Please check your query.";
+                $resData['status'] = 500;
+                // $resData['data'] = $job_order_result['data'];
+                return  $resData;
+            }
+            // Return full ticket nbi info only if agent is authorized
             if( $params['authorized'] == true ){
                 // Store info to return
-                // $resData['data'] = $nbi["data"];
+                // $resData['data'] = $job_order_result["data"];
+                // if ownership
+                if($params['ownership'] != null && $params['ownership'] == true){
+                    $resData['data'] = $job_order_result["data"];
+                } else {
+                    $data = $job_order_result["data"];
+                    $limited_data = [];
+                    $limited_data["job_order_id"] = $data["job_order_id"];
+                    $limited_data["worker_id"] = $data["worker_id"];
+                    $limited_data["worker_fname"] = $data["worker_fname"];
+                    $limited_data["worker_lname"] = $data["worker_lname"];
+                    $limited_data["homeowner_id"] = $data["homeowner_id"];
+                    $limited_data["ho_fname"] = $data["ho_fname"];
+                    $limited_data["ho_lname"] = $data["ho_lname"];
+                    $limited_data["job_order_status_id"] = $data["job_order_status_id"];
+                    $limited_data["job_order_status_text"] = $data["job_order_status_text"];
+                    $limited_data["job_start"] = $data["job_start"];
+                    $limited_data["job_end"] = $data["job_end"];
+                    $limited_data["job_post_name"] = $data["job_post_name"];
+                    $resData['data'] = $limited_data;
+                }
             } else {
-                // $limitedNBI_data = [];
-                // if(count($nbi["data"]) > 0){
-                //     $limitedNBI_data['worker_name'] = $nbi["data"][0]["worker_name"];
-                //     $limitedNBI_data['expiration_date'] = $nbi["data"][0]["expiration_date"];
-                //     $limitedNBI_data['is_verified'] = $nbi["data"][0]["is_verified"];
-                //     $resData['data'] = Array($limitedNBI_data);  
-                // } else {
-                //     $resData['data'] = [];
-                // }
-                // // $resData["nbi_info"] = $nbi["data"];
+                $resData["job_order_info"] = null;
             }
 
             return  $resData;

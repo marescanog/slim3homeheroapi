@@ -1362,6 +1362,114 @@ public function close_ticket($agentID, $ticketID, $status, $comment){
 
 
 
+// Update  job order based on support ticket 
+// @desc    gets job order including job post
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function get_joborder_from_support_ticket($ticketID){
+    try{
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql_jo = "SELECT joi.job_order_id FROM `job_order_issues` joi WHERE joi.support_ticket_id = :id;";
+
+        // Prepare statement
+        $stmt_jo =  $conn->prepare($sql_jo);
+        $result_jo = "";
+        $bill_id = null;
+
+        // Only fetch if prepare succeeded
+        if ($stmt_jo !== false) {
+            $stmt_jo->bindparam(':id', $ticketID);
+            $stmt_jo->execute();
+            $result_jo = $stmt_jo->fetchAll(\PDO::FETCH_ASSOC);
+            $job_order_id = count($result_jo) <= 0 ? null : $result_jo[0]['job_order_id'];
+        }
+
+        $d = [];
+
+
+        if($result_jo == null || $job_order_id == null){
+            return  array(
+                "success"=>false,
+                "data"=>"Bad Request: Job Order Not Found.",
+                "err"=>"1"
+            );
+        }
+
+        // Prepare another statement when job order is found
+        $sql = "SELECT jo.id as job_order_id, 
+        jo.worker_id, hh.first_name as worker_fname, hh.last_name as worker_lname,
+        jo.homeowner_id, hh2.first_name as ho_fname, hh2.last_name as ho_lname,
+        jo.job_order_status_id, jos.status as job_order_status_text,
+        jo.date_time_start as job_start, jo.date_time_closed as job_end, jo.isRated, jo.created_on as job_order_created_on, jo.order_cancellation_reason, jo.cancelled_by,
+        jo.job_post_id, jp.job_post_name, jp.job_description, jp.is_exact_schedule, jp.preferred_date_time as initial_schedule, jp.date_time_closed as job_post_closed_on, jp.cancellation_reason, jp.created_on as job_post_created_on,
+        h.street_no, h.street_name, hb.barangay_name, hc.city_name, h.home_type as home_type_id, ht.home_type_name,
+        jp.job_size_id, josize.job_order_size,
+        pt.type as job_subcategory, e.expertise as job_category,
+        jp.job_post_status_id, jpstat.status as job_post_stat,
+        jp.rate_offer, jp.rate_type_id, rt.type as rate_type_name
+        FROM job_order jo
+        LEFT JOIN hh_user hh ON jo.worker_id = hh.user_id
+        LEFT JOIN hh_user hh2 ON jo.homeowner_id = hh2.user_id
+        LEFT JOIN job_order_status jos ON jo.job_order_status_id = jos.id
+        LEFT JOIN job_post jp ON jo.job_post_id = jp.id
+        LEFT JOIN home h ON jp.home_id = h.id
+        LEFT JOIN barangay hb ON h.barangay_id = hb.id
+        LEFT JOIN city hc ON hb.city_id = hc.id
+        LEFT JOIN home_type ht ON h.home_type = ht.id
+        LEFT JOIN job_order_size josize ON jp.job_size_id = josize.id
+        LEFT JOIN project_type pt ON jp.required_expertise_id = pt.id
+        LEFT JOIN expertise e ON pt.expertise = e.id
+        LEFT JOIN job_post_status jpstat ON jp.job_post_status_id = jpstat.id
+        LEFT JOIN rate_type rt ON jp.rate_type_id = rt.id
+        WHERE jo.id = :joid;";
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':joid', $job_order_id);
+            $result = $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;       
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    }catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
