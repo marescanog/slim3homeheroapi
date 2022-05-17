@@ -1109,7 +1109,7 @@ public function getAddressList(Request $request,Response $response, array $args)
     }
 
     $resData=[];
-    $resData['adress_list']=$allAddress['data'];
+    $resData['address_list']=$allAddress['data'];
     // $resData="This route works.";
     return $this->return_server_response($response,"This route works",200,$resData);  
 }
