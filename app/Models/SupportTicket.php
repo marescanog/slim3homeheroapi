@@ -1550,7 +1550,7 @@ public function get_joborder_from_support_ticket_LIGHT($ticketID){
 // @returns a Model Response object with the attributes "success" and "data"
 //          sucess value is true when PDO is successful and false on failure
 //          data value is
-public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, $job_post_ID = null, $job_order_status = null, $jo_start_date_time  = null, $jo_end_date_time = null, $jo_address_submit = null, $comment = null, $previouslyCancelled = false){
+public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, $job_post_ID = null, $job_order_status = null, $jo_start_date_time  = null, $jo_end_date_time = null, $jo_address_submit = null, $comment = null, $previouslyCancelled = false, $type = 1){
     try{
 
         $db = new DB();
@@ -1585,10 +1585,19 @@ public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, 
         }
 
         // Validation - check if all parameters submitted are null
-        if($job_order_status == null && $jo_start_date_time  == null && $jo_end_date_time == null && $jo_address_submit == null){
+        if($type == 1 && $job_order_status == null && $jo_start_date_time  == null && $jo_end_date_time == null && $jo_address_submit == null){
             return array(
                 "success"=>false,
                 "data"=>"Incomplete Details: No Parameters Provided for Query",
+                "err"=>2
+            );
+        }
+
+        // Validation - check if already cancelled before on a cancellation request
+        if($type == 2 && $previouslyCancelled == true){
+            return array(
+                "success"=>false,
+                "data"=>"This order has already been cancelled",
                 "err"=>2
             );
         }
@@ -1603,7 +1612,8 @@ public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, 
                 );
             }
         }
-        $result = [];
+        // $result = [];
+        $result = "";
         // ------------------------------------------------
         // // STEPS
         // // 1. UPDATE JOB ORDER OR POST IF APPLICABLE
@@ -1684,9 +1694,9 @@ public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, 
         // CLOSE QUERY
         $sql = $sql." COMMIT;";
 
-        $result["sql"]= $sql;
-        $result["sysDes"]= $sysDes;
-        $result["hasjob_update"]= $hasjob_update;
+        // $result["sql"]= $sql;
+        // $result["sysDes"]= $sysDes;
+        // $result["hasjob_update"]= $hasjob_update;
 
         // // Prepare statement
         $stmt =  $conn->prepare($sql);
@@ -1727,7 +1737,8 @@ public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, 
                 $stmt->bindparam(':t2', $ticketID);
                 $stmt->bindparam(':agentNotes', $comment);
                 
-                $result["result"] = $stmt->execute();
+                // $result["result"] = $stmt->execute();
+                $result = $stmt->execute();
             }
         // }
 
