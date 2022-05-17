@@ -1610,7 +1610,7 @@ public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, 
         // // 2. If job order status = 3 include update for job order table order cancellation reason (comment) & cancelled by (agentID)  
         // // 3. ADD ACTION
 
-        $sysDes = "AGENT #".$agentID." MODIFIED JOB ORDER #".str_pad($job_order_ID, 5, "0", STR_PAD_LEFT).". (";
+        $sysDes = "AGENT #".$agentID." ".($job_order_status!=3?"MODIFIED":"CANCELLED")." JOB ORDER #".str_pad($job_order_ID, 5, "0", STR_PAD_LEFT).". (";
         $sql = "SET @@session.time_zone = '+08:00'; BEGIN; ";
 
         // $update_jo_sql = "UPDATE job_order jo SET jo.job_order_status_id = 1 WHERE jo.id = 15;";
@@ -1630,7 +1630,7 @@ public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, 
                         $sql = $sql.", jo.order_cancellation_reason = :cancelReason, jo.cancelled_by = :cancelAgentID";
                     }
                     // Add TO system description
-                    $sysDes = $sysDes."STATUS UPDATED TO ".$jobStatArr[$job_order_status];
+                    $sysDes = $sysDes."STATUS RESTORED TO ".$jobStatArr[$job_order_status];
                 }else{
                     // ADD TO SQL
                     $sql = $sql." jo.job_order_status_id = :jo_stat";
@@ -1638,7 +1638,11 @@ public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, 
                         $sql = $sql.", jo.order_cancellation_reason = :cancelReason, jo.cancelled_by = :cancelAgentID";
                     }
                     // Add TO system description
-                    $sysDes = $sysDes."STATUS UPDATED TO ".$jobStatArr[$job_order_status];
+                    if($job_order_status != 3){
+                        $sysDes = $sysDes."STATUS UPDATED TO ".$jobStatArr[$job_order_status];
+                    } else {
+                        $sysDes = $sysDes."STATUS UPDATE";
+                    }
                 }
                 $hasPrevParamUpdate = true;
             }    
