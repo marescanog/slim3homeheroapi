@@ -1402,7 +1402,7 @@ public function get_joborder_from_support_ticket($ticketID){
         }
 
         // Prepare another statement when job order is found
-        $sql = "SELECT jo.id as job_order_id, 
+        $sql = "SELECT jo.id as job_order_id, jo.order_cancellation_reason, jo.cancelled_by,
         jo.worker_id, hh.first_name as worker_fname, hh.last_name as worker_lname, hh.phone_no as worker_phone,
         jo.homeowner_id, hh2.first_name as ho_fname, hh2.last_name as ho_lname, hh2.phone_no as ho_phone,
         jo.job_order_status_id, jos.status as job_order_status_text,
@@ -1461,8 +1461,289 @@ public function get_joborder_from_support_ticket($ticketID){
 }
 
 
+// May 17
+// GET  job order based on support ticket, only relevant information for edit validation
+// @desc    gets job order including job post
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function get_joborder_from_support_ticket_LIGHT($ticketID){
+    try{
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql_jo = "SELECT joi.job_order_id FROM `job_order_issues` joi WHERE joi.support_ticket_id = :id;";
+
+        // Prepare statement
+        $stmt_jo =  $conn->prepare($sql_jo);
+        $result_jo = "";
+        $bill_id = null;
+
+        // Only fetch if prepare succeeded
+        if ($stmt_jo !== false) {
+            $stmt_jo->bindparam(':id', $ticketID);
+            $stmt_jo->execute();
+            $result_jo = $stmt_jo->fetchAll(\PDO::FETCH_ASSOC);
+            $job_order_id = count($result_jo) <= 0 ? null : $result_jo[0]['job_order_id'];
+        }
+
+        $d = [];
 
 
+        if($result_jo == null || $job_order_id == null){
+            return  array(
+                "success"=>false,
+                "data"=>"Bad Request: Job Order Not Found.",
+                "err"=>"1"
+            );
+        }
+
+        // Prepare another statement when job order is found
+        $sql = "SELECT jo.id as job_order_id, jo.worker_id, jo.homeowner_id, jo.job_order_status_id, 
+        jo.job_order_status_id, jo.date_time_start as job_start, jo.date_time_closed as job_end, jo.isRated, jo.created_on as job_order_created_on, jo.order_cancellation_reason, jo.cancelled_by,
+        jo.job_post_id, h.id as home_id
+        FROM job_order jo
+        LEFT JOIN job_post jp ON jo.job_post_id = jp.id
+        LEFT JOIN home h ON jp.home_id = h.id
+        WHERE jo.id = :joid;";
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':joid', $job_order_id);
+            $result = $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;       
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    }catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+// May 17
+// UPDATE  job order based on support ticket, 
+// @desc    gets job order including job post
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, $job_post_ID = null, $job_order_status = null, $jo_start_date_time  = null, $jo_end_date_time = null, $jo_address_submit = null, $comment = null, $previouslyCancelled = false){
+    try{
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $hasjob_update = $job_order_status != null || $jo_start_date_time  != null || $jo_end_date_time != null;
+
+        // Validation - check comment
+        if($comment == null){
+            return array(
+                "success"=>false,
+                "data"=>"Incomplete Details: No reason Provided for update Query",
+                "err"=>1
+            );
+        }
+
+        // Validation - check job order ID
+        if($job_order_ID == null){
+            return array(
+                "success"=>false,
+                "data"=>"Incomplete Details: No Job Order ID Provided for Query",
+                "err"=>1
+            );
+        }
+
+        if($jo_address_submit != null && $job_post_ID == null){
+            return array(
+                "success"=>false,
+                "data"=>"Update Error: Unable to find Job Post ID for Query",
+                "err"=>1
+            );
+        }
+
+        // Validation - check if all parameters submitted are null
+        if($job_order_status == null && $jo_start_date_time  == null && $jo_end_date_time == null && $jo_address_submit == null){
+            return array(
+                "success"=>false,
+                "data"=>"Incomplete Details: No Parameters Provided for Query",
+                "err"=>2
+            );
+        }
+
+        // Validation - check job order status ID range
+        if($job_order_status != null){
+            if($job_order_status > 3 || $job_order_status < 1){
+                return array(
+                    "success"=>false,
+                    "data"=>"Incomplete Details: Job Order Status ID out of range. ".var_dump($job_order_status),
+                    "err"=>1,
+                );
+            }
+        }
+        $result = [];
+        // ------------------------------------------------
+        // // STEPS
+        // // 1. UPDATE JOB ORDER OR POST IF APPLICABLE
+        // // 2. If job order status = 3 include update for job order table order cancellation reason (comment) & cancelled by (agentID)  
+        // // 3. ADD ACTION
+
+        $sysDes = "AGENT #".$agentID." MODIFIED JOB ORDER #".str_pad($job_order_ID, 5, "0", STR_PAD_LEFT).". (";
+        $sql = "SET @@session.time_zone = '+08:00'; BEGIN; ";
+
+        // $update_jo_sql = "UPDATE job_order jo SET jo.job_order_status_id = 1 WHERE jo.id = 15;";
+        $hasPrevParamUpdate = false;
+        if($hasjob_update == true){
+            $sql = $sql."UPDATE job_order jo SET";
+
+            // Set Job Order Status
+            if($job_order_status != null){
+                $jobStatArr = array("","CONFIRMED","COMPLETED","CANCELLED");
+                if($previouslyCancelled == true){
+                    // ADD TO SQL
+                    $sql = $sql." jo.job_order_status_id =:jo_stat";
+                    if($job_order_status != 3){
+                        $sql = $sql.", jo.order_cancellation_reason = null, jo.cancelled_by = null";
+                    } else {
+                        $sql = $sql.", jo.order_cancellation_reason = :cancelReason, jo.cancelled_by = :cancelAgentID";
+                    }
+                    // Add TO system description
+                    $sysDes = $sysDes."STATUS UPDATED TO ".$jobStatArr[$job_order_status];
+                }else{
+                    // ADD TO SQL
+                    $sql = $sql." jo.job_order_status_id = :jo_stat";
+                    if($job_order_status == 3){
+                        $sql = $sql.", jo.order_cancellation_reason = :cancelReason, jo.cancelled_by = :cancelAgentID";
+                    }
+                    // Add TO system description
+                    $sysDes = $sysDes."STATUS UPDATED TO ".$jobStatArr[$job_order_status];
+                }
+                $hasPrevParamUpdate = true;
+            }    
+
+            // Set Job Order Start Date
+            if($jo_start_date_time != null){
+                // ADD TO SQL
+                $sql = $sql.($hasPrevParamUpdate==true?",":"")." jo.date_time_start = :jo_time_start";
+                // Add TO system description
+                $sysDes = $sysDes.($hasPrevParamUpdate==true?", ":"")."START TIME MODIFIED TO ".$jo_start_date_time;
+                $hasPrevParamUpdate = true;
+            }
+
+            // Set Job Order End Date
+           if($jo_end_date_time != null){
+                // ADD TO SQL
+                $sql = $sql.($hasPrevParamUpdate==true?", ":"")." jo.date_time_closed = :jo_time_end";
+                // Add TO system description
+                $sysDes = $sysDes.($hasPrevParamUpdate==true?", ":"")."END TIME MODIFIED TO ".$jo_end_date_time;
+                $hasPrevParamUpdate = true;
+            }
+
+            $sql = $sql." WHERE jo.id = :joID;";
+        }
+
+        // Update address in post
+        if($jo_address_submit != null && $job_post_ID != null){
+            $sql = $sql." UPDATE job_post jp SET jp.home_id = :homeID WHERE jp.id = :postID;";
+            $sysDes = $sysDes.($hasPrevParamUpdate==true?", ":"")."ADDRESS CHANGED";
+        }
+        $sysDes = $sysDes.")";
+
+        // UPDATE SUPPORT TICKET TABLE
+        $sql = $sql." UPDATE support_ticket st SET st.last_updated_on = now() WHERE st.id = :t1;";
+
+        // ADD ACTION
+        $sql = $sql." INSERT INTO ticket_actions(action_taken, system_generated_description, agent_notes, support_ticket) VALUES (3,:description,:agentNotes,:t2);";
+        
+        // CLOSE QUERY
+        $sql = $sql." COMMIT;";
+
+        $result["sql"]= $sql;
+        $result["sysDes"]= $sysDes;
+        $result["hasjob_update"]= $hasjob_update;
+
+        // // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        // $result = "";
+
+        // if(false){
+            // Only fetch if prepare succeeded
+            if ($stmt !== null) {
+                if($job_order_status != null){
+                    $stmt->bindparam(':jo_stat', $job_order_status);
+                    if($job_order_status==3 && $previouslyCancelled == false){
+                        $stmt->bindparam(':cancelReason', $comment);
+                        $stmt->bindparam(':cancelAgentID', $agentID);
+                    } 
+                }
+
+                if($jo_start_date_time != null){
+                    $stmt->bindparam(':jo_time_start', $jo_start_date_time);
+                }
+
+                if($jo_end_date_time != null){
+                    $stmt->bindparam(':jo_time_end', $jo_end_date_time);
+                }
+
+                if($hasjob_update == true){
+                    $stmt->bindparam(':joID', $job_order_ID);
+                }
+
+                // Update address in post
+                if($jo_address_submit != null && $job_post_ID != null){
+                    $sql = $sql." UPDATE job_post jp SET jp.home_id = :homeID WHERE jp.id = :postID;";
+                    $stmt->bindparam(':homeID', $jo_address_submit);
+                    $stmt->bindparam(':postID', $job_post_ID);
+                }
+
+                $stmt->bindparam(':t1', $ticketID);
+                $stmt->bindparam(':description', $sysDes);
+                $stmt->bindparam(':t2', $ticketID);
+                $stmt->bindparam(':agentNotes', $comment);
+                
+                $result["result"] = $stmt->execute();
+            }
+        // }
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    }catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
 
 
 

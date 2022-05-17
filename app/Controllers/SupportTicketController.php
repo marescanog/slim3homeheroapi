@@ -909,7 +909,7 @@ public function processBilling(Request $request,Response $response, array $args)
 // -----------------------------------
 // Validate Ticket
 // -----------------------------------
-        $validate_ticket_result = $this->validate_ticket($ticket_id,2,$agent_ID,$role);
+        $validate_ticket_result = $this->validate_ticket($ticket_id,2,$agent_ID,$role,4);
         if($validate_ticket_result['success'] != 200){
             return $this->return_server_response($response,$validate_ticket_result['error'],$validate_ticket_result['success']);
         }
@@ -1117,6 +1117,283 @@ public function getAddressList(Request $request,Response $response, array $args)
 
 
 
+// process the job order issue according to the action sent
+public function processJobIssue(Request $request,Response $response, array $args)
+{
+// -----------------------------------
+// Get Necessary variables and params
+// -----------------------------------
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    // Get ticket parameter for ticket information
+    $ticket_id = $args['id'];
+
+    // Get Agent Email for validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty(),
+        "type"=>v::notEmpty()
+    ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+        $this->validator->validate($request,[
+            // Check if empty
+            "type"=>v::between(1, 5),
+        ]);
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    $type = CustomRequestHandler::getParam($request,"type");
+    $comment = CustomRequestHandler::getParam($request,"comment");
+        // Additional info for job order issue edit
+        $job_order_status = CustomRequestHandler::getParam($request,"job_order_status");
+        $jo_start_date_time = CustomRequestHandler::getParam($request,"jo_start_date_time");
+        $jo_end_date_time = CustomRequestHandler::getParam($request,"jo_end_date_time");
+        $jo_address_submit = CustomRequestHandler::getParam($request,"home_ID");
+
+
+// -----------------------------------
+// Get Agent Information
+// -----------------------------------
+        // Get user ID with email
+        $account = $this->supportAgent->getSupportAccount($email);
+
+        // Check for query error
+        if($account['success'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+    
+        // Check if email is found
+        if($account['data'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+        }
+    
+        // Get user account by ID & get role type
+        $agent_ID = $account['data']['id'];
+        $role = $account['data']['role_type'];
+
+// -----------------------------------
+// Auth Agent Information
+// -----------------------------------
+        $auth_agent_result = $this->authenticate_agent($bearer_token, $agent_ID);
+        if($auth_agent_result['success'] != 200){
+            return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+        }
+
+// -----------------------------------
+// Validate Ticket
+// -----------------------------------
+        $validate_ticket_result = $this->validate_ticket($ticket_id,2,$agent_ID,$role,7);
+        if($validate_ticket_result['success'] != 200){
+            return $this->return_server_response($response,$validate_ticket_result['error'],$validate_ticket_result['success']);
+        }
+        $base_info = $validate_ticket_result['data'];
+        $is_owner = $validate_ticket_result['is_owner'];
+        $authorized = $validate_ticket_result['authorized'];
+        // $ticket_id =  $base_info['data']['id'];
+        $agent_ID_currrent =  $base_info['data']['assigned_agent'];
+
+        $resData = [];
+// -----------------------------------
+// Process Ticket
+// -----------------------------------
+        switch($type){
+            case 1:
+                // Case Edit Job Order
+                $resData["res"] = "Edit";
+
+                // Validation
+                // if(($job_order_status == null || $job_order_status == "") && 
+                // ($jo_start_date_time == null || $jo_start_date_time == "") &&
+                // ($jo_end_date_time == null || $jo_end_date_time == "") &&
+                // ( $jo_address_submit == null ||  $jo_address_submit == "")
+                // ){
+                //     return $this->return_server_response($response,"Invalid Entry: All fields blank. Please enter either a new ticket status, job order start time, job order end time or job order address for the edit.",400);
+                // }
+
+                // GET THE JOB ORDER INFORMATION
+                $jo_info_res = $this->supportTicket->get_joborder_from_support_ticket_LIGHT($ticket_id);
+                if($jo_info_res["success"] == false){
+                    return $this->return_server_response($response,"Something went wrong when updating the Job Order information. Please contact administrator to check SQL syntax.",500);
+                }
+                $jo_info = $jo_info_res["data"];
+                $jo_ID = $jo_info["job_order_id"];
+                $jo_current_status = $jo_info["job_order_status_id"];
+                $resData['jo_info_res'] =   $jo_info;
+                // $resData['same_value'] =   $jo_info["job_order_id"]==$job_order_status;
+                
+                // Second validation - check if same values with the ones in DB, if it is, then mark as null
+                $jo_start_date_time = $jo_info["job_start"]==$jo_start_date_time ? null :  $jo_start_date_time;
+                $jo_end_date_time = $jo_info["job_end"]==$jo_end_date_time ? null : $jo_end_date_time;
+                $jo_address_submit = $jo_info["home_id"]==$jo_address_submit ? null :  $jo_address_submit;
+                $job_order_status = $jo_info["job_order_status_id"]==$job_order_status ? null : $job_order_status;
+                $comment = $comment == "" ? null : $comment;
+                $previouslyCancelled = $jo_current_status==3;
+
+                $job_post_ID = $jo_info["job_post_id"];
+
+                // $resData['jo_start_date_time'] = $jo_start_date_time;
+                // $resData['jo_end_date_time'] = $jo_start_end_time;
+        
+        
+                $editRes = $this->supportTicket->edit_job_order_issue(
+                    $agent_ID_currrent, $ticket_id, $jo_ID, $job_post_ID, 
+                    $job_order_status,      // Job Order Status
+                    $jo_start_date_time,    // Job Start Time
+                    $jo_end_date_time,      // Job End Time
+                    $jo_address_submit,     // Job Address Submit
+                    $comment, 
+                    $previouslyCancelled
+                );
+                if($editRes["success"] == true){
+                    $resData['data'] = $editRes['data'];
+                    // if($editRes["data"] == null){
+                    //     $resData['message'] = "Bill not found!";
+                    // } else {
+                    //     $resData['message'] = "Bill adjusted successfully!";
+                    //     // $resData['data'] = $editRes;
+                    //     $resData['data'] = $editRes['data'];
+                    // }
+                } else {
+                    if(isset($editRes["err"])){
+                        return $this->return_server_response($response,$editRes["data"],400);
+                    } else {
+                        // return $this->return_server_response($response,$editRes,500);
+                        return $this->return_server_response($response,"Something went wrong when updating the bill information. Please contact administrator to check SQL syntax.",500);
+                    }
+                }
+
+                break;
+            case 2:
+                // Case Cancel Job Order
+                $resData["res"] = "Cancel";
+        //         $editRes = $this->supportTicket->process_bill($agent_ID_currrent, $ticket_id, null, 3,  null, $comment);
+        //         if($editRes["success"] == true){
+        //             if($editRes["data"] == null){
+        //                 $resData['message'] = "Bill not found!";
+        //             } else {
+        //                 $resData['message'] = "Bill cancelled successfully!";
+        //                 // $resData['data'] = $editRes;
+        //                 $resData['data'] = $editRes['data'];
+        //             }
+        //         } else {
+        //             if(isset($editRes["err"])){
+        //                 return $this->return_server_response($response,$editRes["data"],400);
+        //             } else {
+        //                 // return $this->return_server_response($response,$editRes,500);
+        //                 return $this->return_server_response($response,"Something went wrong when cancelling the bill. Please contact administrator to check SQL syntax.",500);
+        //             }
+        //         }
+                break;
+            case 3:
+                // Case Notify
+                $resData["res"] = "Notify";
+        //         if($comment == null){
+        //             return $this->return_server_response($response,"No comment provided. Please include a comment.",400);
+        //         } else {
+        //             $notifyRes = $this->supportTicket->comment($ticket_id, $agent_ID_currrent, $comment, 1);
+        //             if($notifyRes["success"] == true){
+        //                 $resData['message'] = "Customer notified and comment successfully added to the ticket.";
+        //             } else {
+        //                 return $this->return_server_response($response,"An Error occured while saving the comment. Please try again.",500);
+        //             }
+        //         }
+                break;
+            case 4:
+                // Case Notify
+                $resData["message"] = "Comment";
+        //         if($comment == null){
+        //             return $this->return_server_response($response,"No comment provided. Please include a comment.",400);
+        //         } else {
+        //             $commentRes = $this->supportTicket->comment($ticket_id, $agent_ID_currrent, $comment);
+        //             if($commentRes["success"] == true){
+        //                 $resData['message'] = "Comment was successfully added to the ticket.";
+        //             } else {
+        //                 return $this->return_server_response($response,"An Error occured while saving the comment. Please try again.",500);
+        //             }
+        //         }
+                break;
+            case 5:
+                // Case Notify
+                $resData["message"] = "Close Ticket";
+        //         if($comment == null){
+        //             return $this->return_server_response($response,"No comment provided. Please include a comment.",400);
+        //         }  else if( $bill_resolved == null || ($bill_resolved != 1 && $bill_resolved != 2)){
+        //             return $this->return_server_response($response,"Please indicate if the support ticket has been resolved.",400);
+        //         } else {
+        //             $closeBillTicketRes = $this->supportTicket->close_ticket($agent_ID_currrent, $ticket_id, $bill_resolved, $comment);
+        //             if($closeBillTicketRes["success"] == true){
+        //                 $resData['message'] = "The ticket was sucesfully closed.";
+        //             } else {
+        //                 return $this->return_server_response($response,"An Error occured when updating the ticket. Please try again.",500);
+        //             }
+        //         }
+                break;
+            default:
+                return $this->return_server_response($response,"Something went wrong while processing your request. Please try again later.",400);
+            break;
+        }
+
+    return $this->return_server_response($response,"This route works",200,$resData); 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1192,7 +1469,7 @@ private function authorize_agent_role_with_ticket($agentRole, $ticket_issue){
 // Helper function to perform ticket validation
 // params: ticket_ID, supportTicket obj
 // returns: object with keys data & success
-private function validate_ticket($p_ticket_id, $p_ticket_status = null, $p_agent_ID = null, $p_agent_role = null){
+private function validate_ticket($p_ticket_id, $p_ticket_status = null, $p_agent_ID = null, $p_agent_role = null, $p_ticket_issue = null){
     // Reference for list of roles & their authorization
     /* 
         1 - Verification (Cann access only verification tickets)
@@ -1229,6 +1506,13 @@ private function validate_ticket($p_ticket_id, $p_ticket_status = null, $p_agent
         $retVal['success'] = 404;
         // $retVal['data'] = $base_info['data'];
         $retVal['error'] = "Ticket Not Found";
+        return $retVal;
+    }
+
+    // Check if the ticket has the correct issue
+    if($p_ticket_issue != null && $p_ticket_issue != $base_info['data']['issue_id']){
+        $retVal['success'] = 400;
+        $retVal['error'] = "Bad Request: Incorrect ticket issue for this type of request.";
         return $retVal;
     }
 

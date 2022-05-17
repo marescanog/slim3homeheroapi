@@ -35,6 +35,9 @@ $app->group("/ticket",function() use ($app){
     $app->post("/get-homeowner-address/{id}","SupportTicketController:getAddressList");
 
 
+    $app->post("/process-job-issue/{id}","SupportTicketController:processJobIssue");
+
+
 
 
 
