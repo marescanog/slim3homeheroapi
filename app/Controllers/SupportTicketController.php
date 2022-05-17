@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\File;
 use App\Models\SupportTicket;
 use App\Models\Support;
 use App\Requests\CustomRequestHandler;
@@ -24,6 +25,8 @@ class SupportTicketController
 
     protected  $roleTypes;
 
+    protected $file;
+
     public function  __construct()
     {
          $this->customResponse = new CustomResponse();
@@ -33,6 +36,8 @@ class SupportTicketController
          $this->supportAgent = new Support();
 
          $this->validator = new Validator();
+
+         $this->file = new File();
 
          $this->roleSubTypes = array();
 
@@ -1018,6 +1023,97 @@ public function processBilling(Request $request,Response $response, array $args)
 }
 
     
+
+// ===================================================================
+//  May 17, 2022
+
+// get the homeowner's address as an authorized representative
+public function getAddressList(Request $request,Response $response, array $args)
+{
+// -----------------------------------
+// Get Necessary variables and params
+// -----------------------------------
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    // Get ticket parameter for ticket information
+    $homeowner_id = $args['id'];
+
+    // Check homeonwer id parameter if valid
+    if(!isset($homeowner_id) || $homeowner_id == null || !is_numeric($homeowner_id)){
+        return $this->return_server_response($response,"Invalid homeowner ID given.",400);
+    }
+
+    // Get Agent Email for validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty()
+    ]);
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+
+// -----------------------------------
+// Get Agent Information
+// -----------------------------------
+    // Get user ID with email
+    $account = $this->supportAgent->getSupportAccount($email);
+
+    // Check for query error
+    if($account['success'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+
+    // Check if email is found
+    if($account['data'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+    }
+
+    // Get user account by ID & get role type
+    $agent_ID = $account['data']['id'];
+    $role = $account['data']['role_type'];
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+
+// -----------------------------------
+// Auth Agent Information
+// -----------------------------------
+    $auth_agent_result = $this->authenticate_agent($bearer_token, $agent_ID);
+    if($auth_agent_result['success'] != 200){
+        return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+    }
+
+// -----------------------------------
+// Validate Role
+// -----------------------------------
+    // Only Customer Service, Supervisor, Admin & Super Admin can get homeowner's address list
+    if($role != 2 && $role != 4 && $role != 5 && $role != 6){
+        return $this->return_server_response($response,"You are unauthorized to access account holder's address list.",401);
+    }
+
+// -----------------------------------
+// Get Addresses
+// -----------------------------------
+    // GET USER ALL ADDRESS
+    $allAddress = $this->file->getUsersSavedAddresses($homeowner_id);
+    // Error handling
+    if(  $allAddress['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $allAddress['data']) );
+    }
+
+    $resData=[];
+    $resData['adress_list']=$allAddress['data'];
+    // $resData="This route works.";
+    return $this->return_server_response($response,"This route works",200,$resData);  
+}
+
 
 
 

@@ -1403,12 +1403,12 @@ public function get_joborder_from_support_ticket($ticketID){
 
         // Prepare another statement when job order is found
         $sql = "SELECT jo.id as job_order_id, 
-        jo.worker_id, hh.first_name as worker_fname, hh.last_name as worker_lname,
-        jo.homeowner_id, hh2.first_name as ho_fname, hh2.last_name as ho_lname,
+        jo.worker_id, hh.first_name as worker_fname, hh.last_name as worker_lname, hh.phone_no as worker_phone,
+        jo.homeowner_id, hh2.first_name as ho_fname, hh2.last_name as ho_lname, hh2.phone_no as ho_phone,
         jo.job_order_status_id, jos.status as job_order_status_text,
         jo.date_time_start as job_start, jo.date_time_closed as job_end, jo.isRated, jo.created_on as job_order_created_on, jo.order_cancellation_reason, jo.cancelled_by,
         jo.job_post_id, jp.job_post_name, jp.job_description, jp.is_exact_schedule, jp.preferred_date_time as initial_schedule, jp.date_time_closed as job_post_closed_on, jp.cancellation_reason, jp.created_on as job_post_created_on,
-        h.street_no, h.street_name, hb.barangay_name, hc.city_name, h.home_type as home_type_id, ht.home_type_name,
+        h.id as home_id, h.street_no, h.street_name, hb.barangay_name, hc.city_name, h.home_type as home_type_id, ht.home_type_name,
         jp.job_size_id, josize.job_order_size,
         pt.type as job_subcategory, e.expertise as job_category,
         jp.job_post_status_id, jpstat.status as job_post_stat,
