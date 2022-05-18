@@ -606,7 +606,7 @@ public function assign_ticket($userID,$ticketID,$actionID=2,$description="",$sta
         $sql = "SET @@session.time_zone = '+08:00';
         BEGIN;
             UPDATE support_ticket s
-            SET s.status = :stat, s.assigned_agent = :userID, s.last_updated_on = now()
+            SET s.status = :stat, s.assigned_agent = :userID, s.last_updated_on = now(), s.assigned_on = now()
             WHERE s.id = :ticketID;
 
             INSERT INTO ticket_actions(action_taken, system_generated_description, support_ticket) VALUES (:actionID,:description,:sticketID);
