@@ -153,8 +153,8 @@ public function get_Tickets($status = 1, $count = true, $id = null, $role = null
         $db = new DB();
         $conn = $db->connect();
 
-        // Registration/Verification, Customer Support, Technical Support
-        $roleSubTypes = ["1,2,3","4,5,6,7,8,9","10,11,12,13,14,15,16"];
+        // Registration/Verification, Customer Support, Technical Support, supervisor, admin, superadmin, manager
+        $roleSubTypes = ["1,2,3","4,5,6,7,8,9","10,11,12,13,14,15,16","1,2,3,4,5,6,7,8,9,10,11,12,13,14,15","12,14,15,19","12,14,15,16,19","17"];
 
         // New, Ongoing, Resolved
         $statusTypes = ["st.status = 1","st.status = 2","st.status IN (3,4)","st.is_Escalated = 1"];

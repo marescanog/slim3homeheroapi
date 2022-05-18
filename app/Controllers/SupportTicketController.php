@@ -279,12 +279,19 @@ public function getAllTickets(Request $request,Response $response, array $args)
                 return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
             }
         // Ongoing
-        $totalOngoing = $this->supportTicket->get_Tickets(2,true,null,$role);
-        // Check for query error
-        if($totalNew['success'] == false){
-            // return $this->customResponse->is500Response($response,$totalOngoing['data']);
-            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
-        }
+            $totalOngoing = $this->supportTicket->get_Tickets(2,true,null,$role);
+            // Check for query error
+            if($totalOngoing['success'] == false){
+                // return $this->customResponse->is500Response($response,$totalOngoing['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+        // Completed
+            $totalCompleted = $this->supportTicket->get_Tickets(3,true,null,$role);
+            // Check for query error
+            if($totalCompleted['success'] == false){
+                // return $this->customResponse->is500Response($response,$totalCompleted['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
 
 
 
@@ -320,10 +327,13 @@ public function getAllTickets(Request $request,Response $response, array $args)
         $resData = [];
         $resData["new_total"] = $totalNew["data"][0]["COUNT(*)"];
         $resData["ongoing_total"] = $totalOngoing["data"][0]["COUNT(*)"];
+        $resData["completed_total"] = $totalCompleted["data"][0]["COUNT(*)"];
         $resData["new"] = $newTickets["data"];
         $resData["ongoing"] = $ongoingTickets["data"];
+        $resData["completed"] = $completedTickets["data"];
 
-
+        // For debugging
+        // $resData["role"] = $role;
 
     // verify if user is allowed to access this ticket
     return $this->customResponse->is200Response($response,  $resData);
@@ -1370,6 +1380,11 @@ public function processJobIssue(Request $request,Response $response, array $args
 
     return $this->return_server_response($response,"This route works",200,$resData); 
 }
+
+
+
+
+
 
 
 
