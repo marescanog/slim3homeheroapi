@@ -364,24 +364,141 @@ if($auth_agent_result['success'] != 200){
 
     // If Everything is correct get the owner's code
     $permissions_owner = $userRole == 7 ? $supervisor_id : $userID;
+    $codeArr_reformatted = [];
+    $codesArr = [];
 
-    $codesRes = $this->supportAgent->get_permission_codes($permissions_owner, 1);
-    if($codesRes['success'] != 200){
-        // return $this->customResponse->is500Response($response,$codesRes['data']);
-        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    // Based on role get the needed array
+    switch($userRole){
+        case 7:
+            // Manager
+            break;
+        case 4:
+            // Supervisor
+            $codesRes = $this->supportAgent->get_permission_codes($permissions_owner, 1);
+            if($codesRes['success'] != 200){
+                // return $this->customResponse->is500Response($response,$codesRes['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            $codesArr = $codesRes['data'];
+            break;
+        default:
+            return $this->customResponse->is401Response($response,"Unauthorized access: Only supervisors, managers and admin are allowed to access this resource. Please log in to an authorized account.");
+            break;
     }
-    $codesArr = $codesRes['data'];
+
+
 
         for($x=0;$x<count($codesArr);$x++){
             $plain = openssl_decrypt($codesArr[$x]["override_code"], "AES-128-ECB", "WQu0rd4T");
-            $codesArr[$x]["override_code"] = $plain;
+            // $codesArr[$x]["override_code"] = $plain;
+            $codeArr_reformatted[($userRole == 7 ? $supervisor_id."_" : "DEFAULT_").$codesArr[$x]['permissions_id']] =  $plain;
         }
 
         $resData = [];
-        $resData['codesRes'] = $codesArr;
+        $resData['codesRes'] =   $codeArr_reformatted;
 
         return $this->customResponse->is200Response($response,  $resData);
+}
+
+public function getSupReason(Request $request,Response $response){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Get Agent Email for validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty()
+    ]);
+
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
     }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    $supervisor_id = CustomRequestHandler::getParam($request,"supervisor_id");
+
+        // Get Support User Account
+    $account = $this->supportAgent->getSupportAccount($email);
+
+    // Check for query error
+    if($account['success'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+
+    // Check if email is found
+    if($account['data'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is404Response($response,"Email not found");
+    }
+
+    // Get user account by ID
+    $userID = $account['data']['id'];
+    $userRole = $account['data']['role_type'];
+
+        // Check if correct role
+        if( $userRole == 2 && $userRole == 1  ){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is401Response($response,"Unauthorized Access: Only HomeHero Support Staff is allowed to access this resource.");
+        }
+
+
+    $userAcc = $this->user->getUserByID($userID);
+
+    // Check for query error
+    if($userAcc['success'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+
+    // Check if user is found
+    if($userAcc['data'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is404Response($response,"User not found");
+    }
+
+    // -----------------------------------
+    // Auth Agent Information
+    // -----------------------------------
+    $auth_agent_result = $this->authenticate_agent($bearer_token, $userID);
+    if($auth_agent_result['success'] != 200){
+    return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+    }
+
+
+    // If Everything is correct, get the list of transfer reasons. & Get the Sup
+        // Get Sup Name
+        // Get Support User Account
+        $full_name = $this->supportAgent->get_user_name($userID);
+
+        // Check for query error
+        if($full_name['success'] == false){
+            // return $this->customResponse->is500Response($response,$full_name['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+        // Get Trans Reasons
+        $transReasons = $this->supportAgent->get_trans_reasons();
+
+        // Check for query error
+        if($transReasons['success'] == false){
+            // return $this->customResponse->is500Response($response,$transReasons['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+    $resData = [];
+    $resData['supID'] = $account['data']['supervisor_id'];
+    $resData['sup_name'] = isset( $full_name['data']) ?   $full_name['data']['full_name']  : "";
+    $resData['transReasons'] = $transReasons['data'];
+
+    // // Return information needed for personal info page
+    // return $this->customResponse->is200Response($response,  $userID );
+    return $this->customResponse->is200Response($response,  $resData);
+}
 
 
 
