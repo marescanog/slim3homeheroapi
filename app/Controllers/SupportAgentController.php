@@ -286,8 +286,181 @@ class SupportAgentController
         return $this->customResponse->is200Response($response,  $resData);
     }
 
-    
-    
+
+// -----------------------------------
+// Get Codes
+// -----------------------------------
+    public function getMyCodes(Request $request,Response $response){
+    // -----------------------------------
+    // Get Necessary variables and params
+    // -----------------------------------
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Get Agent Email for validation
+        $this->validator->validate($request,[
+            // Check if empty
+            "email"=>v::notEmpty()
+        ]);
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Store Params
+        $email = CustomRequestHandler::getParam($request,"email");
+        $supervisor_id = CustomRequestHandler::getParam($request,"supervisor_id");
+
+        // Get Support User Account
+    $account = $this->supportAgent->getSupportAccount($email);
+
+    // Check for query error
+    if($account['success'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+
+    // Check if email is found
+    if($account['data'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is404Response($response,"Email not found");
+    }
+
+    // Get user account by ID
+    $userID = $account['data']['id'];
+    $userRole = $account['data']['role_type'];
+
+        // Check if correct role
+        if( $userRole != 4 && $userRole != 5 && $userRole != 6 && $userRole != 7 ){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is401Response($response,"Unauthorized Access: Only Supervisors, Managers and Admins are allowed to access this resource.");
+        }
+
+
+    $userAcc = $this->user->getUserByID($userID);
+
+    // Check for query error
+    if($userAcc['success'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+
+    // Check if user is found
+    if($userAcc['data'] == false){
+        // return $this->customResponse->is500Response($response,$account['data']);
+        return $this->customResponse->is404Response($response,"User not found");
+    }
+
+// -----------------------------------
+// Auth Agent Information
+// -----------------------------------
+$auth_agent_result = $this->authenticate_agent($bearer_token, $userID);
+if($auth_agent_result['success'] != 200){
+    return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+}
+
+    // If Everything is correct get the owner's code
+    $permissions_owner = $userRole == 7 ? $supervisor_id : $userID;
+
+    $codesRes = $this->supportAgent->get_permission_codes($permissions_owner, 1);
+    if($codesRes['success'] != 200){
+        // return $this->customResponse->is500Response($response,$codesRes['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+    $codesArr = $codesRes['data'];
+
+        for($x=0;$x<count($codesArr);$x++){
+            $plain = openssl_decrypt($codesArr[$x]["override_code"], "AES-128-ECB", "WQu0rd4T");
+            $codesArr[$x]["override_code"] = $plain;
+        }
+
+        $resData = [];
+        $resData['codesRes'] = $codesArr;
+
+        return $this->customResponse->is200Response($response,  $resData);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Helper function to perform ticket validation
+// params: ticket_ID, supportTicket obj
+// returns: object with keys data & success
+private function return_server_response($r_res,  $r_message = "",$r_code = 200, $r_data=null){
+    $formatted_res = [];
+    $formatted_res['status'] = $r_code;
+    $formatted_res['message'] = $r_message;
+    $formatted_res['data'] = $r_data;
+    switch($r_code){
+        case 500:
+            return $this->customResponse->is500Response($r_res,  $formatted_res);
+        break; 
+        case 404:
+            return $this->customResponse->is404Response($r_res,  $formatted_res);
+        break;  
+        case 400:
+            return $this->customResponse->is400Response($r_res,  $formatted_res);
+        break; 
+        default:
+            return $this->customResponse->is200Response($r_res,  $formatted_res);
+        break;
+    }
+}
+
+
+// Helper function to authenticate agent
+// params: email, supportTicket obj
+// returns: object with keys data & success
+public function authenticate_agent($a_bearer_token,$user_ID){
+    $retVal = [];
+    // Extract token by omitting "Bearer"
+    $jwt = substr(trim($a_bearer_token),9);
+
+    // Decode token to get user ID
+    $jwt_result =  GenerateTokenController::AuthenticateUserID($jwt, $user_ID);
+
+    if($jwt_result['status'] !== true){
+        $retVal['success'] = 401;
+        // $retVal['data'] = $jwt_result['data'];
+        $retVal['error'] = $jwt_result['message'];
+        return $retVal;
+    }
+
+    $retVal['success'] = 200;
+    $retVal['error'] =  [];
+    $retVal['data'] =  null;
+
+    return $retVal;
+}
 
 }
 

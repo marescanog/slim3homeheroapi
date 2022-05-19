@@ -80,6 +80,8 @@ class Support
     }
 
 
+
+
     // @desc    Retreives the support agent account details based on email
     // @params  email
     // @returns a Model Response object with the attributes "success" and "data"
@@ -124,4 +126,84 @@ class Support
             return $ModelResponse;
         }
     }
+
+
+ // @desc    Retreives the support agent account details based on email
+    // @params  email
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is the support account
+    public function get_permission_codes($permissions_owner, $searchType = null){
+
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = [];
+            $sql = "";
+            // CREATE query
+            if($searchType == null){
+
+            } else if ($searchType == 2) {
+
+            } else {
+                $sql = "SELECT * FROM override_codes oc WHERE oc.permissions_owner_id = :poid;";
+            
+                // Prepare statement
+                $stmt =  $conn->prepare($sql);
+                $result = "";
+    
+                // Only fetch if prepare succeeded
+                if ($stmt !== false) {
+                    $stmt->bindparam(':poid', $permissions_owner);
+                    $stmt->execute();
+                    $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                }
+            }
+            
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

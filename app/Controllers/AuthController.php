@@ -1387,7 +1387,8 @@ public function generatePermission(Request $request, Response $response){
     $permitted_chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';   
     $code = $this->generate_string($permitted_chars, 8);
     // Hash the Code & then save into the DB
-    $codeHashed = password_hash($code, PASSWORD_DEFAULT);
+    // $codeHashed = password_hash($code, PASSWORD_DEFAULT);
+    $codeHashed = openssl_encrypt($code, "AES-128-ECB", "WQu0rd4T");
     $hashed_code = $codeHashed;
     $supervisor_id = ($supervisor_id == null) || ($supervisor_id == "") && $userRole != 7 ? $userID :  $supervisor_id;
 
