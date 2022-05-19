@@ -2674,6 +2674,154 @@ public function getProjectCategories(){
 }
 
 
+public function getCode($supportID,$permissionsID)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $result="";
+
+        // CREATE query
+        $sql = "SELECT * FROM `override_codes` oc WHERE oc.permissions_owner_id = :supportID AND oc.permissions_id = :permissionsID";
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':supportID', $supportID);
+            $stmt->bindparam(':permissionsID', $permissionsID);
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        } else {
+            $result = "PDO Error";
+        }
+
+        $stmt = null;
+        $db = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+public function updateCode($supportID,$createdBy,$permissionsID,$codeHashed)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $result="";
+        
+        // CREATE query
+        $sql = "UPDATE override_codes oc 
+        SET oc.override_code = :hashedCode,
+        oc.updated_on =  now(),
+        oc.created_by = :createdBy
+        WHERE oc.permissions_owner_id = :supID AND oc.permissions_id = :perID;";
+
+        // // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        // // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':hashedCode', $codeHashed);
+            $stmt->bindparam(':createdBy', $createdBy);
+            $stmt->bindparam(':supID', $supportID);
+            $stmt->bindparam(':perID', $permissionsID);
+            $stmt->execute();
+            $result = $stmt->execute();
+        }
+
+        $stmt = null;
+        $db = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+public function insertCode($supportID,$createdBy,$permissionsID,$codeHashed)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $result="";
+        $canChanged = $permissionsID==3?1:0;
+        // CREATE query
+        $sql = "INSERT INTO override_codes 
+        (permissions_owner_id, permissions_id, override_code, owner_can_change, is_void, created_on, updated_on, created_by) 
+        VALUES (:supID, :perID, :hashedCode, :canChange, '0', now(), NULL, :createdBy);";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':supID', $supportID);
+            $stmt->bindparam(':perID', $permissionsID);
+            $stmt->bindparam(':hashedCode', $codeHashed);
+            $stmt->bindparam(':canChange', $canChanged);
+            $stmt->bindparam(':createdBy', $createdBy);
+            $result = $stmt->execute();
+        }
+
+        $stmt = null;
+        $db = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
+
 
 
 

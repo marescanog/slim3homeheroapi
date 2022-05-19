@@ -48,6 +48,7 @@ $app->group("/worker",function() use ($app){
 // New routes Apr 14
 $app->group("/support",function() use ($app){
     $app->post("/login", "AuthController:supportlogin");  //change to post
+    $app->post("/generate-permissions", "AuthController:generatePermission");  //change to post
 });
 
 
