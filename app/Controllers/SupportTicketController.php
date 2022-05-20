@@ -1665,7 +1665,7 @@ private function validate_override_code($code, $sup_id, $permissions_id){
     if($code != $plain){
         $retVal['success'] = 401;
         // $retVal['data'] = $trans_code_res['data'];
-        $retVal['error'] = "Incorrect Transfer Code";
+        $retVal['error'] = "Permission code provided is incorrect. Please check the entered code and try again.";
         return $retVal;
     }
     
@@ -1810,8 +1810,11 @@ private function return_server_response($r_res,  $r_message = "",$r_code = 200, 
     $formatted_res['message'] = $r_message;
     $formatted_res['data'] = $r_data;
     switch($r_code){
-        case 500:
-            return $this->customResponse->is500Response($r_res,  $formatted_res);
+        case 200:
+            return $this->customResponse->is200Response($r_res,  $formatted_res);
+        break; 
+        case 401:
+            return $this->customResponse->is401Response($r_res,  $formatted_res);
         break; 
         case 404:
             return $this->customResponse->is404Response($r_res,  $formatted_res);
@@ -1820,7 +1823,7 @@ private function return_server_response($r_res,  $r_message = "",$r_code = 200, 
             return $this->customResponse->is400Response($r_res,  $formatted_res);
         break; 
         default:
-            return $this->customResponse->is200Response($r_res,  $formatted_res);
+            return $this->customResponse->is500Response($r_res,  $formatted_res);
         break;
     }
 }
