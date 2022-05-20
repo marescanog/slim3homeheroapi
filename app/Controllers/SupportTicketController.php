@@ -1520,8 +1520,9 @@ public function requestTransfer(Request $request,Response $response, array $args
 }
 
 
-
-
+// +++++++++++++++++++++++++++++++++++++++++++
+// +++++++++++++++++++++++++++++++++++++++++++
+// +++++++++++++++++++++++++++++++++++++++++++
 // Get Notification according to the type of user
 public function getNotifications(Request $request,Response $response, array $args)
 {
@@ -1543,7 +1544,13 @@ public function getNotifications(Request $request,Response $response, array $arg
 
     // Store Params
     $email = CustomRequestHandler::getParam($request,"email");
-    // $view = CustomRequestHandler::getParam($request,"view");
+    $limit = CustomRequestHandler::getParam($request,"limit");
+    $page = CustomRequestHandler::getParam($request,"page");
+
+    // Clean Variables
+    $limit =  is_numeric($limit) ? ($limit > 1000 ? 10000 : $limit) : 10;
+    $page = (is_numeric($page) ? $page : 1);
+    $offset = (($page-1)*$limit); // $page, $limit
 
     // -----------------------------------
     // Get REQUEST SENDERS Information
@@ -1576,42 +1583,66 @@ public function getNotifications(Request $request,Response $response, array $arg
             return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
         }
     
-    // GET NOTIFICATIONS BASED IF READ OR DELETE
-    // if($role == 4 || $role == 6 || $role == 7 || $role == 5){
-        // switch($view){
-        //     case "new":
-                $notifResNew = $this->supportTicket->get_notifications($agent_ID, null, null, false, false);
-            //     break;
-            // case "read":
-                $notifResRead = $this->supportTicket->get_notifications($agent_ID, null, null, true, false);
-                // break;
-            // default: //ALL
-                $notifResAll = $this->supportTicket->get_notifications($agent_ID, null, null, false, true);
-        //         break;
-        // }
+        $limit = $limit != null && is_numeric($limit) ? $limit : 10;
+    //     $offset =   $offset != null && is_numeric($offset) ? $offset : 0;
+
+    
+        // GET NOTIFICATIONS BASED IF READ OR DELETE
+        $notifResNew = $this->supportTicket->get_notifications($agent_ID, null, null, false, false, $limit, $offset);
         // Check for query error
         if($notifResNew['success'] == false){
             // return $this->customResponse->is500Response($response,$notifResNew['data']);
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
         }
+
+        $notifResRead = $this->supportTicket->get_notifications($agent_ID, null, null, true, false, $limit, $offset);
         if($notifResRead['success'] == false){
             // return $this->customResponse->is500Response($response,$notifResRead['data']);
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
         }
+
+        $notifResAll = $this->supportTicket->get_notifications($agent_ID, null, null, false, true, $limit, $offset);
         if($notifResAll['success'] == false){
             // return $this->customResponse->is500Response($response,$notifResAll['data']);
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
         }
-    // } else {
-        // // Get agent notifications ?
-        // //  Check if it is the same I think it is
-    // }
+
+
+        // GET TOTALS OF EACH GROUP
+        $notifResNewTot = $this->supportTicket->get_notifications($agent_ID, null, null, false, false, null, null);
+        // Check for query error
+        if($notifResNewTot['success'] == false){
+            // return $this->customResponse->is500Response($response,$notifResNewTot['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+        $notifResReadTot = $this->supportTicket->get_notifications($agent_ID, null, null, true, false, null, null);
+        if( $notifResReadTot['success'] == false){
+            // return $this->customResponse->is500Response($response,$notifResReadTot['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+        $notifResAllTot = $this->supportTicket->get_notifications($agent_ID, null, null, false, true, null, null);
+        if($notifResAllTot['success'] == false){
+            // return $this->customResponse->is500Response($response,$notifResAllTot['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+
+    // // Get agent notifications ?
+    // //  Check if it is the same I think it is
 
 
     $resData = [];
     $resData['new'] = $notifResNew['data'];
     $resData['read'] = $notifResRead['data'];
     $resData['all'] = $notifResAll['data'];
+    $resData['done'] = [];
+    $resData['new_total'] = $notifResNewTot['data'][0]['total'];
+    $resData['read_total'] = $notifResReadTot['data'][0]['total'];
+    $resData['all_total'] =  $notifResAllTot['data'][0]['total'];
+    $resData['done_total'] = 0;
+
     return $this->return_server_response($response,"This route works",200,$resData); 
 }
 
