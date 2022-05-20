@@ -1489,7 +1489,7 @@ public function requestTransfer(Request $request,Response $response, array $args
         // Check if Sup ID is same sup or different sup
         if($supID == $sup_id){
             // Validate Override Code 
-            $validateRes = $this->validate_override_code($transfer_code, $supID, $permis_code);
+            $validateRes = $this->validate_override_code($transfer_code, $supID, $permis_code, $ticket_id);
             if($validateRes['success'] != 200){
                 return $this->return_server_response($response,$validateRes['error'],$validateRes['success']);
             }
@@ -1513,7 +1513,7 @@ public function requestTransfer(Request $request,Response $response, array $args
 
     $resData = [];
     $resData['sendTransReqResult'] =  $sendTransferNotif['data'];
-    $resData['params'] =  $sendTransferNotif['params'];
+    // $resData['params'] =  $sendTransferNotif['params'];
     // $resData['validation'] =  $validateRes;
     // $resData['agent_acc'] = $account['data'];
     return $this->return_server_response($response,"This route works",200,$resData); 
@@ -1626,12 +1626,30 @@ public function requestTransfer(Request $request,Response $response, array $args
 // Helper function to validate the transfer code
 // params: agent_role, supportticket_issue
 // returns: object with keys data & success
-private function validate_override_code($code, $sup_id, $permissions_id){
+private function validate_override_code($code, $sup_id, $permissions_id, $sup_tkt_id = null){
     $retVal = [];
 
-    // Get from DB the hased value using sup_id & permissions code
-    $trans_code_res = $this->supportTicket->get_transCode($sup_id, $permissions_id);;
+    if($sup_tkt_id != null){
+        // Get from DB if a notification has already been sent for this type of request
+        $notifications = $this->supportTicket->get_notifications($sup_id, $permissions_id, $sup_tkt_id);
+        // Check for query error
+        if($notifications['success'] == false){
+            $retVal['success'] = 500;
+            // $retVal['data'] = $trans_code_res['data'];
+            $retVal['error'] = "SQLSTATE[42000]: Syntax error or access violation: Please check your query.";
+            return $retVal;
+        }
+        // Check if a notification has already been submitted
+        if(count($notifications['data']) != 0){
+            $retVal['success'] = 400;
+            // $retVal['data'] = $trans_code_res['data'];
+            $retVal['error'] = "You have already submitted a transfer request. Please wait for the supervisor to process your request before submitting another one.";
+            return $retVal;
+        }
+    }
 
+    // Get from DB the hased value using sup_id & permissions code
+    $trans_code_res = $this->supportTicket->get_transCode($sup_id, $permissions_id);
     // Check for query error
     if($trans_code_res['success'] == false){
         $retVal['success'] = 500;

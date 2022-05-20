@@ -1875,23 +1875,23 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
             $stmt = null;
             $db = null;
 
-            $params["supID"] = $supID;
-            $params["supTicketID"] = $ticketID;
-            $params["notifType"] = $notifType;
-            $params["userID"] = $senderID;
-            $params["permissionsID"] = $permissionID;
-            $params["permissionsOwner"] = $supID;
-            $params["sysGen"] = $sysGen;
-            $params["tktAction"] = $ticketActionID;
-            $params["sysMessage"] = $sysGen;
-            $params["comment"] = $comment;
-            $params["ticketID2"] = $ticketID;
+            // $params["supID"] = $supID;
+            // $params["supTicketID"] = $ticketID;
+            // $params["notifType"] = $notifType;
+            // $params["userID"] = $senderID;
+            // $params["permissionsID"] = $permissionID;
+            // $params["permissionsOwner"] = $supID;
+            // $params["sysGen"] = $sysGen;
+            // $params["tktAction"] = $ticketActionID;
+            // $params["sysMessage"] = $sysGen;
+            // $params["comment"] = $comment;
+            // $params["ticketID2"] = $ticketID;
 
 
             $ModelResponse =  array(
                 "success" => true,
                 "data" => $result,
-                "params" => $params
+                // "params" => $params
             );
 
             return $ModelResponse;
@@ -1903,7 +1903,76 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
             );
     }}
 
+// @desc    gets notifications for sup
+// @params  sup id and permissions id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is the support account
+  public function get_notifications($supID, $permissionsID = null, $supportTicketID = null, $getRead = true)
+    {
+        try {
 
+            $db = new DB();
+            $conn = $db->connect();
+
+            $stmt = "";
+            $result = [];
+
+            if($permissionsID != null && $supportTicketID != null){
+                $sql="SELECT * FROM support_notifications sn 
+                WHERE sn.recipient_id = :supID
+                AND sn.support_ticket_id = :ticketID 
+                AND sn.permissions_id = :permissionsID 
+                AND sn.is_deleted = 0
+                AND sn.has_taken_action = 0;";
+                
+                $stmt =  $conn->prepare($sql);
+
+                // Only fetch if prepare succeeded
+                if ($stmt !== false) {
+                    $stmt->bindparam(':supID', $supID);
+                    $stmt->bindparam(':ticketID', $supportTicketID);
+                    $stmt->bindparam(':permissionsID', $permissionsID);
+                    $result = $stmt->execute();
+                    $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                }
+            } else {
+                $getRead = $getRead == true ? 1 : 0;
+
+                $sql="SELECT * FROM support_notifications sn 
+                WHERE sn.recipient_id = :supID 
+                AND sn.is_read = :isRead;
+                AND sn.is_deleted = 0
+                AND sn.has_taken_action = 0;";
+
+                $stmt =  $conn->prepare($sql);
+
+                // Only fetch if prepare succeeded
+                if ($stmt !== false) {
+                    $stmt->bindparam(':supID', $supID);
+                    $stmt->bindparam(':isRead', $getRead );
+                    $result = $stmt->execute();
+                    $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                }
+            }
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
 
 
 
