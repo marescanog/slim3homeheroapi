@@ -1835,6 +1835,8 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
 
             $sysGen = "AGENT #163 ". $notifTypesArr[$notifType-1]." REASON-R". $transReason." ". $transReasArr[$transReason-1]." ON TICKET #".$ticketID;
 
+            $sysGenNotif = "AGENT #163 ". $notifTypesArr[$notifType-1]." REASON-R". $transReason." ". $transReasArr[$transReason-1]." ON TICKET #".$ticketID.". (NOTES: ".$comment.")";
+            
             // Prepare another statement when job order is found
             $sql = "SET @@session.time_zone = '+08:00'; 
             BEGIN;
@@ -1866,7 +1868,7 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
                 $stmt->bindparam(':userID', $senderID);
                 $stmt->bindparam(':permissionsID', $permissionID);
                 $stmt->bindparam(':permissionsOwner', $supID);
-                $stmt->bindparam(':sysGen', $sysGen);
+                $stmt->bindparam(':sysGen', $sysGenNotif);
                 $stmt->bindparam(':tktAction', $ticketActionID);
                 $stmt->bindparam(':sysMessage', $sysGen);
                 $stmt->bindparam(':comment', $comment);
@@ -1910,7 +1912,7 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
 // @returns a Model Response object with the attributes "success" and "data"
 //          sucess value is true when PDO is successful and false on failure
 //          data value is the support account
-  public function get_notifications($supID, $permissionsID = null, $supportTicketID = null, $getRead = true)
+  public function get_notifications($supID, $permissionsID = null, $supportTicketID = null, $getRead = true, $getAll = false)
     {
         try {
 
@@ -1921,6 +1923,8 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
             $result = [];
 
             if($permissionsID != null && $supportTicketID != null){
+                // For agent get specific using permisisons and supportID
+
                 $sql="SELECT * FROM support_notifications sn 
                 WHERE sn.recipient_id = :supID
                 AND sn.support_ticket_id = :ticketID 
@@ -1938,24 +1942,51 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
                     $result = $stmt->execute();
                     $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
                 }
+
             } else {
-                $getRead = $getRead == true ? 1 : 0;
+                // For Sup get multiple for dash list show
 
-                $sql="SELECT * FROM support_notifications sn 
-                WHERE sn.recipient_id = :supID 
-                AND sn.is_read = :isRead;
-                AND sn.is_deleted = 0
-                AND sn.has_taken_action = 0;";
+                if($getAll == true){
+                    $sql="SELECT sn.id, sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on,
+                    CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender
+                    FROM support_notifications sn 
+                    LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
+                    WHERE sn.recipient_id = :supID 
+                    AND sn.is_deleted = 0
+                    AND sn.has_taken_action = 0;";
+    
+                    $stmt =  $conn->prepare($sql);
+    
+                    // Only fetch if prepare succeeded
+                    if ($stmt !== false) {
+                        $stmt->bindparam(':supID', $supID);
+                        $result = $stmt->execute();
+                        $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                    }
+                } else {
 
-                $stmt =  $conn->prepare($sql);
+                    $getRead = $getRead == true ? 1 : 0;
 
-                // Only fetch if prepare succeeded
-                if ($stmt !== false) {
-                    $stmt->bindparam(':supID', $supID);
-                    $stmt->bindparam(':isRead', $getRead );
-                    $result = $stmt->execute();
-                    $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                    $sql="SELECT sn.id, sn.support_ticket_id ,sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on, 
+                    CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender
+                    FROM support_notifications sn 
+                    LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
+                    WHERE sn.recipient_id = :supID 
+                    AND sn.is_read = :isRead
+                    AND sn.is_deleted = 0
+                    AND sn.has_taken_action = 0;";
+    
+                    $stmt =  $conn->prepare($sql);
+    
+                    // Only fetch if prepare succeeded
+                    if ($stmt !== false) {
+                        $stmt->bindparam(':supID', $supID);
+                        $stmt->bindparam(':isRead', $getRead );
+                        $result = $stmt->execute();
+                        $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                    }
                 }
+                
             }
 
             $stmt = null;

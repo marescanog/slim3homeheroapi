@@ -1522,6 +1522,115 @@ public function requestTransfer(Request $request,Response $response, array $args
 
 
 
+// Get Notification according to the type of user
+public function getNotifications(Request $request,Response $response, array $args)
+{
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    // Get Agent Email for validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty(),
+        // "view"=>v::notEmpty()
+    ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    // $view = CustomRequestHandler::getParam($request,"view");
+
+    // -----------------------------------
+    // Get REQUEST SENDERS Information
+    // -----------------------------------
+        // Get user ID with email
+        $account = $this->supportAgent->getSupportAccount($email);
+
+        // Check for query error
+        if($account['success'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+    
+        // Check if email is found
+        if($account['data'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+        }
+    
+        // Get user account by ID & get role type
+        $agent_ID = $account['data']['id'];
+        $role = $account['data']['role_type'];
+        $supID = $account['data']['supervisor_id'];
+
+    // -----------------------------------
+    // Auth SENDERS Information
+    // -----------------------------------
+        $auth_agent_result = $this->authenticate_agent($bearer_token, $agent_ID);
+        if($auth_agent_result['success'] != 200){
+            return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+        }
+    
+    // GET NOTIFICATIONS BASED IF READ OR DELETE
+    // if($role == 4 || $role == 6 || $role == 7 || $role == 5){
+        // switch($view){
+        //     case "new":
+                $notifResNew = $this->supportTicket->get_notifications($agent_ID, null, null, false, false);
+            //     break;
+            // case "read":
+                $notifResRead = $this->supportTicket->get_notifications($agent_ID, null, null, true, false);
+                // break;
+            // default: //ALL
+                $notifResAll = $this->supportTicket->get_notifications($agent_ID, null, null, false, true);
+        //         break;
+        // }
+        // Check for query error
+        if($notifResNew['success'] == false){
+            // return $this->customResponse->is500Response($response,$notifResNew['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+        if($notifResRead['success'] == false){
+            // return $this->customResponse->is500Response($response,$notifResRead['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+        if($notifResAll['success'] == false){
+            // return $this->customResponse->is500Response($response,$notifResAll['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+    // } else {
+        // // Get agent notifications ?
+        // //  Check if it is the same I think it is
+    // }
+
+
+    $resData = [];
+    $resData['new'] = $notifResNew['data'];
+    $resData['read'] = $notifResRead['data'];
+    $resData['all'] = $notifResAll['data'];
+    return $this->return_server_response($response,"This route works",200,$resData); 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

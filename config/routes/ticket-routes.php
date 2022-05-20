@@ -41,7 +41,7 @@ $app->group("/ticket",function() use ($app){
     $app->post("/request-transfer/{ticketID}","SupportTicketController:requestTransfer");
 
 
-
+    $app->post("/get-notifications","SupportTicketController:getNotifications");
 
 
 
