@@ -1588,20 +1588,26 @@ public function getNotifications(Request $request,Response $response, array $arg
 
     
         // GET NOTIFICATIONS BASED IF READ OR DELETE
-        $notifResNew = $this->supportTicket->get_notifications($agent_ID, null, null, false, false, $limit, $offset);
+        $notifResNew = $this->supportTicket->get_notifications($agent_ID, null, null, "new", $limit, $offset);
         // Check for query error
         if($notifResNew['success'] == false){
             // return $this->customResponse->is500Response($response,$notifResNew['data']);
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
         }
 
-        $notifResRead = $this->supportTicket->get_notifications($agent_ID, null, null, true, false, $limit, $offset);
+        $notifResRead = $this->supportTicket->get_notifications($agent_ID, null, null, "read", $limit, $offset);
         if($notifResRead['success'] == false){
             // return $this->customResponse->is500Response($response,$notifResRead['data']);
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
         }
 
-        $notifResAll = $this->supportTicket->get_notifications($agent_ID, null, null, false, true, $limit, $offset);
+        $notifResDone = $this->supportTicket->get_notifications($agent_ID, null, null, "done", $limit, $offset);
+        if($notifResRead['success'] == false){
+            // return $this->customResponse->is500Response($response,$notifResDone['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+        $notifResAll = $this->supportTicket->get_notifications($agent_ID, null, null, "all", $limit, $offset);
         if($notifResAll['success'] == false){
             // return $this->customResponse->is500Response($response,$notifResAll['data']);
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
@@ -1609,20 +1615,30 @@ public function getNotifications(Request $request,Response $response, array $arg
 
 
         // GET TOTALS OF EACH GROUP
-        $notifResNewTot = $this->supportTicket->get_notifications($agent_ID, null, null, false, false, null, null);
+        $notifResNewTot = $this->supportTicket->get_notifications($agent_ID, null, null, "new", null, null);
+        // $notifResNewTot = $this->supportTicket->get_notifications($agent_ID, null, null, false, false,false, null, null);
         // Check for query error
         if($notifResNewTot['success'] == false){
             // return $this->customResponse->is500Response($response,$notifResNewTot['data']);
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
         }
 
-        $notifResReadTot = $this->supportTicket->get_notifications($agent_ID, null, null, true, false, null, null);
+        // $notifResReadTot = $this->supportTicket->get_notifications($agent_ID, null, null, true, false,false, null, null);
+        $notifResReadTot = $this->supportTicket->get_notifications($agent_ID, null, null, "read", null, null);
         if( $notifResReadTot['success'] == false){
             // return $this->customResponse->is500Response($response,$notifResReadTot['data']);
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
         }
 
-        $notifResAllTot = $this->supportTicket->get_notifications($agent_ID, null, null, false, true, null, null);
+        $notifResDoneTot = $this->supportTicket->get_notifications($agent_ID, null, null, "done", null, null);
+        // $notifResDoneTot = $this->supportTicket->get_notifications($agent_ID, null, null, false, false, true, null, null);
+        if( $notifResReadTot['success'] == false){
+            // return $this->customResponse->is500Response($response,$notifResDoneTot['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+        $notifResAllTot = $this->supportTicket->get_notifications($agent_ID, null, null, "all", null, null);
+        // $notifResAllTot = $this->supportTicket->get_notifications($agent_ID, null, null, false, true,false, null, null);
         if($notifResAllTot['success'] == false){
             // return $this->customResponse->is500Response($response,$notifResAllTot['data']);
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
@@ -1637,11 +1653,11 @@ public function getNotifications(Request $request,Response $response, array $arg
     $resData['new'] = $notifResNew['data'];
     $resData['read'] = $notifResRead['data'];
     $resData['all'] = $notifResAll['data'];
-    $resData['done'] = [];
+    $resData['done'] = $notifResDone['data'];
     $resData['new_total'] = $notifResNewTot['data'][0]['total'];
     $resData['read_total'] = $notifResReadTot['data'][0]['total'];
     $resData['all_total'] =  $notifResAllTot['data'][0]['total'];
-    $resData['done_total'] = 0;
+    $resData['done_total'] = $notifResDoneTot['data'][0]['total'];
 
     return $this->return_server_response($response,"This route works",200,$resData); 
 }

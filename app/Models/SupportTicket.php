@@ -1911,8 +1911,8 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
 // @params  sup id and permissions id
 // @returns a Model Response object with the attributes "success" and "data"
 //          sucess value is true when PDO is successful and false on failure
-//          data value is the support account
-  public function get_notifications($supID, $permissionsID = null, $supportTicketID = null, $getRead = true, $getAll = false, $limit=10, $offset=0)
+//          data value is the support account                                               $getRead = true, $getAll = false, $getDone = false,
+  public function get_notifications($supID, $permissionsID = null, $supportTicketID = null, $retreivalType = 'all', $limit=10, $offset=0)
     {
         try {
 
@@ -1947,50 +1947,155 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
                 // For Sup get multiple for dash list show
                 //" ORDER BY st.id DESC LIMIT ".$limit." OFFSET ".$offset." $limit=1000,$offset=0
 
-                if($getAll == true){
-                    $sql=(($limit==null && $offset==null)?"SELECT COUNT(*) as total "
-                    :"SELECT sn.id, sn.support_ticket_id ,sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on, 
-                    CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender ")
-                    ."FROM support_notifications sn 
-                    LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
-                    WHERE sn.recipient_id = :supID 
-                    AND sn.is_deleted = 0
-                    AND sn.has_taken_action = 0 "
-                    .(($limit==null && $offset==null)?";":"ORDER BY sn.id DESC LIMIT ".$limit." OFFSET ".$offset.";");
-    
-                    $stmt =  $conn->prepare($sql);
-    
-                    // Only fetch if prepare succeeded
-                    if ($stmt !== false) {
-                        $stmt->bindparam(':supID', $supID);
-                        $result = $stmt->execute();
-                        $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
-                    }
-                } else {
-
-                    $getRead = $getRead == true ? 1 : 0;
-                    //SELECT COUNT(*) FROM `support_ticket`
-                    $sql=(($limit==null && $offset==null)?"SELECT COUNT(*) as total "
-                    :"SELECT sn.id, sn.support_ticket_id ,sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on, 
-                    CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender ")
-                    ."FROM support_notifications sn 
-                    LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
-                    WHERE sn.recipient_id = :supID 
-                    AND sn.is_read = :isRead
-                    AND sn.is_deleted = 0
-                    AND sn.has_taken_action = 0 "
-                    .(($limit==null && $offset==null)?";":"ORDER BY sn.id DESC LIMIT ".$limit." OFFSET ".$offset.";");
-    
-                    $stmt =  $conn->prepare($sql);
-    
-                    // Only fetch if prepare succeeded
-                    if ($stmt !== false) {
-                        $stmt->bindparam(':supID', $supID);
-                        $stmt->bindparam(':isRead', $getRead );
-                        $result = $stmt->execute();
-                        $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
-                    }
+                // Default all
+                switch($retreivalType){
+                    case "new";
+                        $sql=(($limit==null && $offset==null)?"SELECT COUNT(*) as total "
+                        :"SELECT sn.id, sn.support_ticket_id ,sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on, 
+                        CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender ")
+                        ."FROM support_notifications sn 
+                        LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
+                        WHERE sn.recipient_id = :supID 
+                        AND sn.is_read = 0
+                        AND sn.is_deleted = 0
+                        AND sn.has_taken_action = 0 "
+                        .(($limit==null && $offset==null)?";":"ORDER BY sn.id DESC LIMIT ".$limit." OFFSET ".$offset.";");
+        
+                        $stmt =  $conn->prepare($sql);
+        
+                        // Only fetch if prepare succeeded
+                        if ($stmt !== false) {
+                            $stmt->bindparam(':supID', $supID);
+                            $result = $stmt->execute();
+                            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                        }
+                    break;
+                    case "read";
+                        //SELECT COUNT(*) FROM `support_ticket`
+                        $sql=(($limit==null && $offset==null)?"SELECT COUNT(*) as total "
+                        :"SELECT sn.id, sn.support_ticket_id ,sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on, 
+                        CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender ")
+                        ."FROM support_notifications sn 
+                        LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
+                        WHERE sn.recipient_id = :supID 
+                        AND sn.is_read = 1
+                        AND sn.is_deleted = 0
+                        AND sn.has_taken_action = 0 "
+                        .(($limit==null && $offset==null)?";":"ORDER BY sn.id DESC LIMIT ".$limit." OFFSET ".$offset.";");
+        
+                        $stmt =  $conn->prepare($sql);
+        
+                        // Only fetch if prepare succeeded
+                        if ($stmt !== false) {
+                            $stmt->bindparam(':supID', $supID);
+                            $result = $stmt->execute();
+                            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                        }
+                    break;
+                    case "done";
+                        $sql=(($limit==null && $offset==null)?"SELECT COUNT(*) as total "
+                        :"SELECT sn.id, sn.support_ticket_id ,sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on, 
+                        CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender ")
+                        ."FROM support_notifications sn 
+                        LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
+                        WHERE sn.recipient_id = :supID 
+                        AND sn.is_deleted = 0
+                        AND sn.has_taken_action = 1 "
+                        .(($limit==null && $offset==null)?";":"ORDER BY sn.id DESC LIMIT ".$limit." OFFSET ".$offset.";");
+        
+                        $stmt =  $conn->prepare($sql);
+        
+                        // Only fetch if prepare succeeded
+                        if ($stmt !== false) {
+                            $stmt->bindparam(':supID', $supID);
+                            $result = $stmt->execute();
+                            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                        }
+                    break;
+                    default:
+                        $sql=(($limit==null && $offset==null)?"SELECT COUNT(*) as total "
+                        :"SELECT sn.id, sn.support_ticket_id ,sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on, 
+                        CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender ")
+                        ."FROM support_notifications sn 
+                        LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
+                        WHERE sn.recipient_id = :supID 
+                        AND sn.is_deleted = 0
+                        AND sn.has_taken_action = 0 "
+                        .(($limit==null && $offset==null)?";":"ORDER BY sn.id DESC LIMIT ".$limit." OFFSET ".$offset.";");
+        
+                        $stmt =  $conn->prepare($sql);
+        
+                        // Only fetch if prepare succeeded
+                        if ($stmt !== false) {
+                            $stmt->bindparam(':supID', $supID);
+                            $result = $stmt->execute();
+                            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                        }
+                    break;
                 }
+                // if($getAll == true){
+                //     $sql=(($limit==null && $offset==null)?"SELECT COUNT(*) as total "
+                //     :"SELECT sn.id, sn.support_ticket_id ,sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on, 
+                //     CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender ")
+                //     ."FROM support_notifications sn 
+                //     LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
+                //     WHERE sn.recipient_id = :supID 
+                //     AND sn.is_deleted = 0
+                //     AND sn.has_taken_action = 0 "
+                //     .(($limit==null && $offset==null)?";":"ORDER BY sn.id DESC LIMIT ".$limit." OFFSET ".$offset.";");
+    
+                //     $stmt =  $conn->prepare($sql);
+    
+                //     // Only fetch if prepare succeeded
+                //     if ($stmt !== false) {
+                //         $stmt->bindparam(':supID', $supID);
+                //         $result = $stmt->execute();
+                //         $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                //     }
+                // } else if($getDone == true){
+                //     $sql=(($limit==null && $offset==null)?"SELECT COUNT(*) as total "
+                //     :"SELECT sn.id, sn.support_ticket_id ,sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on, 
+                //     CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender ")
+                //     ."FROM support_notifications sn 
+                //     LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
+                //     WHERE sn.recipient_id = :supID 
+                //     AND sn.is_deleted = 0
+                //     AND sn.has_taken_action = 1 "
+                //     .(($limit==null && $offset==null)?";":"ORDER BY sn.id DESC LIMIT ".$limit." OFFSET ".$offset.";");
+    
+                //     $stmt =  $conn->prepare($sql);
+    
+                //     // Only fetch if prepare succeeded
+                //     if ($stmt !== false) {
+                //         $stmt->bindparam(':supID', $supID);
+                //         $result = $stmt->execute();
+                //         $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                //     }
+                // }else{
+
+                //     $getRead = $getRead == true ? 1 : 0;
+                //     //SELECT COUNT(*) FROM `support_ticket`
+                //     $sql=(($limit==null && $offset==null)?"SELECT COUNT(*) as total "
+                //     :"SELECT sn.id, sn.support_ticket_id ,sn.ticket_actions_id, sn.recipient_id, sn.notification_type_id, sn.generated_by, sn.permissions_id, sn.permissions_owner, sn.system_generated_description, sn.has_taken_action, sn.is_deleted, sn.is_read, sn.created_on, 
+                //     CONCAT(hh.first_name,' ',SUBSTRING(hh.last_name, 1, 1),'.') as sender ")
+                //     ."FROM support_notifications sn 
+                //     LEFT JOIN hh_user hh ON sn.generated_by = hh.user_id
+                //     WHERE sn.recipient_id = :supID 
+                //     AND sn.is_read = :isRead
+                //     AND sn.is_deleted = 0
+                //     AND sn.has_taken_action = 0 "
+                //     .(($limit==null && $offset==null)?";":"ORDER BY sn.id DESC LIMIT ".$limit." OFFSET ".$offset.";");
+    
+                //     $stmt =  $conn->prepare($sql);
+    
+                //     // Only fetch if prepare succeeded
+                //     if ($stmt !== false) {
+                //         $stmt->bindparam(':supID', $supID);
+                //         $stmt->bindparam(':isRead', $getRead );
+                //         $result = $stmt->execute();
+                //         $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+                //     }
+                // }
                 
             }
 
