@@ -1839,18 +1839,20 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
             $sql = "SET @@session.time_zone = '+08:00'; 
             BEGIN;
 
-            INSERT INTO `support_notifications` 
-            (`id`, `recipient_id`, `support_ticket_id`, `notification_type_id`, 
-            `generated_by`, `permissions_id`, `permissions_owner`, `system_generated_description`, 
-            `has_taken_action`, `is_deleted`, `is_read`, `created_on`) 
-            VALUES 
-            (NULL, :supID, :supTicketID, :notifType, 
-            :userID, :permissionsID, :permissionsOwner, :sysGen, 
-            '0', '0', '0', now());
-
             INSERT INTO ticket_actions 
             (action_taken, system_generated_description, agent_notes, support_ticket) 
             VALUES (:tktAction, :sysMessage , :comment, :ticketID2);
+
+            INSERT INTO `support_notifications` 
+            (`id`, `ticket_actions_id`, `recipient_id`, `support_ticket_id`, `notification_type_id`, 
+            `generated_by`, `permissions_id`, `permissions_owner`, `system_generated_description`, 
+            `has_taken_action`, `is_deleted`, `is_read`, `created_on`) 
+            VALUES 
+            (NULL, LAST_INSERT_ID(),:supID, :supTicketID, :notifType, 
+            :userID, :permissionsID, :permissionsOwner, :sysGen, 
+            '0', '0', '0', now());
+
+
             
             COMMIT;";
 
