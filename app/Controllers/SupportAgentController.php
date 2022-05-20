@@ -469,11 +469,10 @@ public function getSupReason(Request $request,Response $response){
     return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
     }
 
-
     // If Everything is correct, get the list of transfer reasons. & Get the Sup
         // Get Sup Name
         // Get Support User Account
-        $full_name = $this->supportAgent->get_user_name($userID);
+        $full_name = $this->supportAgent->get_user_name($account['data']['supervisor_id']);
 
         // Check for query error
         if($full_name['success'] == false){

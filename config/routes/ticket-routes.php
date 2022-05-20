@@ -38,7 +38,7 @@ $app->group("/ticket",function() use ($app){
     $app->post("/process-job-issue/{id}","SupportTicketController:processJobIssue");
 
 
-
+    $app->post("/request-transfer/{ticketID}","SupportTicketController:requestTransfer");
 
 
 

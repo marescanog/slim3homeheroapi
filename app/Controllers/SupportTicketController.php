@@ -1388,10 +1388,136 @@ public function processJobIssue(Request $request,Response $response, array $args
 
 
 
+// -----------------------------------
+// May 20. 2022
+// -----------------------------------
+// -----------------------------------
+// -----------------------------------
+// process the job order issue according to the action sent
+public function requestTransfer(Request $request,Response $response, array $args)
+{
+    // -----------------------------------
+// Get Necessary variables and params
+// -----------------------------------
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    // Get ticket parameter for ticket information
+    $ticket_id = $args['ticketID'];
+
+    // Get Agent Email for validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty(),
+        "comments"=>v::notEmpty(),
+        "transfer_code"=>v::notEmpty(),
+        "transfer_reason"=>v::notEmpty(),
+        "sup_id"=>v::notEmpty(),
+        "permission_code"=>v::notEmpty()
+    ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+        $this->validator->validate($request,[
+            // Check if empty
+            "transfer_reason"=>v::between(1, 5)
+        ]);
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    $comment = CustomRequestHandler::getParam($request,"comments");
+        // Additional info for transfer request
+        $sup_id = CustomRequestHandler::getParam($request,"sup_id");
+        $transfer_code = CustomRequestHandler::getParam($request,"transfer_code");
+        $transfer_reason = CustomRequestHandler::getParam($request,"transfer_reason");
+        $permis_code = CustomRequestHandler::getParam($request,"permission_code");
+
+// -----------------------------------
+// Get REQUEST SENDERS Information
+// -----------------------------------
+        // Get user ID with email
+        $account = $this->supportAgent->getSupportAccount($email);
+
+        // Check for query error
+        if($account['success'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+    
+        // Check if email is found
+        if($account['data'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+        }
+    
+        // Get user account by ID & get role type
+        $agent_ID = $account['data']['id'];
+        $role = $account['data']['role_type'];
+        $supID = $account['data']['supervisor_id'];
 
+// -----------------------------------
+// Auth SENDERS Information
+// -----------------------------------
+        $auth_agent_result = $this->authenticate_agent($bearer_token, $agent_ID);
+        if($auth_agent_result['success'] != 200){
+            return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+        }
 
+// -----------------------------------
+// Validate Ticket
+// -----------------------------------
+        $validate_ticket_result = $this->validate_ticket($ticket_id,2,$agent_ID,$role,null);
+        if($validate_ticket_result['success'] != 200){
+            return $this->return_server_response($response,$validate_ticket_result['error'],$validate_ticket_result['success']);
+        }
+        $base_info = $validate_ticket_result['data'];
+        $is_owner = $validate_ticket_result['is_owner'];
+        $authorized = $validate_ticket_result['authorized'];
+        // $ticket_id =  $base_info['data']['id'];
+        $agent_ID_currrent =  $base_info['data']['assigned_agent'];
 
+// -----------------------------------
+// SEND TRANSFER REQUEST FOR TICKET
+// -----------------------------------
+        // Check if Sup ID is same sup or different sup
+        if($supID == $sup_id){
+            // Validate Override Code 
+            $validateRes = $this->validate_override_code($transfer_code, $supID, $permis_code);
+            if($validateRes['success'] != 200){
+                return $this->return_server_response($response,$validateRes['error'],$validateRes['success']);
+            }
+            // Submit a Request Notification
+            $sendTransferNotif = $this->supportTicket->sendNotif(
+                $sup_id,         // agent's supervisor ID
+                $ticket_id,      // support ticket ID
+                2,              // Notification Type ID
+                $transfer_reason = null, // Transfer Reason ID
+                $agent_ID,      // Request Sender's ID (user)
+                $permis_code,  // Permissions ID
+                $comment        // comment
+            );
+            if($sendTransferNotif['success'] == false){
+                // return $this->customResponse->is500Response($response,$sendTransferNotif['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+        } else {
+            // Check if the id is support. If found, check if the role is sup/manager/admin
+        }
 
+    $resData = [];
+    $resData['sendTransReqResult'] =  $sendTransferNotif['data'];
+    $resData['params'] =  $sendTransferNotif['params'];
+    // $resData['validation'] =  $validateRes;
+    // $resData['agent_acc'] = $account['data'];
+    return $this->return_server_response($response,"This route works",200,$resData); 
+}
 
 
 
@@ -1484,6 +1610,70 @@ public function processJobIssue(Request $request,Response $response, array $args
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Helper function to validate the transfer code
+// params: agent_role, supportticket_issue
+// returns: object with keys data & success
+private function validate_override_code($code, $sup_id, $permissions_id){
+    $retVal = [];
+
+    // Get from DB the hased value using sup_id & permissions code
+    $trans_code_res = $this->supportTicket->get_transCode($sup_id, $permissions_id);;
+
+    // Check for query error
+    if($trans_code_res['success'] == false){
+        $retVal['success'] = 500;
+        // $retVal['data'] = $trans_code_res['data'];
+        $retVal['error'] = "SQLSTATE[42000]: Syntax error or access violation: Please check your query.";
+        return $retVal;
+    }
+
+    // Check if not found
+    if($trans_code_res['data'] == false){
+        $retVal['success'] = 401;
+        // $retVal['data'] = $trans_code_res['data'];
+        $retVal['error'] = "Incorrect Transfer Code.";
+        return $retVal;
+    }
+
+    // Check if code is void
+    if($trans_code_res['data']['is_void'] == 1){
+        $retVal['success'] = 400;
+        // $retVal['data'] = $trans_code_res['data'];
+        $retVal['error'] = "This transfer code is void and can no longer be used.";
+        return $retVal;
+    }
+
+    $hashed_inDB = $trans_code_res['data']['override_code'];
+
+    // Check if transfer code is correct
+
+    $plain = openssl_decrypt($hashed_inDB, "AES-128-ECB", "WQu0rd4T");
+
+    if($code != $plain){
+        $retVal['success'] = 401;
+        // $retVal['data'] = $trans_code_res['data'];
+        $retVal['error'] = "Incorrect Transfer Code";
+        return $retVal;
+    }
+    
+    $retVal['success'] = 200;
+    $retVal['error'] =  [];
+    // $retVal['data'] =  $trans_code_res;
+    return $retVal;
+}
 
 
 // Helper function to perform ticket validation

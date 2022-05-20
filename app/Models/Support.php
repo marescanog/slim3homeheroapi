@@ -348,15 +348,28 @@ class Support
 
 
 
+    // public function template()
+    // {
+    //     try {
+
+    //         $db = new DB();
+    //         $conn = $db->connect();
 
 
+    //         $stmt = null;
+    //         $db = null;
 
+    //         $ModelResponse =  array(
+    //             "success" => true,
+    //             "data" => $result
+    //         );
 
+    //         return $ModelResponse;
+    //     } catch (\PDOException $e) {
 
-
-
-
-
-
-
+    //         $ModelResponse =  array(
+    //             "success" => false,
+    //             "data" => $e->getMessage()
+    //         );
+        // }}
 }

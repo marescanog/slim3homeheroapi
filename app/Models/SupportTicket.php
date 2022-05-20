@@ -1761,22 +1761,147 @@ public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, 
 }
 
 
+// @desc    gets the hashed trans code value
+    // @params  sup id and permissions id
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is the support account
+    public function get_transCode($sup_id, $permissions_id)
+    {
+        try {
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = "";
+
+            // Prepare another statement when job order is found
+            $sql = "SELECT * FROM override_codes oc WHERE oc.permissions_id = :perm_id AND oc.permissions_owner_id = :sup_id;";
+
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':sup_id', $sup_id);
+                $stmt->bindparam(':perm_id', $permissions_id);
+                $result = $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
+    // @desc    gets the hashed trans code value
+    // @params  sup id and permissions id
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is the support account
+public function sendNotif($supID, $ticketID, $notifType, $transferReason = null, $senderID, $permissionID, $comment)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
 
+            $result = "";
 
+            $transReason = $transferReason == null ? 5 : $transferReason;
 
+            $notifTypesArr = array("FOLLOW-UP REQUEST","TRANSFER REQUEST","ESCALATION REQUEST","TICKET ACCESS REQUEST","OVERRIDE PERMISSIONS REQUEST","OVERRIDE PERMISSIONS NOTICE");
+            $transReasArr = array("WRONG DEPARTMENT", "SUPERVISOR ESCALATION", "LEAVE OF ABSENCE", "ADMIN ESCALATION", "OTHER");
+            $ticketActionArr = array( "14", // Follow Up
+                                      "10", // Transfer
+                                      "11", // Escalation
+                                      "16", // Request Ticket Access
+                                      "16", // Request Override Permissions
+                                      "16" // Notice on Override Permissions - Refine Later
+                                );
 
+            $ticketActionID = $ticketActionArr[$notifType-1];
 
+            $sysGen = "AGENT #163 ". $notifTypesArr[$notifType-1]." REASON-R". $transReason." ". $transReasArr[$transReason-1]." ON TICKET #".$ticketID;
 
+            // Prepare another statement when job order is found
+            $sql = "SET @@session.time_zone = '+08:00'; 
+            BEGIN;
 
+            INSERT INTO `support_notifications` 
+            (`id`, `recipient_id`, `support_ticket_id`, `notification_type_id`, 
+            `generated_by`, `permissions_id`, `permissions_owner`, `system_generated_description`, 
+            `has_taken_action`, `is_deleted`, `is_read`, `created_on`) 
+            VALUES 
+            (NULL, :supID, :supTicketID, :notifType, 
+            :userID, :permissionsID, :permissionsOwner, :sysGen, 
+            '0', '0', '0', now());
 
+            INSERT INTO ticket_actions 
+            (action_taken, system_generated_description, agent_notes, support_ticket) 
+            VALUES (:tktAction, :sysMessage , :comment, :ticketID2);
+            
+            COMMIT;";
 
+            $stmt =  $conn->prepare($sql);
 
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':supID', $supID);
+                $stmt->bindparam(':supTicketID', $ticketID);
+                $stmt->bindparam(':notifType', $notifType);
+                $stmt->bindparam(':userID', $senderID);
+                $stmt->bindparam(':permissionsID', $permissionID);
+                $stmt->bindparam(':permissionsOwner', $supID);
+                $stmt->bindparam(':sysGen', $sysGen);
+                $stmt->bindparam(':tktAction', $ticketActionID);
+                $stmt->bindparam(':sysMessage', $sysGen);
+                $stmt->bindparam(':comment', $comment);
+                $stmt->bindparam(':ticketID2', $ticketID);
+                $result = $stmt->execute();
+            }
 
+            $stmt = null;
+            $db = null;
 
+            $params["supID"] = $supID;
+            $params["supTicketID"] = $ticketID;
+            $params["notifType"] = $notifType;
+            $params["userID"] = $senderID;
+            $params["permissionsID"] = $permissionID;
+            $params["permissionsOwner"] = $supID;
+            $params["sysGen"] = $sysGen;
+            $params["tktAction"] = $ticketActionID;
+            $params["sysMessage"] = $sysGen;
+            $params["comment"] = $comment;
+            $params["ticketID2"] = $ticketID;
 
 
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result,
+                "params" => $params
+            );
 
+            return $ModelResponse;
+        } catch (\PDOException $e) {
 
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+    }}
 
 
 
@@ -1839,6 +1964,60 @@ public function edit_job_order_issue($agentID, $ticketID, $job_order_ID = null, 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // public function template()
+    // {
+    //     try {
+
+    //         $db = new DB();
+    //         $conn = $db->connect();
+
+
+    //         $stmt = null;
+    //         $db = null;
+
+    //         $ModelResponse =  array(
+    //             "success" => true,
+    //             "data" => $result
+    //         );
+
+    //         return $ModelResponse;
+    //     } catch (\PDOException $e) {
+
+    //         $ModelResponse =  array(
+    //             "success" => false,
+    //             "data" => $e->getMessage()
+    //         );
+        // }}
 
 
 }
