@@ -1779,6 +1779,7 @@ public function getAgentsApplicableForTransfer(Request $request,Response $respon
     $ticketStatus = $ticketBaseInfoLightObj['data']['status'];
     $ticketisArchived = $ticketBaseInfoLightObj['data']['is_Archived']; // Not gonna use this for now but putting it here just in case
     $ticketIssueID = $ticketBaseInfoLightObj['data']['issue_id'];
+    $ticketAgentID = $ticketBaseInfoLightObj['data']['assigned_agent'];
     $role_needed = $this->roleSubTypes[$ticketIssueID]; // Gets the role needed based on the issue ID of the ticket
     // Get the role needed based off of the issue ID
 // -----------------------------------
@@ -1793,6 +1794,15 @@ public function getAgentsApplicableForTransfer(Request $request,Response $respon
 
     }
 
+    if( $ticketAgentID != $request_maker){
+        // This means ticket's original agent is already different, thus the ticket has already been transferred
+        // Check to see if the notif has already been processed and if not processed, delete the notif
+        // This is only applicable for transfer requests and not override requests, so check which request it is first
+        // Check the notification notification type id (should indicate if ovveride or not)
+
+        // ADD CHECK & DELETE CODE HERE LATER
+    }
+
 
 
 // if everything is good proceed with getting the applicable agents
@@ -1800,7 +1810,7 @@ $is_the_same_supervisor = $request_makers_supervisor == null ? false : ($request
 $allApplicableAgents = [];
 $myAgentsArr = [];
 $request_makers_team_mates = [];
-
+$resData = [];
 
     // -------------------------------------------------------------------
     // Get All My Agents -> Applicable with role
@@ -1839,6 +1849,8 @@ if(!$is_the_same_supervisor){
     $request_makers_team_mates =  $request_makers_team_mates_OBJ['data'];
 }
 
+
+
 // // For reference
 // $allApplicableAgents = [];
 // $myAgentsArr = [];
@@ -1847,39 +1859,67 @@ $continue = true;
 
     // Both are blank
     if(count($myAgentsArr) == 0 && count($request_makers_team_mates) == 0){
-        // Get all applicable agents under the role
-        $allApplicableAgentsUnderTheRoleObj = $this->supportTicket->getAllAgentsUnderARole(
-            $role_needed,                  // role
-            2,           // status
-            false,       // include agents email in data return
-            false       // include agents phone number in data return
-        );
-        if($allApplicableAgentsUnderTheRoleObj['success'] == false){
-            // return $this->customResponse->is500Response($response,$myAgentsObj['data']);
-            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
-        }
-        $allApplicableAgents =  $allApplicableAgentsUnderTheRoleObj['data']; 
+        // // Get all applicable agents under the role
+    // Note: Wrong logic, send a blank array since if there are no agents detected under the supervisor or team mates
+    // then the supervisor has to manually enter an agents ID [Keeping this code here for reference]
+
+        // $allApplicableAgentsUnderTheRoleObj = $this->supportTicket->getAllAgentsUnderARole(
+        //     $role_needed,                  // role
+        //     2,           // status
+        //     false,       // include agents email in data return
+        //     false       // include agents phone number in data return
+        // );
+        // if($allApplicableAgentsUnderTheRoleObj['success'] == false){
+        //     // return $this->customResponse->is500Response($response,$myAgentsObj['data']);
+        //     return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        // }
+        // // $allApplicableAgents =  $allApplicableAgentsUnderTheRoleObj['data']; 
+        // // copy array to allApplicableAgents minus $request_maker who is also  $ticketAgentID // to get ID $allApplicableAgents[0]['id']; 
+        // for($kapoy = 0 ; $kapoy < count($allApplicableAgentsUnderTheRoleObj); $kapoy++){
+        //     if($allApplicableAgentsUnderTheRoleObj[$kapoy]['id'] != $ticketAgentID){ 
+        //         array_push($allApplicableAgents, $allApplicableAgentsUnderTheRoleObj['data'][$kapoy]);
+        //     }  
+        // }
+
         $continue = false;
     }
 
     // same sup - no need to combine
     if($continue == true && $is_the_same_supervisor){
-        $allApplicableAgents = array_merge(array(), $myAgentsArr);
+        // $allApplicableAgents = array_merge(array(), $myAgentsArr);
+        // copy array to allApplicableAgents minus $request_maker who is also  $ticketAgentID
+        for($kapoy = 0 ; $kapoy < count($myAgentsArr); $kapoy++){
+            if($myAgentsArr[$kapoy]['id'] != $ticketAgentID){ 
+                array_push($allApplicableAgents, $myAgentsArr[$kapoy]);
+            }  
+        }
         $continue = false;
     }
 
     // Different Sup Then Combine Array
     if($continue == true && !$is_the_same_supervisor){
-        $allApplicableAgents = array_merge($myAgentsArr, $request_makers_team_mates);
+        // $allApplicableAgents = array_merge($myAgentsArr, $request_makers_team_mates);
+        // copy array to allApplicableAgents minus $request_maker who is also  $ticketAgentID
+        for($kapoy = 0 ; $kapoy < count($myAgentsArr); $kapoy++){
+            if($myAgentsArr[$kapoy]['id'] != $ticketAgentID){ 
+                array_push($allApplicableAgents, $myAgentsArr[$kapoy]);
+            }  
+        }
+        for($kapoy = 0 ; $kapoy < count($request_makers_team_mates); $kapoy++){
+            if($request_makers_team_mates[$kapoy]['id'] != $ticketAgentID){ 
+                array_push($allApplicableAgents, $request_makers_team_mates[$kapoy]);
+            }  
+        }
     }
-
-    $resData = []; 
+ 
 
     // For debugging purposes 
         // $resData['my_ID'] =  $processors_ID ; 
         $resData['agents_list'] =  $allApplicableAgents; 
+        // $resData['request_maker'] =  $request_maker;
+        // $resData['requestMaker_isSameWith_supportTicketAgent'] =  $ticketAgentID == $request_maker;
         // $resData['request_makersTeamMates'] =  $request_makers_team_mates; 
-        // $resData['request_makers_supervisor'] =  $request_makers_supervisor; 
+        // $resData['request_makers_supervisor'] =  $request_makers_supervisor; $request_maker
         // $resData['my_ID'] =  $processors_ID ; 
         // $resData['supervisorsagents'] =  $myAgentsObj['data']; 
         // $resData['role_needed'] = $role_needed; 

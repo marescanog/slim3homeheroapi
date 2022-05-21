@@ -2267,7 +2267,7 @@ public function get_ticket_base_info_LIGHT($id){
         // CREATE query
         $sql = "";
 
-        $sql = "SELECT * FROM ".$this->table." st WHERE st.id = :id";
+        $sql = "SELECT * FROM ".$this->table." st WHERE st.id = :id;";
 
         // Prepare statement
         $stmt =  $conn->prepare($sql);
