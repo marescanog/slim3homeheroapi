@@ -1408,7 +1408,36 @@ public function generatePermission(Request $request, Response $response){
     // Based on the Request type & Role Type
     switch($permission_code){
         case 1:
-            $resData["type"]="External Agent Transfer Request";
+            // $resData["type"]="External Agent Transfer Request";
+            if($userRole == 4){
+                // Return Unauthorized Access
+            }
+
+            // Only the manager can process the request
+            if($userRole == 7){
+                if($hasCode){ 
+                    // update
+                    // $resData['hascode'] = 'yes';
+                    $result = $this->file->updateCode($supervisor_id, $userID, $permission_code,  $codeHashed);
+                    if($result['success'] != 200){
+                        // return $this->customResponse->is500Response($response,$result['data']);
+                        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+                    }
+                } else {
+                    // insert
+                    // $resData['hascode'] = 'no';
+                    $result = $this->file->insertCode($supervisor_id, $userID, $permission_code,  $codeHashed);
+                    if($result['success'] != 200){
+                        // $result['CODEHASH'] = $codeHashed;
+                        // return $this->customResponse->is500Response($response,$result['data']);
+                        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+                    }
+                }
+                // // $resData["result"]=count($result)==0?[]:(isset($result["data"])?$result["data"]:$result);
+                $resData["result"]=count($result)==0?[]:(isset($result["data"])?$result["data"]:$result);
+                $resData["message"]="New Transfer Request Code Generated!";
+            }
+            
             break;
         case 2:
             $resData["type"]="Reassign Ticket of External Agent";
