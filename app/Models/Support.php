@@ -287,6 +287,129 @@ class Support
     }
 
 
+    // For Get Codes
+    public function managerIsGettingSupervisorCodes(){
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = [];
+
+            $sql = "SELECT sa.id as sup_id, CONCAT(hh.last_name, ', ', hh.first_name) as full_name, hh.first_name, hh.last_name,
+            oc.permissions_owner_id, oc.permissions_id, oc.override_code, oc.owner_can_change, oc.is_void
+            FROM support_agent sa
+            LEFT JOIN override_codes oc ON sa.id = oc.permissions_owner_id
+            LEFT JOIN hh_user hh ON sa.id = hh.user_id
+            WHERE sa.role_type = 4
+            AND sa.is_deleted = 0";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
+
+    public function manager_getList_of_supervisors($isActive = false)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = [];
+
+            $sql ="SELECT sa.id as sup_id, sa.email,
+            CONCAT(hh.last_name, ', ', hh.first_name) as full_name, hh.first_name, hh.last_name 
+            FROM support_agent sa 
+            LEFT JOIN hh_user hh ON sa.id = hh.user_id
+            WHERE sa.role_type = 4
+            AND sa.is_deleted = 0;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+            $conn = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+    }}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

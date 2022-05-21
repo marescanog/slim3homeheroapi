@@ -286,7 +286,9 @@ class SupportAgentController
         return $this->customResponse->is200Response($response,  $resData);
     }
 
-
+// ============================================
+// ============================================
+// ============================================
 // -----------------------------------
 // Get Codes
 // -----------------------------------
@@ -312,7 +314,7 @@ class SupportAgentController
 
         // Store Params
         $email = CustomRequestHandler::getParam($request,"email");
-        $supervisor_id = CustomRequestHandler::getParam($request,"supervisor_id");
+        // $supervisor_id = CustomRequestHandler::getParam($request,"supervisor_id");
 
         // Get Support User Account
     $account = $this->supportAgent->getSupportAccount($email);
@@ -363,14 +365,58 @@ if($auth_agent_result['success'] != 200){
 }
 
     // If Everything is correct get the owner's code
-    $permissions_owner = $userRole == 7 ? $supervisor_id : $userID;
+    // However if it is the manager or admin, get a list of all supervisors.
+    // $permissions_owner = $userRole == 7 ? $supervisor_id : $userID;
+    $permissions_owner = $userID; // this is a get and not a save thus the permissions owner will always be the user a.k.a person who called the api - requester
     $codeArr_reformatted = [];
     $codesArr = [];
+    $managerRes = [];
+    $managerRes['extTransfer_1'] = [];
+    $managerRes['extReassign_2'] = [];
+    $managerRes['transfer_3'] = [];
+    $managerRes['list_of_sup'] = [];
 
     // Based on role get the needed array
     switch($userRole){
         case 7:
             // Manager
+            // You have to manually edit if you add a new permission id lol
+            // You can make dynamic code but we dont have time for testing and stuff
+            // So just manual for now and just take note of it here
+            $managerPullObj = $this->supportAgent->managerIsGettingSupervisorCodes();
+            if($managerPullObj['success'] != 200){
+                // return $this->customResponse->is500Response($response,$managerPullObj['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            $rawData = $managerPullObj['data'];
+
+            // Get list of supervisors
+            $supervisorListObj = $this->supportAgent->manager_getList_of_supervisors();
+            if($supervisorListObj['success'] != 200){
+                // return $this->customResponse->is500Response($response,$supervisorListObj['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            $managerRes['list_of_sup'] = $supervisorListObj['data'];
+
+            if(count($rawData) != null){
+                for($ndx = 0 ; $ndx < count($rawData); $ndx++){
+                    $codeObj = $rawData[$ndx];
+                    $plain = openssl_decrypt($codeObj['override_code'] , "AES-128-ECB", "WQu0rd4T");
+                    $codeObj['override_code'] = $plain;
+                    switch($codeObj["permissions_id"]){
+                        case 1: // extTransfer
+                            array_push($managerRes['extTransfer_1'], $codeObj);
+                            break;
+                        case 2: // extReassign
+                            array_push($managerRes['extReassign_2'], $codeObj);
+                            break;
+                        case 3: // transfer
+                            array_push($managerRes['transfer_3'], $codeObj);
+                            break;
+                    }
+                }
+            }
+            // $managerRes['reference_delete_later'] = $rawData;
             break;
         case 4:
             // Supervisor
@@ -396,6 +442,7 @@ if($auth_agent_result['success'] != 200){
 
         $resData = [];
         $resData['codesRes'] =   $codeArr_reformatted;
+        $resData['managerRes'] =   $managerRes;
 
         return $this->customResponse->is200Response($response,  $resData);
 }
