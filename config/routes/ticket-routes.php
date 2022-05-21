@@ -44,5 +44,13 @@ $app->group("/ticket",function() use ($app){
     $app->post("/get-notifications","SupportTicketController:getNotifications");
 
 
+    $app->post("/get-agents-applicable-for-transfer/{notifID}","SupportTicketController:getAgentsApplicableForTransfer");
+
+    
+    $app->post("/process-transfer/{ticketID}","SupportTicketController:processTransfer");
+
+
+   
+
 
 });

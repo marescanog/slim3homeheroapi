@@ -2117,6 +2117,274 @@ public function sendNotif($supID, $ticketID, $notifType, $transferReason = null,
         }
     }
 
+// @desc    gets notifications by iD
+// @params  notification ID
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is the support account   
+  public function getNotificationUsingNotificationID($notifID){
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql="SELECT * FROM support_notifications sn WHERE sn.id = :notifID;";
+            
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':notifID', $notifID);
+                $result = $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC); 
+            }
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
+// @desc    gets the supervisor of the agent using ID
+// @params  agent ID
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is the support account  
+public function getTheSupervisorOfAgentUsingAgentID($agentID){
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+        $result = "";
+
+        $sql="SELECT sa.supervisor_id, sa.role_type FROM support_agent sa WHERE sa.id = :agentID;";
+            
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':agentID', $agentID);
+            $result = $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC); 
+        }
+
+        $stmt = null;
+        $db = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+    }
+}
+
+// @desc    gets all the agents of a supervisor using sup ID and other parameters
+// @params  supervisor ID, optional role, status, email, number
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is the list of all agents with agent ID first name, last name & role
+  public function getAgentsOfSupervisor($supID, $role = null, $status = 2, $hasEmail = true, $hasNumber = true)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "SELECT sn.id, sn.role_type, ".($hasEmail == true ? "sn.email, ":"").
+            "hh.first_name, hh.last_name, CONCAT(hh.last_name, ', ', hh.first_name) as full_name ".
+            ($hasNumber == true ?", hh.phone_no ":"")
+            ."FROM support_agent sn 
+            LEFT JOIN hh_user hh ON sn.id = hh.user_id
+            WHERE 
+            hh.user_status_id = 2 AND ".
+            ($role == null ? "":"sn.role_type = :roleType AND ")
+            ."sn.is_deleted = 0 AND sn.supervisor_id =  :supID;";
+
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':supID', $supID);
+                if($role != null){
+                    $stmt->bindparam(':roleType', $role);
+                }
+                $result = $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC); 
+            }
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
+
+// Get basic ticket info from db
+//  No addtional user details just base ticket info
+// @desc    gets basic db info
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function get_ticket_base_info_LIGHT($id){
+
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "";
+
+        $sql = "SELECT * FROM ".$this->table." st WHERE st.id = :id";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':id', $id);
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+
+}
+
+
+
+public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $hasNumber = true)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        // $sql = "SELECT sa.id, sa.role_type, 
+        // hh.first_name, hh.last_name, CONCAT(hh.last_name, ', ', hh.first_name) as full_name
+        // FROM support_agent sa 
+        // LEFT JOIN hh_user hh ON sa.id = hh.user_id
+        // WHERE sa.role_type = 2;";
+
+        $sql = "SELECT sn.id, sn.role_type, ".($hasEmail == true ? "sn.email, ":"").
+        "hh.first_name, hh.last_name, CONCAT(hh.last_name, ', ', hh.first_name) as full_name ".
+        ($hasNumber == true ?", hh.phone_no ":"")
+        ."FROM support_agent sn 
+        LEFT JOIN hh_user hh ON sn.id = hh.user_id
+        WHERE 
+        hh.user_status_id = :status AND sn.role_type = :roleType AND sn.is_deleted = 0;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':roleType', $role);
+            $stmt->bindparam(':status', $status);
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

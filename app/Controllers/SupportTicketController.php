@@ -1396,7 +1396,7 @@ public function processJobIssue(Request $request,Response $response, array $args
 // process the job order issue according to the action sent
 public function requestTransfer(Request $request,Response $response, array $args)
 {
-    // -----------------------------------
+// -----------------------------------
 // Get Necessary variables and params
 // -----------------------------------
     // Get the bearer token from the Auth header
@@ -1661,6 +1661,371 @@ public function getNotifications(Request $request,Response $response, array $arg
 
     return $this->return_server_response($response,"This route works",200,$resData); 
 }
+
+
+
+// may 21, 2022
+// +++++++++++++++++++++++++++++++++++++++++++
+// +++++++++++++++++++++++++++++++++++++++++++
+// +++++++++++++++++++++++++++++++++++++++++++
+// Agents applicable for transfer are this sup's agents plus the agents of the person who sent the notification
+public function getAgentsApplicableForTransfer(Request $request,Response $response, array $args)
+{
+// -----------------------------------
+// Get Necessary variables and params
+// -----------------------------------
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    // Get ticket parameter for ticket information
+    $notif_id = $args['notifID'];
+
+    // Get Agent Email for validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty()
+    ]);
+    // Returns a response when validator detects a rule breach
+    if($this->validator->failed())
+    {
+        $responseMessage = $this->validator->errors;
+        return $this->customResponse->is400Response($response,$responseMessage);
+    }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    // Clean Data
+    if(!is_numeric($notif_id)){
+        return $this->customResponse->is400Response($response,"Something went wrong with pulling up the data. Please try again!");
+    }
+
+// -----------------------------------
+// Get this processor Information
+// -----------------------------------
+        // Get user ID with email
+        $account = $this->supportAgent->getSupportAccount($email);
+
+        // Check for query error
+        if($account['success'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+    
+        // Check if email is found
+        if($account['data'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+        }
+    
+        // Get user account by ID & get role type
+        $processors_ID = $account['data']['id'];
+        $processors_role = $account['data']['role_type'];
+        $processors_supID = $account['data']['supervisor_id'];
+        // Check if the processor has the correct role (4 and above)
+        if($processors_role < 4){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "Unauthorized Access: Please login to an authorized account to process this request."));
+        }
+
+// -----------------------------------
+// Auth this processor_agents (sup) Information
+// -----------------------------------
+        $auth_processor_result = $this->authenticate_agent($bearer_token, $processors_ID);
+        if($auth_processor_result['success'] != 200){
+            return $this->return_server_response($response,$auth_processor_result['error'],$auth_processor_result['success']);
+        }
+
+    // Get Notification with ID
+    $notifObjRes = $this->supportTicket->getNotificationUsingNotificationID($notif_id);
+    // Check for query error
+    if($notifObjRes['success'] == false){
+        // return $this->customResponse->is500Response($response,$notifObjRes['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+    // Check if notif found
+    if($notifObjRes['data'] == false){
+        return $this->customResponse->is404Response($response,"Notification was not found! Please try again!");
+    }
+    $request_maker = $notifObjRes['data']['generated_by'];
+    $support_ticket_ID = $notifObjRes['data']['support_ticket_id'];
+
+
+    // Get the request Maker's supervisor & Role Type
+    $requestMakersSupervisorAndRoleObject = $this->supportTicket->getTheSupervisorOfAgentUsingAgentID($request_maker);
+    // Check for query error
+    if($requestMakersSupervisorAndRoleObject['success'] == false){
+        // return $this->customResponse->is500Response($response,$requestMakersSupervisorAndRoleObject['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+    $request_makers_supervisor = $requestMakersSupervisorAndRoleObject['data'] == false ? null 
+                : $requestMakersSupervisorAndRoleObject['data']['supervisor_id'];
+    $isThisMyAgent = $request_makers_supervisor  == null 
+                    ? false 
+                    : $request_makers_supervisor  == $processors_ID; // (processors id is my id)
+
+
+    // Note: Request maker's role is not a good determination for which role to base the agent search on since roles can chance
+    //          Base it on the support ticket instead thus pull support ticket details
+    // Get the support ticket in question
+    $ticketBaseInfoLightObj = $this->supportTicket->get_ticket_base_info_LIGHT($support_ticket_ID);
+    // Check for query error
+    if($ticketBaseInfoLightObj['success'] == false){
+        // return $this->customResponse->is500Response($response,$ticketBaseInfoLightObj['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+    // Check if support ticket found
+    if($ticketBaseInfoLightObj['data'] == false){
+        return $this->customResponse->is404Response($response,"Something went wrong with the request! Please try again!");
+    }
+    $ticketStatus = $ticketBaseInfoLightObj['data']['status'];
+    $ticketisArchived = $ticketBaseInfoLightObj['data']['is_Archived']; // Not gonna use this for now but putting it here just in case
+    $ticketIssueID = $ticketBaseInfoLightObj['data']['issue_id'];
+    $role_needed = $this->roleSubTypes[$ticketIssueID]; // Gets the role needed based on the issue ID of the ticket
+    // Get the role needed based off of the issue ID
+// -----------------------------------
+// Validate Ticket
+// -----------------------------------
+    // Not using built in validator since were just checking if the status is still applicable
+    if($ticketStatus != 2 && $ticketStatus != 1){
+        // This means ticket is closed/resolved. Thus a transfer is not needed so just delete the request
+
+
+        // ADD DELETE CODE HERE LATER
+
+    }
+
+
+
+// if everything is good proceed with getting the applicable agents
+$is_the_same_supervisor = $request_makers_supervisor == null ? false : ($request_makers_supervisor == $processors_ID); // Compare $request_makers_supervisor $processors_ID 
+$allApplicableAgents = [];
+$myAgentsArr = [];
+$request_makers_team_mates = [];
+
+
+    // -------------------------------------------------------------------
+    // Get All My Agents -> Applicable with role
+    $myAgentsObj = $this->supportTicket->getAgentsOfSupervisor(
+        $processors_ID,    // Supervisors ID
+        $role_needed,    // Optional role filter -> we want the same role as the ticket in question
+        2,     // Optional status filter -> we want all active agents
+        false, // Optional email included in data return
+        false // Optional mobile number included in data return
+    );
+    // Check for query error
+    if($myAgentsObj['success'] == false){
+        // return $this->customResponse->is500Response($response,$myAgentsObj['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+    $myAgentsArr =  $myAgentsObj['data']; 
+
+
+// No need to pull up data if the same supervisor, only pull when different supervisor
+if(!$is_the_same_supervisor){
+
+    // -------------------------------------------------------------------
+    // Get All request_makers team mates -> Applicable with role
+    $request_makers_team_mates_OBJ = $this->supportTicket->getAgentsOfSupervisor(
+        $request_makers_supervisor,    // Supervisors ID
+        $role_needed,    // Optional role filter -> we want the same role as the ticket in question
+        2,     // Optional status filter -> we want all active agents
+        false, // Optional email included in data return
+        false // Optional mobile number included in data return
+    );
+    // Check for query error
+    if($request_makers_team_mates_OBJ['success'] == false){
+        // return $this->customResponse->is500Response($response,$request_makers_team_mates_OBJ['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+    $request_makers_team_mates =  $request_makers_team_mates_OBJ['data'];
+}
+
+// // For reference
+// $allApplicableAgents = [];
+// $myAgentsArr = [];
+// $request_makers_team_mates = [];
+$continue = true;
+
+    // Both are blank
+    if(count($myAgentsArr) == 0 && count($request_makers_team_mates) == 0){
+        // Get all applicable agents under the role
+        $allApplicableAgentsUnderTheRoleObj = $this->supportTicket->getAllAgentsUnderARole(
+            $role_needed,                  // role
+            2,           // status
+            false,       // include agents email in data return
+            false       // include agents phone number in data return
+        );
+        if($allApplicableAgentsUnderTheRoleObj['success'] == false){
+            // return $this->customResponse->is500Response($response,$myAgentsObj['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+        $allApplicableAgents =  $allApplicableAgentsUnderTheRoleObj['data']; 
+        $continue = false;
+    }
+
+    // same sup - no need to combine
+    if($continue == true && $is_the_same_supervisor){
+        $allApplicableAgents = array_merge(array(), $myAgentsArr);
+        $continue = false;
+    }
+
+    // Different Sup Then Combine Array
+    if($continue == true && !$is_the_same_supervisor){
+        $allApplicableAgents = array_merge($myAgentsArr, $request_makers_team_mates);
+    }
+
+    $resData = []; 
+
+    // For debugging purposes 
+        // $resData['my_ID'] =  $processors_ID ; 
+        $resData['agents_list'] =  $allApplicableAgents; 
+        // $resData['request_makersTeamMates'] =  $request_makers_team_mates; 
+        // $resData['request_makers_supervisor'] =  $request_makers_supervisor; 
+        // $resData['my_ID'] =  $processors_ID ; 
+        // $resData['supervisorsagents'] =  $myAgentsObj['data']; 
+        // $resData['role_needed'] = $role_needed; 
+        // $resData['supportTicketInfo'] =  $ticketBaseInfoLightObj['data'];
+        // $resData['notifObjRes'] =  $notifObjRes['data'];
+        // $resData['requestMaker'] = $request_maker;
+        // $resData['requestMakersSupervisorAndRole'] = $requestMakersSupervisorAndRoleObject['data'];
+        // $resData['hasSuperVisor'] = $hasSupervisor;
+        // $resData['isThisMyAgent'] = $isThisMyAgent;
+
+    return $this->return_server_response($response,"This route works",200,$resData); 
+}
+
+
+
+
+
+
+// // PROCESS THE DAMN TRANSFER
+// public function processTransfer(Request $request,Response $response, array $args)
+// {
+// // -----------------------------------
+// // Get Necessary variables and params
+// // -----------------------------------
+//     // Get the bearer token from the Auth header
+//     $bearer_token = JSON_encode($request->getHeader("Authorization"));
+//     // Get ticket parameter for ticket information
+//     $ticket_id = $args['ticketID'];
+
+//     // Get Agent Email for validation
+//     $this->validator->validate($request,[
+//         // Check if empty
+//         "email"=>v::notEmpty(),
+//         "transfer_to_agent_id"=>v::notEmpty(),
+//         // "transfer_code"=>v::notEmpty(),
+//         // "transfer_reason"=>v::notEmpty(),
+//         // "sup_id"=>v::notEmpty(),
+//         // "permission_code"=>v::notEmpty()
+//     ]);
+//         // Returns a response when validator detects a rule breach
+//         if($this->validator->failed())
+//         {
+//             $responseMessage = $this->validator->errors;
+//             return $this->customResponse->is400Response($response,$responseMessage);
+//         }
+//         // $this->validator->validate($request,[
+//         //     // Check if empty
+//         //     "transfer_reason"=>v::between(1, 5)
+//         // ]);
+//         // if($this->validator->failed())
+//         // {
+//         //     $responseMessage = $this->validator->errors;
+//         //     return $this->customResponse->is400Response($response,$responseMessage);
+//         // }
+
+//     // Store Params
+//     $email = CustomRequestHandler::getParam($request,"email");
+//     $transfer_to_agent_id = CustomRequestHandler::getParam($request,"transfer_to_agent_id");
+// //     $comment = CustomRequestHandler::getParam($request,"comments");
+// //         // Additional info for transfer request
+// //         $sup_id = CustomRequestHandler::getParam($request,"sup_id");
+// //         $transfer_code = CustomRequestHandler::getParam($request,"transfer_code");
+// //         $transfer_reason = CustomRequestHandler::getParam($request,"transfer_reason");
+// //         $permis_code = CustomRequestHandler::getParam($request,"permission_code");
+
+// // -----------------------------------
+// // Get Ticket Processer's Information (Request Sender)
+// // -----------------------------------
+//         // Get user ID with email
+//         $account = $this->supportAgent->getSupportAccount($email);
+
+//         // Check for query error
+//         if($account['success'] == false){
+//             // return $this->customResponse->is500Response($response,$account['data']);
+//             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+//         }
+    
+//         // Check if email is found
+//         if($account['data'] == false){
+//             // return $this->customResponse->is500Response($response,$account['data']);
+//             return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+//         }
+    
+//         // Get user account by ID & get role type
+//         $agent_ID = $account['data']['id'];
+//         $role = $account['data']['role_type'];
+//         $supID = $account['data']['supervisor_id'];
+
+//         // If the request sender is not a supervisor, manager or admin, deny request
+//         if($role < 4){
+//              // return $this->customResponse->is500Response($response,$account['data']);
+//              return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "Unauthorized Access: Please sign into an authorized account to process this request."));
+//         }
+
+// // -----------------------------------
+// // Auth SENDERS Information (JWT AUTH)
+// // -----------------------------------
+//         $auth_agent_result = $this->authenticate_agent($bearer_token, $agent_ID);
+//         if($auth_agent_result['success'] != 200){
+//             return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+//         }
+
+// // -----------------------------------
+// // Validate Ticket
+// // -----------------------------------
+//         $validate_ticket_result = $this->validate_ticket($ticket_id,2,$agent_ID,$role,null);
+//         if($validate_ticket_result['success'] != 200){
+//             return $this->return_server_response($response,$validate_ticket_result['error'],$validate_ticket_result['success']);
+//         }
+//         $base_info = $validate_ticket_result['data'];
+//         $is_owner = $validate_ticket_result['is_owner'];
+//         $authorized = $validate_ticket_result['authorized'];
+//         // $ticket_id =  $base_info['data']['id'];
+//         $agent_ID_currrent =  $base_info['data']['assigned_agent'];
+
+// // ---------------------------------------------------------------
+// // PROCESS TRANSFER REQUEST FOR TICKET BASED ON VARIABLES GIVEN
+// // ---------------------------------------------------------------
+// /* 
+//         ticket_type = escalation  or transfer (Need)
+//         transfer_type = internal or external  (No Need since can be pulled from notif ID)
+//         transfer_to_agent_id -> the one making the request (Can be pulled from notif ID)
+//         notif_id -> (Need)
+//         support_ticket_id (No Need since can be pulled from notif ID) -> but will just be used as validation nalang
+
+
+//         // Validation Is this agent my agent? - support
+// */
+//         // External Agent Sends a Transfer Req to Sup meaning (permission 1: External Agent Transfer Request) has been granted
+//         // Internal Agent Sends a Transfer Req to Sup meaning (permission 2: Internal Agent Transfer Request) has been granted
+        
+//         // Supervisor can reassign the ticket to a different agent on the Requester's team
+//         // Or on the same team the supervisor is handling
+//             // Create a pull DB Request to get co-team members of agent making request
+//             // Supervisors agents
+
+
+//     $resData = [];
+//     return $this->return_server_response($response,"This route works",200,$resData); 
+// }
+
+
+
+
+
+
 
 
 
