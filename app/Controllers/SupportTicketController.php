@@ -27,6 +27,8 @@ class SupportTicketController
 
     protected $file;
 
+    protected $roleThings;
+
     public function  __construct()
     {
          $this->customResponse = new CustomResponse();
@@ -40,6 +42,7 @@ class SupportTicketController
          $this->file = new File();
 
          $this->roleSubTypes = array();
+         $this->roleThings = array("Verification Support","Customer Service Support","Technical Support");
 
          // verification support
          $this->roleSubTypes["0"] = "0";
@@ -1935,131 +1938,288 @@ $continue = true;
 
 
 
+// =======================================================================================
+// =======================================================================================
+// =======================================================================================
+// PROCESS THE DAMN TRANSFER
+public function processTransfer(Request $request,Response $response, array $args)
+{
+    $resData = [];
+// -----------------------------------
+// Get Necessary variables and params
+// -----------------------------------
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    // Get ticket parameter for ticket information
+    $notif_ID = $args['notifID'];
+
+    // Get Agent Email for validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty(),
+        "transfer_to_agent_id"=>v::notEmpty()
+    ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    $transfer_to_agent_id = CustomRequestHandler::getParam($request,"transfer_to_agent_id");
+
+// -----------------------------------
+// Get Ticket Processer's Information (Request Sender)
+// -----------------------------------
+        // Get processor's ID with email
+        $account = $this->supportAgent->getSupportAccount($email);
+        // Check for query error
+        if($account['success'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+        // Check if email is valid by seeing if account is found
+        if($account['data'] == false){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+        }
+// Variables Group 1
+// Get processor's account, role, & sup ID
+    $processor_ID = $account['data']['id'];
+    $processor_role = $account['data']['role_type'];
+    $processor_supID = $account['data']['supervisor_id'];
+
+// -----------------------------------
+// Validation 1 - Check role of processor (request sender)
+        // If the request sender is not a supervisor, manager or admin, deny request
+        if($processor_role < 4){
+             // return $this->customResponse->is500Response($response,$account['data']);
+             return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "Unauthorized Access: Please sign into an authorized account to process this request."));
+        }
+
+// -----------------------------------
+// Auth SENDERS Information (JWT AUTH)
+// -----------------------------------
+        $auth_agent_result = $this->authenticate_agent($bearer_token, $processor_ID);
+        if($auth_agent_result['success'] != 200){
+            return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+        }
+
+// -----------------------------------
+// Get Notification Details using the notification ID
+// -----------------------------------
+        $notificationObj = $this->supportTicket->getNotificationUsingNotificationID($notif_ID);
+        // Check for query error
+        if($notificationObj['success'] == false){
+            // return $this->customResponse->is500Response($response,$notificationObj['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        } 
+        // Check if data is found
+        if($notificationObj['data'] == false){
+            // return $this->customResponse->is500Response($response,$notificationObj['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(404, "An error occured while processing your request. The notification cannot be found. Please resfresh the browser and try again."));
+        }
+// Variables Group 2
+// Get Support Ticket ID, Ticket Actions ID, notifications Type, 
+// permissions ID, permissions owner, is read
+$notification_data = $notificationObj['data'];
+$notif_creator_ID = $notification_data != null ? $notification_data['generated_by'] : null; // should be the same as the assigned agent in the ticket (if transfer request, but if override request should be different)
+$suport_ticket_ID = $notification_data != null ? $notification_data['support_ticket_id'] : null;
+$ticket_actions_ID = $notification_data != null ? $notification_data['ticket_actions_id'] : null;
+$notification_type_ID = $notification_data != null ? $notification_data['notification_type_id'] : null;
+$permissions_ID = $notification_data != null ? $notification_data['permissions_id'] : null;
+$permissions_owner_ID = $notification_data != null ? $notification_data['permissions_owner'] : null;
+$has_taken_action_on_notification = $notification_data != null ? $notification_data['has_taken_action'] : null;
+// // For Debugging purposes
+// //  $resData["notificationObj"] = $notificationObj['data'];
+// $resData["notification_data"] = $notification_data;
+// $resData["suport_ticket_ID"] = $suport_ticket_ID;
+// $resData["ticket_actions_ID"] = $ticket_actions_ID;
+// $resData["notification_type_ID"] = $notification_type_ID;
+// $resData["permissions_ID"] = $permissions_ID;
+// $resData["permissions_owner_ID"] = $permissions_owner_ID;
+// $resData["has_taken_action_on_notification"] = $has_taken_action_on_notification;
+
+//  Note permissions_ID & permissions_owner_ID can be used to pull the override code data
+
+// -----------------------------------
+// Validate Ticket
+// -----------------------------------
+        // Does several checks, valid ID, valid status, if found etc.
+        $validate_ticket_result = $this->validate_ticket($suport_ticket_ID,2,$processor_ID,$processor_role,null);
+        if($validate_ticket_result['success'] != 200){
+            return $this->return_server_response($response,$validate_ticket_result['error'],$validate_ticket_result['success']);
+        }
+// Variables Group 3
+// Get Support Ticket base info, support ticket agent, support ticket role needed
+        $support_ticket_base_info = $validate_ticket_result['data']['data'];
+        $is_processor_the_ticket_owner = $validate_ticket_result['is_owner'];
+        $is_processor_authorized = $validate_ticket_result['authorized']; // authorized to work on ticket
+        $support_ticket_agent =  $support_ticket_base_info['assigned_agent'];
+        $support_ticket_issue_ID = $support_ticket_base_info['issue_id'];
+        $role_needed = $this->roleSubTypes[$support_ticket_issue_ID];
+// // For Debugging purposes
+// // $resData["validate_ticket_result"] = $validate_ticket_result;
+// $resData["support_ticket_base_info"] = $support_ticket_base_info;
+// $resData["is_processor_the_ticket_owner"] = $is_processor_the_ticket_owner;
+// $resData["is_processor_authorized"] = $is_processor_authorized;
+// $resData["support_ticket_agent"] = $support_ticket_agent; // should be same as notification creator (if transfer request, but if override request should be different)
+// $resData["support_ticket_issue_ID"] = $support_ticket_issue_ID;
+// $resData["role_needed"] = $role_needed;
 
 
+// ----------------------------------------
+// Get the information of the chosen agent
+// ----------------------------------------
+        $chosen_agent_info = $this->supportTicket->getTheSupervisorOfAgentUsingAgentID($transfer_to_agent_id);
+        // Check for query error
+        if($chosen_agent_info['success'] == false){
+            // return $this->customResponse->is500Response($response,$chosen_agent_info['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        } 
+        // Check if data is found
+        if($chosen_agent_info['data'] == false){
+            // return $this->customResponse->is500Response($response,$chosen_agent_info['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(404, "An error occured while processing your request. The notification cannot be found. Please resfresh the browser and try again."));
+        }
+// Variables Group 4
+// Get chosen agent role, chosen agent supervisor, chosen agent status, chosen agent is deleted
+        $chosen_agent_data = $chosen_agent_info['data'];
+        $chosen_agent_role = $chosen_agent_data['role_type'];
+        $chosen_agent_sup = $chosen_agent_data['supervisor_id'];
+        $chosen_agent_status = $chosen_agent_data['active_status'];
+        $chosen_agent_is_deleted = $chosen_agent_data['is_deleted'];
+// // For Debugging purposes
+// // $resData["chosen_agent_info"] = $chosen_agent_info['data'];
+// $resData["chosen_agent_data"] = $chosen_agent_data['is_deleted'];
+// $resData["chosen_agent_role"] = $chosen_agent_role;
+// $resData["chosen_agent_supervisor_id"] = $chosen_agent_sup;
+// $resData["chosen_agent_status"] = $chosen_agent_status;
+// $resData["chosen_agent_is_deleted"] = $chosen_agent_is_deleted;
+// ------------------------------------------------------------------
+        // Validate if the chosen agent is still active and not deleted
+        if($chosen_agent_status != 2){
+            // $resData["chosen_agent_status"] = $chosen_agent_status;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, "Bad Request: The account of the chosen employee is not yet active or has been disabled. Please select a supervisor or a ".($this->roleThings[$role_needed-1])." to transfer this ticket to."));
+        }
+        if($chosen_agent_is_deleted >= 1){
+            // $resData["chosen_agent_is_deleted"] = $chosen_agent_is_deleted;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(404, "Bad Request: The chosen employee is no longer active. Please select a supervisor or a ".($this->roleThings[$role_needed-1])." to transfer this ticket to."));
+        }
+        // Validate if the chosen agent is a manager or admin (They cannot accept tickets)
+        if($chosen_agent_role > 4){
+            // $resData["chosen_agent_role"] = $chosen_agent_role;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(404, "Bad Request: Transfers are not permitted to Managers or Admin staff. Please select a supervisor or a ".($this->roleThings[$role_needed-1])." to transfer this ticket to."));
+        }
 
-// // PROCESS THE DAMN TRANSFER
-// public function processTransfer(Request $request,Response $response, array $args)
-// {
-// // -----------------------------------
-// // Get Necessary variables and params
-// // -----------------------------------
-//     // Get the bearer token from the Auth header
-//     $bearer_token = JSON_encode($request->getHeader("Authorization"));
-//     // Get ticket parameter for ticket information
-//     $ticket_id = $args['ticketID'];
+// ------------------------------------------------------------------
+// Get the information of the agent who is also assigned in ticket
+// ------------------------------------------------------------------
+        $from_agent_info = $this->supportTicket->getTheSupervisorOfAgentUsingAgentID($notif_creator_ID);
+        // Check for query error
+        if($from_agent_info['success'] == false){
+            // return $this->customResponse->is500Response($response,$chosen_agent_info['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        } 
+        // Check if data is found
+        if($from_agent_info['data'] == false){
+            // return $this->customResponse->is500Response($response,$chosen_agent_info['data']);
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(404, "An error occured while processing your request. Please resfresh the browser and try again."));
+        }
+// Variables Group 5
+// Get from agent role, from agent supervisor, from agent status, from agent is deleted
+        $from_agent_data = $from_agent_info['data'];
+        $from_agent_role = $from_agent_data['role_type'];
+        $from_agent_sup = $from_agent_data['supervisor_id'];
+        $from_agent_status = $from_agent_data['active_status'];
+        $from_agent_is_deleted = $from_agent_data['is_deleted'];
+// // For Debugging purposes
+// // $resData["from_agent_info"] = $found_agent_info['data'];
+// $resData["from_agent_data"] = $from_agent_is_deleted;
+// $resData["from_agent_role"] = $from_agent_role;
+// $resData["from_agent_supervisor_id"] = $from_agent_sup;
+// $resData["from_agent_status"] = $from_agent_status;
+// $resData["from_agent_is_deleted"] = $from_agent_is_deleted;
 
-//     // Get Agent Email for validation
-//     $this->validator->validate($request,[
-//         // Check if empty
-//         "email"=>v::notEmpty(),
-//         "transfer_to_agent_id"=>v::notEmpty(),
-//         // "transfer_code"=>v::notEmpty(),
-//         // "transfer_reason"=>v::notEmpty(),
-//         // "sup_id"=>v::notEmpty(),
-//         // "permission_code"=>v::notEmpty()
-//     ]);
-//         // Returns a response when validator detects a rule breach
-//         if($this->validator->failed())
-//         {
-//             $responseMessage = $this->validator->errors;
-//             return $this->customResponse->is400Response($response,$responseMessage);
-//         }
-//         // $this->validator->validate($request,[
-//         //     // Check if empty
-//         //     "transfer_reason"=>v::between(1, 5)
-//         // ]);
-//         // if($this->validator->failed())
-//         // {
-//         //     $responseMessage = $this->validator->errors;
-//         //     return $this->customResponse->is400Response($response,$responseMessage);
-//         // }
 
-//     // Store Params
-//     $email = CustomRequestHandler::getParam($request,"email");
-//     $transfer_to_agent_id = CustomRequestHandler::getParam($request,"transfer_to_agent_id");
-// //     $comment = CustomRequestHandler::getParam($request,"comments");
-// //         // Additional info for transfer request
-// //         $sup_id = CustomRequestHandler::getParam($request,"sup_id");
-// //         $transfer_code = CustomRequestHandler::getParam($request,"transfer_code");
-// //         $transfer_reason = CustomRequestHandler::getParam($request,"transfer_reason");
-// //         $permis_code = CustomRequestHandler::getParam($request,"permission_code");
+// ---------------------------------------------------------------
+// VALIDATE TRANSFER REQUEST FOR TICKET BASED ON VARIABLES GIVEN
+// ---------------------------------------------------------------
+// Supervisor can reassign the ticket to a different agent on the Requester's team
+// Or on the same team the supervisor is handling
+// Does the chosen agent have the same role_needed as the issue of the ticket ? (If not a supervisor)
+        if(($chosen_agent_role != $role_needed) && ($chosen_agent_role != 4)){
+            // $resData["chosen_agent_role"] = $chosen_agent_role;
+            // $resData["role_needed"] = $role_needed;
+            return $this->customResponse->is400Response($response,$this->generateServerResponse(400, "Bad Request: The chosen agent is outside the scope of the support ticket. Please select an agent with the role of ".($this->roleThings[$role_needed-1])." to transfer this ticket to."));
+        }
+// Check if chosen agent is the same as the agent who made the request
+    if($transfer_to_agent_id == $notif_creator_ID){
+        return $this->customResponse->is400Response($response,"Bad Request: Chosen agent is the same agent who made the transfer request. Please select a different agent to transfer the ticket to.");
+    }
 
-// // -----------------------------------
-// // Get Ticket Processer's Information (Request Sender)
-// // -----------------------------------
-//         // Get user ID with email
-//         $account = $this->supportAgent->getSupportAccount($email);
+// Check if the chosen agent is part of supervisor id's team
+    $is_in_my_team = $chosen_agent_sup == $processor_ID;
 
-//         // Check for query error
-//         if($account['success'] == false){
-//             // return $this->customResponse->is500Response($response,$account['data']);
-//             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
-//         }
-    
-//         // Check if email is found
-//         if($account['data'] == false){
-//             // return $this->customResponse->is500Response($response,$account['data']);
-//             return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
-//         }
-    
-//         // Get user account by ID & get role type
-//         $agent_ID = $account['data']['id'];
-//         $role = $account['data']['role_type'];
-//         $supID = $account['data']['supervisor_id'];
+// Check if the chosen agent is a team mate of the agent who created the request
+    $is_a_team_mate = $chosen_agent_sup == $from_agent_sup;
 
-//         // If the request sender is not a supervisor, manager or admin, deny request
-//         if($role < 4){
-//              // return $this->customResponse->is500Response($response,$account['data']);
-//              return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "Unauthorized Access: Please sign into an authorized account to process this request."));
-//         }
+// Check if the chosen agent is the one processing the transfer (Sup can transfer the ticket to themselves)
+    $is_transfer_to_me = $transfer_to_agent_id == $processor_ID;
 
-// // -----------------------------------
-// // Auth SENDERS Information (JWT AUTH)
-// // -----------------------------------
-//         $auth_agent_result = $this->authenticate_agent($bearer_token, $agent_ID);
-//         if($auth_agent_result['success'] != 200){
-//             return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
-//         }
 
-// // -----------------------------------
-// // Validate Ticket
-// // -----------------------------------
-//         $validate_ticket_result = $this->validate_ticket($ticket_id,2,$agent_ID,$role,null);
-//         if($validate_ticket_result['success'] != 200){
-//             return $this->return_server_response($response,$validate_ticket_result['error'],$validate_ticket_result['success']);
-//         }
-//         $base_info = $validate_ticket_result['data'];
-//         $is_owner = $validate_ticket_result['is_owner'];
-//         $authorized = $validate_ticket_result['authorized'];
-//         // $ticket_id =  $base_info['data']['id'];
-//         $agent_ID_currrent =  $base_info['data']['assigned_agent'];
+// Other Notes support ticket agent the same as notification creator? (if transfer ticket request, but if override ticket request should be different)
+//   //  still need to check
+//   // No need to ask agent, but ask sup for code -  External Agent Sends a Transfer Req to Sup meaning (permission 1: External Agent Transfer Request) has been granted
+//   // No need to ask agent for code - Internal Agent Sends a Transfer Req to Sup meaning (permission 2: Internal Agent Transfer Request) has been granted
+//   // ================================== // ask/check for transfer code if external transfer
+
 
 // // ---------------------------------------------------------------
-// // PROCESS TRANSFER REQUEST FOR TICKET BASED ON VARIABLES GIVEN
+// //      INTERNAL TRANSFER
 // // ---------------------------------------------------------------
-// /* 
-//         ticket_type = escalation  or transfer (Need)
-//         transfer_type = internal or external  (No Need since can be pulled from notif ID)
-//         transfer_to_agent_id -> the one making the request (Can be pulled from notif ID)
-//         notif_id -> (Need)
-//         support_ticket_id (No Need since can be pulled from notif ID) -> but will just be used as validation nalang
+    if( $is_in_my_team == true ||  $is_a_team_mate ||  $is_transfer_to_me){
+        // If it is within the team, no need to check for approval code from manager
+        // Can transfer to self
+        // ==============
+        // Process transfer
+        $resObj_transfer = $this->supportTicket->processTransferRequest();
+        $resData['sql'] = $resObj_transfer['data'];
 
 
-//         // Validation Is this agent my agent? - support
-// */
-//         // External Agent Sends a Transfer Req to Sup meaning (permission 1: External Agent Transfer Request) has been granted
-//         // Internal Agent Sends a Transfer Req to Sup meaning (permission 2: Internal Agent Transfer Request) has been granted
-        
-//         // Supervisor can reassign the ticket to a different agent on the Requester's team
-//         // Or on the same team the supervisor is handling
-//             // Create a pull DB Request to get co-team members of agent making request
-//             // Supervisors agents
+    }else{
+// // ---------------------------------------------------------------
+// //      EXTERNAL TRANSFER
+// // ---------------------------------------------------------------
+        // If it is an external transer, check the code for approval code from manager
+        // Can transfer to another supervisor
+        // Get Manager approval code
+        $this->validator->validate($request,[
+            // Check if empty
+            "manager_approval_code"=>v::notEmpty()
+        ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            if( $chosen_agent_role == 4){
+                return $this->customResponse->is400Response($response,"Manager Approval Code is needed to transfer a ticket to a Supervisor. Please enter your manager's approval code or if not other supervisors are available, transfer to yourself or another agent.");
+            } else {
+                return $this->customResponse->is400Response($response,"Manager Approval Code is needed to transfer a ticket to an agent who is not within your team or the team of the assigned agent. Please enter your manager's approval code.");
+            }
+        }
+        $manager_approval_code = CustomRequestHandler::getParam($request,"manager_approval_code");
+        // ================================== Validation of the manager approval code
+        // Check if approval code is correct by pulling it up in the DB
+        // permission type && this supervisor's user ID 
+
+    }
 
 
-//     $resData = [];
-//     return $this->return_server_response($response,"This route works",200,$resData); 
-// }
+    return $this->return_server_response($response,"This route works",200,$resData); 
+}
 
 
 
@@ -2328,7 +2488,7 @@ private function validate_ticket($p_ticket_id, $p_ticket_status = null, $p_agent
     if($p_ticket_status != null && $bi_stat != $p_ticket_status){
         $retVal['success'] = 400;
         // $retVal['data'] = $base_info['data'];
-        $s_msg = ["This ticket has not been assigned to an agent yet.","This ticket is already assigned to an agent.","This ticket is already closed."];
+        $s_msg = ["This ticket has not been assigned to an agent yet.","This ticket is already assigned to an agent.","This ticket is already closed.", "This ticket is already closed."];
         $retVal['error'] = $s_msg[$bi_stat-1];
         return $retVal;
     }
