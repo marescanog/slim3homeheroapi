@@ -2387,7 +2387,7 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
         // actions is last before notification because you need the action id of the action if inserting into a new
         //      notification to notify the sup or manager of internal agent that you transferred their agent
 
-        
+
         $db = new DB();
         $conn = $db->connect();
 
@@ -2395,7 +2395,7 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
 
         UPDATE support_notifications sn SET sn.is_read = 1, sn.has_taken_action = 1 WHERE sn.id = :notifID;
 
-        UPDATE support_ticket st SET st.last_updated_on = now(), st.assigned_agent = 179 WHERE st.id = :supportTicketID;
+        UPDATE support_ticket st SET st.last_updated_on = now(), st.assigned_agent = :newAgent2 WHERE st.id = :supportTicketID;
 
         INSERT INTO `ticket_assignment` (`id`, `support_ticket`, `date_assigned`, `newly_assigned_agent`, 
         `previous_agent`, `transfer_reason`) VALUES (NULL, :supportTicketID2, now(), :newAgent, :pastAgent, :transferReasonID);
@@ -2428,6 +2428,7 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
             $stmt->bindparam(':supportTicketID', $support_ticket_ID);
             $stmt->bindparam(':supportTicketID2', $support_ticket_ID);
             $stmt->bindparam(':newAgent', $chosen_agent);
+            $stmt->bindparam(':newAgent2', $chosen_agent);
             $stmt->bindparam(':pastAgent', $from_agent);
             $stmt->bindparam(':transferReasonID', $transfer_reason_id);
             $stmt->bindparam(':sysgen', $sysGen);
