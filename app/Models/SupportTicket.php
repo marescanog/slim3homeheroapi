@@ -2169,7 +2169,15 @@ public function getTheSupervisorOfAgentUsingAgentID($agentID){
         $conn = $db->connect();
         $result = "";
 
-        $sql="SELECT sa.supervisor_id, sa.role_type FROM support_agent sa WHERE sa.id = :agentID;";
+        // $sql="SELECT sa.supervisor_id, sa.role_type 
+        // FROM support_agent sa 
+        // WHERE sa.id = :agentID;";
+
+        $sql="SELECT sa.id, sa.supervisor_id, sa.role_type, sa.is_deleted,
+        hh.user_status_id as active_status
+        FROM support_agent sa 
+        LEFT JOIN hh_user hh ON sa.id = hh.user_id
+        WHERE sa.id = :agentID;";
             
         $stmt =  $conn->prepare($sql);
 
@@ -2356,6 +2364,112 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
         );
     }
 }
+
+// ---------------------------------------------
+//          MAY 22 , 2022
+// ---------------------------------------------
+  public function processTransferRequest($notification_ID, $support_ticket_ID, $chosen_agent,
+        $from_agent, $transfer_reason_id = 5, $processorID, $transferToSup = 1 //1 - no, 2 - yes
+  ){
+    try {       
+
+        // NOTES AS GUIDANCE
+        // Done getting tranfer reason, just set default to 5
+        // Transfer reason is either 1  3 or 5, REASON-R is the separator and it is found in SYSGEN message of support notification
+        // Transfer type - isInternal ? default is external
+        // DONE - UPDATE NOTIFICATION ->  need notif ID (has_taken_action = 1, is_read = 1)
+        // DONE - UPDATE SUPPORT TICKET -> need support id, assigned agent ( assigned agent, last updated on) 
+        // INSERT INTO TICKET ASSIGNMENT -> support ticket, newly assigned agent, prevuos agent, transfer reason  (support ticket, newly assigned agent, prevuos agent, transfer reason)
+        // DONE - INSERT INTO ACTION -> action_taken, system generated description, agent notes, support ticket ( action_taken, system generated description, agent notes, support ticket)
+        // INSERT NOTIFICATION -> 123 LAST_INSERT_ID() -> only if external agent transfer
+                // TRANSFER INTERNAL
+                // TRANSFER EXTERNAL
+        // actions is last before notification because you need the action id of the action if inserting into a new
+        //      notification to notify the sup or manager of internal agent that you transferred their agent
+
+        
+        $db = new DB();
+        $conn = $db->connect();
+
+        $sql = "SET @@session.time_zone = '+08:00'; BEGIN;
+
+        UPDATE support_notifications sn SET sn.is_read = 1, sn.has_taken_action = 1 WHERE sn.id = :notifID;
+
+        UPDATE support_ticket st SET st.last_updated_on = now(), st.assigned_agent = 179 WHERE st.id = :supportTicketID;
+
+        INSERT INTO `ticket_assignment` (`id`, `support_ticket`, `date_assigned`, `newly_assigned_agent`, 
+        `previous_agent`, `transfer_reason`) VALUES (NULL, :supportTicketID2, now(), :newAgent, :pastAgent, :transferReasonID);
+
+        INSERT INTO ticket_actions 
+        (action_taken, system_generated_description, agent_notes, support_ticket) 
+        VALUES (4, :sysgen , NULL, :supportTicketID3);
+        
+        COMMIT;
+        ";
+
+        $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent.". TRANSFERRED TO AGENT #".$chosen_agent;
+
+        if($transferToSup == 2){
+            if($processorID == $chosen_agent){
+                $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent." TRANSFERRED TO SELF.";
+            } else {
+                $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent.". TRANSFERRED TO SUP #".$chosen_agent;
+            }
+        }
+
+        $result = "";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':notifID', $notification_ID);
+            $stmt->bindparam(':supportTicketID', $support_ticket_ID);
+            $stmt->bindparam(':supportTicketID2', $support_ticket_ID);
+            $stmt->bindparam(':newAgent', $chosen_agent);
+            $stmt->bindparam(':pastAgent', $from_agent);
+            $stmt->bindparam(':transferReasonID', $transfer_reason_id);
+            $stmt->bindparam(':sysgen', $sysGen);
+            $stmt->bindparam(':supportTicketID3', $support_ticket_ID);
+            $result = $stmt->execute();
+        }
+
+        $stmt=null;
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result,
+            // "sql" => $sql
+        );
+
+        return $ModelResponse;
+
+        // Insert into support notifications
+        // INSERT INTO `support_notifications` 
+        // (`id`, `ticket_actions_id`, `recipient_id`, `support_ticket_id`, `notification_type_id`, 
+        // `generated_by`, `permissions_id`, `permissions_owner`, `system_generated_description`, 
+        // `has_taken_action`, `is_deleted`, `is_read`, `created_on`) 
+        // VALUES 
+        // (NULL, LAST_INSERT_ID(),:supID, :supTicketID, :notifType, 
+        // :userID, :permissionsID, :permissionsOwner, :sysGen, 
+        // '0', '0', '0', now());
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+    }}
+
+
+
+
+
+
+
 
 
 

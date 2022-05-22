@@ -2032,6 +2032,8 @@ $notification_type_ID = $notification_data != null ? $notification_data['notific
 $permissions_ID = $notification_data != null ? $notification_data['permissions_id'] : null;
 $permissions_owner_ID = $notification_data != null ? $notification_data['permissions_owner'] : null;
 $has_taken_action_on_notification = $notification_data != null ? $notification_data['has_taken_action'] : null;
+$has_notification_been_deleted = $notification_data != null ? $notification_data['is_deleted'] : null;
+$notification_sysgen = $notification_data != null ? $notification_data['system_generated_description'] : null;
 // // For Debugging purposes
 // //  $resData["notificationObj"] = $notificationObj['data'];
 // $resData["notification_data"] = $notification_data;
@@ -2041,7 +2043,19 @@ $has_taken_action_on_notification = $notification_data != null ? $notification_d
 // $resData["permissions_ID"] = $permissions_ID;
 // $resData["permissions_owner_ID"] = $permissions_owner_ID;
 // $resData["has_taken_action_on_notification"] = $has_taken_action_on_notification;
+// $resData["has_notification_been_deleted"] = $has_notification_been_deleted;
+// $resData["notification_sysgen"] = $notification_sysgen;
 
+// GET TRANSFER REASON FROM SYSGEN
+$transfer_reason_ID = null;
+$sysgen_end_reason = explode(" REASON-R", $notification_sysgen);
+if(count($sysgen_end_reason) != 0){
+    $transfer_reason_ID_arr = explode(" ", $sysgen_end_reason[1]);
+    if(count($transfer_reason_ID_arr) != 0){
+        $transfer_reason_ID = $transfer_reason_ID_arr[0];
+    }
+}
+// $resData["transfer_ID"] = $transfer_reason_ID;
 //  Note permissions_ID & permissions_owner_ID can be used to pull the override code data
 
 // -----------------------------------
@@ -2113,6 +2127,7 @@ $has_taken_action_on_notification = $notification_data != null ? $notification_d
             // $resData["chosen_agent_role"] = $chosen_agent_role;
             return $this->customResponse->is400Response($response,$this->generateServerResponse(404, "Bad Request: Transfers are not permitted to Managers or Admin staff. Please select a supervisor or a ".($this->roleThings[$role_needed-1])." to transfer this ticket to."));
         }
+        $is_chosen_agent_a_supervisor  =  $chosen_agent_role == 4 ? 2 : 1;
 
 // ------------------------------------------------------------------
 // Get the information of the agent who is also assigned in ticket
@@ -2149,6 +2164,14 @@ $has_taken_action_on_notification = $notification_data != null ? $notification_d
 // ---------------------------------------------------------------
 // Supervisor can reassign the ticket to a different agent on the Requester's team
 // Or on the same team the supervisor is handling
+// Has the notification already been processed ?
+    if($has_taken_action_on_notification != 0){
+        return $this->customResponse->is400Response($response,"Bad Request: This notification has already been processed.");
+    }
+// Has the notification already been deleted ?
+    if($has_notification_been_deleted != 0){
+        return $this->customResponse->is400Response($response,"Bad Request: This notification has already been deleted.");
+    }
 // Does the chosen agent have the same role_needed as the issue of the ticket ? (If not a supervisor)
         if(($chosen_agent_role != $role_needed) && ($chosen_agent_role != 4)){
             // $resData["chosen_agent_role"] = $chosen_agent_role;
@@ -2185,7 +2208,15 @@ $has_taken_action_on_notification = $notification_data != null ? $notification_d
         // Can transfer to self
         // ==============
         // Process transfer
-        $resObj_transfer = $this->supportTicket->processTransferRequest();
+        $resObj_transfer = $this->supportTicket->processTransferRequest(
+            $notif_ID,          // notification ID
+            $suport_ticket_ID,  // support ticket ID
+            $transfer_to_agent_id,  // chosen agent (transfer to)
+            $notif_creator_ID,      // from agent (request creator)
+            $transfer_reason_ID,     // transfer reason
+            $processor_ID,         // processorsID
+            $is_chosen_agent_a_supervisor      // Transfer to supervisor
+        );
         $resData['sql'] = $resObj_transfer['data'];
 
 

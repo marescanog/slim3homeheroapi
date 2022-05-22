@@ -46,8 +46,8 @@ $app->group("/ticket",function() use ($app){
 
     $app->post("/get-agents-applicable-for-transfer/{notifID}","SupportTicketController:getAgentsApplicableForTransfer");
 
-    
-    $app->post("/process-transfer/{ticketID}","SupportTicketController:processTransfer");
+
+    $app->post("/process-transfer/{notifID}","SupportTicketController:processTransfer");
 
 
    
