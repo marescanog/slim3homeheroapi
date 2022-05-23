@@ -2723,9 +2723,133 @@ public function check_pending_request($id_ticket)
             );
         }}
 
+public function checkTime_last_notifyManager($managerID, $supID){
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $result = "";
+
+        date_default_timezone_set('Asia/Manila');
+        // $now = time();
+        // $now = strtotime("now");
+
+        // $date = new DateTime();
+        // $date->format('M j, Y g:i A');
+
+        // $discount_start_date = '03/27/2012 18:47'; 
+        // $start_date = date('Y-m-d H:i:s', strtotime($discount_start_date));   
+        $now = date('Y-m-d H:i:s', strtotime("now")); 
+
+        $sysgen = 'SUP #'.$supID.' REQUESTS FOR MANAGER APPROVAL CODE RESET FROM MANAGER #'.$managerID.' ON '.$now ;
+
+        $sql="SELECT sn.created_on 
+        FROM support_notifications sn 
+        WHERE 
+        sn.generated_by = :createdBy
+        AND sn.permissions_owner = :permissionsOwner
+        AND sn.recipient_id = :recipientID
+        AND sn.permissions_id = 1
+        AND sn.notification_type_id = 5
+        ORDER BY sn.created_on DESC
+        LIMIT 1;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql); 
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':recipientID', $managerID);
+            $stmt->bindparam(':createdBy', $supID);
+            $stmt->bindparam(':permissionsOwner', $supID);
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+
+        $conn=null;
+        $stmt = null;
+        $db = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+    }}
 
 
 
+  public function notifyManager($managerID, $supID)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = "";
+
+            date_default_timezone_set('Asia/Manila');
+            // $now = time();
+            // $now = strtotime("now");
+
+            // $date = new DateTime();
+            // $date->format('M j, Y g:i A');
+
+            // $discount_start_date = '03/27/2012 18:47'; 
+            // $start_date = date('Y-m-d H:i:s', strtotime($discount_start_date));   
+            $now = date('Y-m-d H:i:s', strtotime("now")); 
+
+            $sysgen = 'SUP #'.$supID.' REQUESTS FOR MANAGER APPROVAL CODE RESET FROM MANAGER #'.$managerID.' ON '.$now ;
+
+            $sql="INSERT INTO `support_notifications` 
+            (`id`, `ticket_actions_id`, `recipient_id`, 
+            `support_ticket_id`, `notification_type_id`, 
+            `generated_by`, `permissions_id`, `permissions_owner`, 
+            `system_generated_description`, `has_taken_action`, `is_deleted`, 
+            `is_read`, `created_on`) 
+            VALUES (NULL, NULL, :recipientID, 
+            NULL, '5', 
+            :createdBy, '1', :permissionsOwner, 
+            :sysgen, '0', '0', 
+            '0', current_timestamp());";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql); 
+    
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':recipientID', $managerID);
+                $stmt->bindparam(':createdBy', $supID);
+                $stmt->bindparam(':permissionsOwner', $supID);
+                $stmt->bindparam(':sysgen', $sysgen);
+                $result = $stmt->execute();
+            }
+    
+            $conn=null;
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
 
 
 

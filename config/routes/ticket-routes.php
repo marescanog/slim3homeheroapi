@@ -56,9 +56,13 @@ $app->group("/ticket",function() use ($app){
     $app->post("/toggle-read-notif/{notifID}","SupportTicketController:toggleReadNotif");
 
 
+    $app->post("/notify-manager","SupportTicketController:notifyManager");
 
 
 
+
+
+    
    
 
 

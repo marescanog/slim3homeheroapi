@@ -2669,6 +2669,138 @@ public function toggleReadNotif(Request $request,Response $response, array $args
 
 
 
+public function notifyManager(Request $request,Response $response, array $args)
+{
+    // -----------------------------------
+    // Get Necessary variables and params
+    // -----------------------------------
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+        // Get Agent Email for validation
+        $this->validator->validate($request,[
+            // Check if empty
+            "email"=>v::notEmpty()
+        ]);
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    
+    // -----------------------------------
+    // Get Ticket Processer's Information (Request Sender)
+    // -----------------------------------
+            // Get processor's ID with email
+            $account = $this->supportAgent->getSupportAccount($email);
+            // Check for query error
+            if($account['success'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            // Check if email is valid by seeing if account is found
+            if($account['data'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+            }
+    // Variables Group 1
+    // Get processor's account, role, & sup ID
+        $processor_ID = $account['data']['id'];
+        $processor_role = $account['data']['role_type'];
+        $processor_supID = $account['data']['supervisor_id'];
+    
+    // -----------------------------------
+    // Validation 1 - Check role of processor (request sender)
+            // If the request sender is not a supervisor, manager or admin, deny request
+            if($processor_role < 4){
+                 // return $this->customResponse->is500Response($response,$account['data']);
+                 return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "Unauthorized Access: Please sign into an authorized account to process this request."));
+            }
+    
+    // -----------------------------------
+    // Auth SENDERS Information (JWT AUTH)
+    // -----------------------------------
+            $auth_agent_result = $this->authenticate_agent($bearer_token, $processor_ID);
+            if($auth_agent_result['success'] != 200){
+                return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+            }
+            if($processor_supID == null){
+                return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "You are not currently assigned with a manager"));
+            }
+    // -----------------------------------
+    // Check last Notify
+    // -----------------------------------
+            $resData = [];
+            $notifyCheck = $this->supportTicket->checkTime_last_notifyManager($processor_supID,$processor_ID); 
+            // // Check for query error
+            if(!isset( $notifyCheck ) ||  $notifyCheck ['success'] == null ||  $notifyCheck['success'] == false){
+                // return $this->customResponse->is500Response($response, $notifyManager['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            } 
+            date_default_timezone_set('Asia/Manila');
+            $lastTime = $notifyCheck['data'];
+            // $resData['test'] = $lastTime;
+            if($lastTime != false){
+                $lastCheckSubmitted = $lastTime['created_on'];
+                $to_time = strtotime("now");
+                $from_time =  strtotime($lastCheckSubmitted);
+                $diff = round(abs($to_time - $from_time) / 60,2);
+                $timeCap = 5; // 5 min
+                if(($diff < $timeCap)){
+                    // $resData['past_time_cap'] = $diff > 5;
+                    // $resData['diff' ] = $diff;
+                    return $this->customResponse->is400Response($response,"Please wait 5 minutes before submitting another request!");
+                }
+            }
+    // -----------------------------------
+    // Send a Notify
+    // -----------------------------------
+            $notifyManager = $this->supportTicket->notifyManager( 
+                $processor_supID,   // Manager ID
+                $processor_ID              // Sup ID
+            );
+            // // Check for query error
+            if(!isset( $notifyManager) ||  $notifyManager['success'] == null ||  $notifyManager['success'] == false){
+                // return $this->customResponse->is500Response($response, $notifyManager['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            } 
+            $resData['notifyManager'] = $notifyManager['data'];
+            $resData["message"] = "Manager Notified!";
+            // $resData["sup"] = $processor_supID;
+
+    return $this->return_server_response($response,"This route works",200,$resData); 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
