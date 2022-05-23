@@ -377,6 +377,210 @@ class Support
 
 
 
+    // ======================================================================================
+    // ======================================================================================
+    // May 24, 2022
+
+
+
+    public function getAccBaseInfo($userID)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = "";
+
+            $sql ="SELECT sa.id, sa.email, sa.is_deleted, sa.supervisor_id, sa.created_on as date_joined,
+            hha.last_name as acc_lname, hha.first_name acc_fname, CONCAT(hha.last_name,', ', hha.first_name) as acc_full_name,
+            hhs.last_name as sup_lname, hhs.first_name sup_fname, CONCAT(hhs.last_name,', ', hhs.first_name) as sup_full_name
+            FROM support_agent sa 
+            LEFT JOIN hh_user hha ON sa.id = hha.user_id
+            LEFT JOIN hh_user hhs ON sa.supervisor_id = hhs.user_id
+            WHERE sa.id = :userID;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+            $conn = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
+
+
+        public function get_agent_acc_stats($userID)
+        {
+            try {
+    
+                $db = new DB();
+                $conn = $db->connect();
+    
+                $result = "";
+    
+                // $sql ="SELECT COUNT(*) as `value`, sts.status as `key`
+                //     FROM support_ticket st
+                //     LEFT JOIN support_ticket_status sts ON st.status = sts.id
+                //     WHERE st.assigned_agent = :userID
+                //     GROUP BY st.status;";
+
+                $sql = "SELECT COUNT(at.id) as `value`, sts.status as `key`
+                FROM support_ticket_status sts
+                LEFT JOIN 
+                (SELECT * FROM support_ticket st WHERE st.assigned_agent = :userID) as at ON sts.id =  at.status 
+                GROUP BY sts.id;";
+    
+                // Prepare statement
+                $stmt =  $conn->prepare($sql);
+    
+                // Only fetch if prepare succeeded
+                if ($stmt !== false) {
+                    $stmt->bindparam(':userID', $userID);
+                    $stmt->execute();
+                    $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                }
+    
+                $stmt = null;
+                $db = null;
+                $conn = null;
+    
+                $ModelResponse =  array(
+                    "success" => true,
+                    "data" => $result
+                );
+    
+                return $ModelResponse;
+            } catch (\PDOException $e) {
+    
+                $ModelResponse =  array(
+                    "success" => false,
+                    "data" => $e->getMessage()
+                );
+            }}
+
+
+
+
+
+
+            public function get_supervisor_acc_stats($userID)
+            {
+                try {
+        
+                    $db = new DB();
+                    $conn = $db->connect();
+        
+                    $result = "";
+        
+                    $sql ="SELECT COUNT(agents.id) as `value`, sat.role as `key` 
+                    FROM support_agent_role_type sat
+                    LEFT JOIN (SELECT * FROM support_agent sa WHERE sa.supervisor_id = :userID) as agents ON sat.id = agents.role_type
+                    GROUP BY sat.id;";
+        
+                    // Prepare statement
+                    $stmt =  $conn->prepare($sql);
+        
+                    // Only fetch if prepare succeeded
+                    if ($stmt !== false) {
+                        $stmt->bindparam(':userID', $userID);
+                        $stmt->execute();
+                        $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                    }
+        
+                    $stmt = null;
+                    $db = null;
+                    $conn = null;
+        
+                    $ModelResponse =  array(
+                        "success" => true,
+                        "data" => $result
+                    );
+        
+                    return $ModelResponse;
+                } catch (\PDOException $e) {
+        
+                    $ModelResponse =  array(
+                        "success" => false,
+                        "data" => $e->getMessage()
+                    );
+                }}
+
+
+
+
+
+
+
+                public function get_manager_acc_stats()
+                {
+                    try {
+            
+                        $db = new DB();
+                        $conn = $db->connect();
+            
+                        $result = "";
+            
+                        $sql ="SELECT COUNT(sa.id) as `value`, r.role as `key` FROM support_agent_role_type r 
+                        LEFT JOIN support_agent sa 
+                        ON r.id = sa.role_type
+                        GROUP BY r.id;";
+            
+                        // Prepare statement
+                        $stmt =  $conn->prepare($sql);
+            
+                        // Only fetch if prepare succeeded
+                        if ($stmt !== false) {
+                            $stmt->execute();
+                            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                        }
+            
+                        $stmt = null;
+                        $db = null;
+                        $conn = null;
+            
+                        $ModelResponse =  array(
+                            "success" => true,
+                            "data" => $result
+                        );
+            
+                        return $ModelResponse;
+                    } catch (\PDOException $e) {
+            
+                        $ModelResponse =  array(
+                            "success" => false,
+                            "data" => $e->getMessage()
+                        );
+                    }}
+
+
+
+
+
+
+
+
+
+
 
 
 

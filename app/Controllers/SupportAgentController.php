@@ -549,16 +549,123 @@ public function getSupReason(Request $request,Response $response){
 
 
 
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// May 24, 2020
+public function getAccountDetails(Request $request,Response $response){
+    // -----------------------------------
+    // Get Necessary variables and params
+    // -----------------------------------
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+        // Get Agent Email for validation
+        $this->validator->validate($request,[
+            // Check if empty
+            "email"=>v::notEmpty()
+        ]);
+
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    
+    // -----------------------------------
+    // Get Account Holder's Information (Request Sender)
+    // -----------------------------------
+            // Get processor's ID with email
+            $account = $this->supportAgent->getSupportAccount($email);
+            // Check for query error
+            if($account['success'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            // Check if email is valid by seeing if account is found
+            if($account['data'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is401Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+            }
+    // Variables Group 1
+    // Get user's account, role, & sup ID
+        $user_ID = $account['data']['id'];
+        $user_role = $account['data']['role_type'];
+        $user_supID = $account['data']['supervisor_id'];
+     
+    // -----------------------------------
+    // Auth SENDERS Information (JWT AUTH)
+    // -----------------------------------
+
+            $auth_agent_result = $this->authenticate_agent($bearer_token, $user_ID );
+            if($auth_agent_result['success'] != 200){
+                return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+            }
+
+    // -----------------------------------
+    // Get Relevant Account Info based On Role
+    // -----------------------------------
+            // Get Base Account Details
+                $accInfo= $this->supportAgent->getAccBaseInfo($user_ID );
+            // Check for query error
+                if($accInfo['success'] == false){
+                    // return $this->customResponse->is500Response($response,$$accInfo['data']);
+                    return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+                }
+
+
+            // Get Role Specific Account Details
+            switch($user_role){
+                case 7: // Manager
+                    $info = $this->supportAgent->get_manager_acc_stats($user_ID );
+                    if($info['success'] == true){
+                        $dat = $this->object_to_array($info['data']);
+                        $dat['total'] =   $dat['total'] - $dat['Admin'] -  $dat['Super Admin'];
+                        $dat['total_agents'] = $dat['total'] - $dat['Supervisor'] -  $dat['Manager'];
+                        $resData['specific'] = $dat;
+                    }
+                    break;
+                case 4: // Supervisor
+                    $info = $this->supportAgent->get_supervisor_acc_stats($user_ID );
+                    if($info['success'] == true){
+                        $resData['specific'] = $this->object_to_array($info['data']);
+                    }
+                    break;
+                default: // Agent
+                    $info = $this->supportAgent->get_agent_acc_stats($user_ID );
+                    if($info['success'] == true){
+                        $resData['specific'] = $this->object_to_array($info['data']);
+                    }
+                    break;
+            }
+            if($info['success'] == false){
+                // return $this->customResponse->is500Response($response,$info['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+
+
+    $resData['acc'] = $accInfo['data'];
+
+    return $this->return_server_response($response,"This route works",200,$resData); 
+}
 
 
 
 
 
-
-
-
-
-
+function object_to_array($data)
+{
+    $result = [];
+    $total = 0;
+    for($x = 0; $x < count($data); $x++){
+        $result[$data[$x]['key']] = $data[$x]['value'];
+        $total += $data[$x]['value'];
+    }
+    $result['total'] = $total;
+    return $result;
+}
 
 
 
