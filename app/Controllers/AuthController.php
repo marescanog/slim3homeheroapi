@@ -1433,6 +1433,12 @@ public function generatePermission(Request $request, Response $response){
                         return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
                     }
                 }
+                $notify = $this->file->notifySupervisor($userID, $supervisor_id);
+                // // Check for query error
+                // if( $notify['success'] == false){
+                //     // return $this->customResponse->is500Response($response, $notify['data']);
+                //     return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+                // }
                 // // $resData["result"]=count($result)==0?[]:(isset($result["data"])?$result["data"]:$result);
                 $resData["result"]=count($result)==0?[]:(isset($result["data"])?$result["data"]:$result);
                 $resData["message"]="New Transfer Request Code Generated!";
