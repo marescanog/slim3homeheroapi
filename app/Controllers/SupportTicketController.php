@@ -2250,6 +2250,11 @@ if(count($sysgen_end_reason) != 0){
             }
         }
         $manager_approval_code = CustomRequestHandler::getParam($request,"manager_approval_code");
+
+        if($manager_approval_code == ""){
+            return $this->customResponse->is400Response($response,"Manager Approval Code is needed to transfer a ticket to a Supervisor. Please enter your manager's approval code or if not other supervisors are available, transfer to yourself or another agent.");
+        }
+        
         // ================================== Validation of the manager approval code
         // Check if approval code is correct 
             // Validate Override Code 
@@ -2257,6 +2262,7 @@ if(count($sysgen_end_reason) != 0){
             if($validateRes['success'] != 200){
                 return $this->return_server_response($response,$validateRes['error'],$validateRes['success']);
             }
+            
         // Process Transfer
         $resObj_transfer = $this->supportTicket->processTransferRequest(
             $notif_ID,          // notification ID
