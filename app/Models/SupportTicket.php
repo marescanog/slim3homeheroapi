@@ -2681,6 +2681,84 @@ public function declineTransferRequest($notification_ID, $supportTicket_ID, $com
 
 
 
+public function check_pending_request($id_ticket)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "SELECT * 
+            FROM support_notifications sn 
+            WHERE sn.support_ticket_id = :idTicket 
+            AND sn.is_deleted = 0
+            AND sn.has_taken_action = 0
+            AND sn.notification_type_id = 2;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql); 
+    
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':idTicket', $id_ticket);
+                $result = $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+    
+            $conn=null;
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

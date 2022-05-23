@@ -824,6 +824,18 @@ public function getInfo(Request $request,Response $response, array $args)
             return $this->return_server_response($response,$detailed_info_res['error'] ?? 'There was an errror in the server code in retreiving detailed information.', $detailed_info_res['status'] ?? 500, null);
         }
 
+// ----------------------------------------------------------
+// Check if this support ticket has a transfer request
+// ----------------------------------------------------------
+    $pending_req_obj = $this->supportTicket->check_pending_request($id_ticket);
+    // Check for query error
+    if($pending_req_obj['success'] == false){
+        // return $this->customResponse->is500Response($response,$pending_req_obj['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+
+
+
 // -----------------------------------
 // Return information
 // -----------------------------------
@@ -835,6 +847,8 @@ public function getInfo(Request $request,Response $response, array $args)
     $resData['ownership'] = $is_owner;
     $resData['authorization'] = $authorized;
     $resData['detailed_info'] = $detailed_info_res == null ? [] : $detailed_info_res['data'];
+    $resData['has_pending_tranfer'] = $pending_req_obj = $pending_req_obj['data'] == false ? false : true;
+
 
     return $this->return_server_response($response,"This route works",200, $resData);  
 }
