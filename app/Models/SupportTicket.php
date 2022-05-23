@@ -2555,6 +2555,131 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
 
 
 
+// =======================================================================
+
+public function declineTransferRequest($notification_ID, $supportTicket_ID, $comment,  $sup_ID, $transfer_type_ID, $agent_ID)
+    { 
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = [];
+
+            // Update notification
+            // Insert into actions
+            $sql = "SET @@session.time_zone = '+08:00'; BEGIN;
+
+            UPDATE support_notifications sn SET sn.is_read = 1, sn.has_taken_action = 1 WHERE sn.id = :notifID;
+
+            INSERT INTO ticket_actions 
+            (action_taken, system_generated_description, agent_notes, support_ticket) 
+            VALUES (13, :sysgen , NULL, :suportTicketID);
+            
+            COMMIT;";
+
+            // :actionTaken = 13 - Transfer Denied
+            $transferTypeText = $transfer_type_ID == 3 ? "ESCALATION" : "TRANSFER";
+            $sysgen = "SUP #".$sup_ID." DENIED THE ".$transferTypeText." REQUEST OF AGENT #".$agent_ID." WITH REASON: ".$comment;
+ 
+            $result = "";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql); 
+    
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':notifID', $notification_ID);
+                $stmt->bindparam(':sysgen', $sysgen);
+                $stmt->bindparam(':suportTicketID', $supportTicket_ID);
+                $result = $stmt->execute();
+            }
+    
+            $stmt=null;
+            $conn=null;
+            $db=null;;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

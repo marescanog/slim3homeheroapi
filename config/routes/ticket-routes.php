@@ -50,6 +50,11 @@ $app->group("/ticket",function() use ($app){
     $app->post("/process-transfer/{notifID}","SupportTicketController:processTransfer");
 
 
+    $app->post("/decline-transfer/{notifID}","SupportTicketController:declineTransfer");
+
+
+
+
    
 
 
