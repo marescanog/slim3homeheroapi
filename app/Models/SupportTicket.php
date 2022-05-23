@@ -2369,7 +2369,8 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
 //          MAY 22 , 2022
 // ---------------------------------------------
   public function processTransferRequest($notification_ID, $support_ticket_ID, $chosen_agent,
-        $from_agent, $transfer_reason_id = 5, $processorID, $transferToSup = 1 //1 - no, 2 - yes
+        $from_agent, $transfer_reason_id = 5, $processorID, $transferToSup = 1, //1 - no, 2 - yes
+        $externalTransfer = false, $processor_supID = null, $from_agent_sup = null, $chosen_agent_sup = null 
   ){
     try {       
 
@@ -2403,9 +2404,53 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
         INSERT INTO ticket_actions 
         (action_taken, system_generated_description, agent_notes, support_ticket) 
         VALUES (4, :sysgen , NULL, :supportTicketID3);
+
+        SET @ticketActionID:=LAST_INSERT_ID();
         
-        COMMIT;
-        ";
+        "
+        // Send notification if: 
+        //      - External transfer -> send to manager
+        //      - Chosen agent is not my agent
+        //      - From agent is not my agent
+
+
+        // Send Notification to Manager on an External Transfer
+        .($externalTransfer == false && $processor_supID == null ? "" :
+        "INSERT INTO `support_notifications` 
+        (`id`, `ticket_actions_id`, `recipient_id`, `support_ticket_id`, `notification_type_id`, 
+        `generated_by`, `permissions_id`, `permissions_owner`, `system_generated_description`, 
+        `has_taken_action`, `is_deleted`, `is_read`, `created_on`) 
+        VALUES 
+        (NULL, @ticketActionID, :notifRecipient, :supportTicketForNotif, 6, 
+        :notifCreator, 1, :permissionsOwner, :sysGenEXTERNAL, 
+        '0', '0', '0', now());"
+        )
+
+        // Send Notification if From agent is not my agent
+        .($from_agent_sup == null || $processorID == $from_agent_sup ? "" : 
+                "INSERT INTO `support_notifications` 
+                (`id`, `ticket_actions_id`, `recipient_id`, `support_ticket_id`, `notification_type_id`, 
+                `generated_by`, `permissions_id`, `permissions_owner`, `system_generated_description`, 
+                `has_taken_action`, `is_deleted`, `is_read`, `created_on`) 
+                VALUES 
+                (NULL, @ticketActionID, :notifRecipientFrom, :supportTicketForNotifFrom, 6, 
+                :notifCreatorFrom, :permissionIDFrom, :permissionsOwnerFrom, :sysGenEXTERNALFrom, 
+                '0', '0', '0', now());"
+         )
+
+         // Send Notification if Chosen agent is not my agent
+         .($chosen_agent_sup == null || $processorID == $chosen_agent_sup ? "" : 
+         "INSERT INTO `support_notifications` 
+         (`id`, `ticket_actions_id`, `recipient_id`, `support_ticket_id`, `notification_type_id`, 
+         `generated_by`, `permissions_id`, `permissions_owner`, `system_generated_description`, 
+         `has_taken_action`, `is_deleted`, `is_read`, `created_on`) 
+         VALUES 
+         (NULL, @ticketActionID, :notifRecipientChosen, :supportTicketForNotifChosen, 6, 
+         :notifCreatorChosen, :permissionIDChosen, :permissionsOwnerChosen, :sysGenEXTERNALChosen, 
+         '0', '0', '0', now());"
+        )
+
+        ."COMMIT;";
 
         $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent.". TRANSFERRED TO AGENT #".$chosen_agent;
 
@@ -2416,6 +2461,15 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
                 $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent.". TRANSFERRED TO SUP #".$chosen_agent;
             }
         }
+
+        $sysGenEXTERNAL = "SUP #".$processorID." PERFORMED AN EXTERNAL TRANSFER FOR AGENT #".$from_agent.". TRANSFERRED TO AGENT #".$chosen_agent;
+
+        $sysGenEXTERNALFrom = ($transferToSup == 2 && $from_agent_sup != $processorID) ? $sysGenEXTERNAL : $sysGen;
+        $sysGenEXTERNALChosen = ($transferToSup == 2 && $chosen_agent_sup != $processorID) ? $sysGenEXTERNAL : $sysGen;
+
+        $permissionsIDFrom = ($transferToSup == 2 ) ? 1 : 3;
+        $permissionsIDChosen = ($transferToSup == 2) ? 1 : 3;
+        
 
         $result = "";
 
@@ -2433,6 +2487,36 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
             $stmt->bindparam(':transferReasonID', $transfer_reason_id);
             $stmt->bindparam(':sysgen', $sysGen);
             $stmt->bindparam(':supportTicketID3', $support_ticket_ID);
+
+             // Send Notification to Manager on an External Transfer
+            if($externalTransfer == true && $processor_supID != null){
+                $stmt->bindparam(':notifRecipient', $processor_supID);
+                $stmt->bindparam(':supportTicketForNotif', $support_ticket_ID);
+                $stmt->bindparam(':notifCreator', $processorID);
+                $stmt->bindparam(':permissionsOwner', $processorID);
+                $stmt->bindparam(':sysGenEXTERNAL', $sysGenEXTERNAL);
+            }
+
+             // Send Notification if From agent is not my agent
+            if($from_agent_sup != null && $from_agent_sup != $processorID){
+                $stmt->bindparam(':notifRecipientFrom', $from_agent_sup);
+                $stmt->bindparam(':supportTicketForNotifFrom', $support_ticket_ID);
+                $stmt->bindparam(':notifCreatorFrom', $processorID);
+                $stmt->bindparam(':permissionIDFrom', $permissionsIDFrom);
+                $stmt->bindparam(':permissionsOwnerFrom', $processorID);
+                $stmt->bindparam(':sysGenEXTERNALFrom', $sysGenEXTERNALFrom);
+            }
+
+            // Send Notification if Chosen agent is not my agent
+            if($chosen_agent_sup != null && $chosen_agent_sup != $processorID){
+                $stmt->bindparam(':notifRecipientChosen', $chosen_agent_sup);
+                $stmt->bindparam(':supportTicketForNotifChosen', $support_ticket_ID);
+                $stmt->bindparam(':notifCreatorChosen', $processorID);
+                $stmt->bindparam(':permissionIDChosen', $permissionsIDChosen);
+                $stmt->bindparam(':permissionsOwnerChosen', $processorID);
+                $stmt->bindparam(':sysGenEXTERNALChosen', $sysGenEXTERNALChosen);
+            }
+
             $result = $stmt->execute();
         }
 

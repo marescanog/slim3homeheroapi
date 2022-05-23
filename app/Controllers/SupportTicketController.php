@@ -2096,7 +2096,7 @@ if(count($sysgen_end_reason) != 0){
         // Check if data is found
         if($chosen_agent_info['data'] == false){
             // return $this->customResponse->is500Response($response,$chosen_agent_info['data']);
-            return $this->customResponse->is404Response($response,$this->generateServerResponse(404, "An error occured while processing your request. The notification cannot be found. Please resfresh the browser and try again."));
+            return $this->customResponse->is404Response($response,$this->generateServerResponse(404, "An error occured while processing your request. Employee ID entered is invalid and does not match any records. Please enter a valid employee ID."));
         }
 // Variables Group 4
 // Get chosen agent role, chosen agent supervisor, chosen agent status, chosen agent is deleted
@@ -2215,11 +2215,19 @@ if(count($sysgen_end_reason) != 0){
             $notif_creator_ID,      // from agent (request creator)
             $transfer_reason_ID,     // transfer reason
             $processor_ID,         // processorsID
-            $is_chosen_agent_a_supervisor      // Transfer to supervisor
+            $is_chosen_agent_a_supervisor,      // Transfer to supervisor
+            false,                    // is it an external transfer
+            null,           // the processors manager (sup)
+            $from_agent_sup,         // the supervisor of the from agent
+            $chosen_agent_sup         // the supervisor of the chosen agent
         );
-        $resData['sql'] = $resObj_transfer['data'];
-
-
+        // $resData['sql'] = $resObj_transfer['data'];
+        // Check for query error
+        if(!isset($resObj_transfer) || $resObj_transfer['success'] == null || $resObj_transfer['success'] == false){
+            // return $this->customResponse->is500Response($response,$resObj_transfer);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        } 
+        $resData['message'] = "Ticket Transfer Successful!";
     }else{
 // // ---------------------------------------------------------------
 // //      EXTERNAL TRANSFER
@@ -2243,9 +2251,33 @@ if(count($sysgen_end_reason) != 0){
         }
         $manager_approval_code = CustomRequestHandler::getParam($request,"manager_approval_code");
         // ================================== Validation of the manager approval code
-        // Check if approval code is correct by pulling it up in the DB
-        // permission type && this supervisor's user ID 
-
+        // Check if approval code is correct 
+            // Validate Override Code 
+            $validateRes = $this->validate_override_code($manager_approval_code , $processor_ID, 1, $suport_ticket_ID);
+            if($validateRes['success'] != 200){
+                return $this->return_server_response($response,$validateRes['error'],$validateRes['success']);
+            }
+        // Process Transfer
+        $resObj_transfer = $this->supportTicket->processTransferRequest(
+            $notif_ID,          // notification ID
+            $suport_ticket_ID,  // support ticket ID
+            $transfer_to_agent_id,  // chosen agent (transfer to)
+            $notif_creator_ID,      // from agent (request creator)
+            $transfer_reason_ID,     // transfer reason
+            $processor_ID,         // processorsID
+            $is_chosen_agent_a_supervisor,      // Transfer to supervisor
+            true,                    // is it an external transfer
+            $processor_supID,           // the processors manager (sup)
+            $from_agent_sup,         // the supervisor of the from agent
+            $chosen_agent_sup         // the supervisor of the chosen agent
+        );
+        // $resData['sql'] = $resObj_transfer['data'];
+        // Check for query error
+        if(!isset($resObj_transfer) || $resObj_transfer['success'] == null || $resObj_transfer['success'] == false){
+            return $this->customResponse->is500Response($response,$resObj_transfer['data']);
+            // return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        } 
+        $resData['message'] = "Ticket Transfer Successful!";
     }
 
 
