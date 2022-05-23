@@ -53,6 +53,10 @@ $app->group("/ticket",function() use ($app){
     $app->post("/decline-transfer/{notifID}","SupportTicketController:declineTransfer");
 
 
+    $app->post("/toggle-read-notif/{notifID}","SupportTicketController:toggleReadNotif");
+
+
+
 
 
    

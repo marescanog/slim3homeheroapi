@@ -2614,11 +2614,69 @@ public function declineTransferRequest($notification_ID, $supportTicket_ID, $com
         }}
 
 
+// =======================================================================
+
+  public function toggleReadNotif($notif_ID)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $current = "";
+            $result = "";
+            $is_read = null;
 
 
+            // get current 
+            $sqlCurrent = "SELECT sn.is_read FROM support_notifications sn WHERE sn.id = :notifID;";
 
+                // Prepare statement
+                $stmtCurrent =  $conn->prepare($sqlCurrent); 
 
+                // Only fetch if prepare succeeded
+                if ($stmtCurrent !== false) {
+                    $stmtCurrent->bindparam(':notifID', $notif_ID);
+                    $stmtCurrent->execute();
+                    $current  = $stmtCurrent->fetch(\PDO::FETCH_ASSOC);
+                }
 
+                if( $current  != false){
+                    $is_read = $current['is_read'];
+                }
+
+                $newVal = $is_read == 0 ? 1 : 0;
+
+            // // save reverse
+            $sql = "UPDATE support_notifications sn SET sn.is_read = :newVal WHERE sn.id = :notificationID;";
+
+                // Prepare statement
+                $stmt =  $conn->prepare($sql); 
+        
+                // Only fetch if prepare succeeded
+                if ($stmt !== false) {
+                    $stmt->bindparam(':notificationID', $notif_ID);
+                    $stmt->bindparam(':newVal', $newVal);
+                    $result = $stmt->execute();
+                }
+        
+            $conn=null;
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
 
 
 

@@ -2034,6 +2034,7 @@ $permissions_owner_ID = $notification_data != null ? $notification_data['permiss
 $has_taken_action_on_notification = $notification_data != null ? $notification_data['has_taken_action'] : null;
 $has_notification_been_deleted = $notification_data != null ? $notification_data['is_deleted'] : null;
 $notification_sysgen = $notification_data != null ? $notification_data['system_generated_description'] : null;
+$notif_recipient_ID = $notification_data != null ? $notification_data['recipient_id'] : null;
 // // For Debugging purposes
 // //  $resData["notificationObj"] = $notificationObj['data'];
 // $resData["notification_data"] = $notification_data;
@@ -2164,6 +2165,10 @@ if(count($sysgen_end_reason) != 0){
 // ---------------------------------------------------------------
 // Supervisor can reassign the ticket to a different agent on the Requester's team
 // Or on the same team the supervisor is handling
+// is this the same notification recipient ?
+if($notif_recipient_ID != $processor_ID){
+    return $this->customResponse->is401Response($response,"Token Expired! Please log into your account and try again!");
+}
 // Has the notification already been processed ?
     if($has_taken_action_on_notification != 0){
         return $this->customResponse->is400Response($response,"Bad Request: This notification has already been processed.");
@@ -2398,6 +2403,7 @@ $permissions_owner_ID = $notification_data != null ? $notification_data['permiss
 $has_taken_action_on_notification = $notification_data != null ? $notification_data['has_taken_action'] : null;
 $has_notification_been_deleted = $notification_data != null ? $notification_data['is_deleted'] : null;
 $notification_sysgen = $notification_data != null ? $notification_data['system_generated_description'] : null;
+$notif_recipient_ID = $notification_data != null ? $notification_data['recipient_id'] : null;
 // // For Debugging purposes
 // //  $resData["notificationObj"] = $notificationObj['data'];
 // $resData["notification_data"] = $notification_data;
@@ -2458,6 +2464,10 @@ if(count($sysgen_end_reason) != 0){
     if($has_notification_been_deleted != 0){
         return $this->customResponse->is400Response($response,"Bad Request: This notification has already been deleted.");
     }
+    // is this the same notification recipient ?
+    if($notif_recipient_ID != $processor_ID){
+        return $this->customResponse->is401Response($response,"Token Expired! Please log into your account and try again!");
+    }
     // Proceed
         $resObj_decline = $this->supportTicket->declineTransferRequest(
             $notif_ID,           // notifID
@@ -2480,7 +2490,174 @@ if(count($sysgen_end_reason) != 0){
 
 
 
+// Agents applicable for transfer are this sup's agents plus the agents of the person who sent the notification
+public function toggleReadNotif(Request $request,Response $response, array $args)
+{
+    $resData = [];
+    // -----------------------------------
+    // Get Necessary variables and params
+    // -----------------------------------
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+        // Get ticket parameter for ticket information
+        $notif_ID = $args['notifID'];
+    
+        // Get Agent Email for validation
+        $this->validator->validate($request,[
+            // Check if empty
+            "email"=>v::notEmpty()
+        ]);
+            // Returns a response when validator detects a rule breach
+            if($this->validator->failed())
+            {
+                $responseMessage = $this->validator->errors;
+                return $this->customResponse->is400Response($response,$responseMessage);
+            }
+    
+        // Store Params
+        $email = CustomRequestHandler::getParam($request,"email");
+    
+    // -----------------------------------
+    // Get Ticket Processer's Information (Request Sender)
+    // -----------------------------------
+            // Get processor's ID with email
+            $account = $this->supportAgent->getSupportAccount($email);
+            // Check for query error
+            if($account['success'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            // Check if email is valid by seeing if account is found
+            if($account['data'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+            }
+    // Variables Group 1
+    // Get processor's account, role, & sup ID
+        $processor_ID = $account['data']['id'];
+        $processor_role = $account['data']['role_type'];
+        $processor_supID = $account['data']['supervisor_id'];
+    
+    // -----------------------------------
+    // Validation 1 - Check role of processor (request sender)
+            // If the request sender is not a supervisor, manager or admin, deny request
+            if($processor_role < 4){
+                 // return $this->customResponse->is500Response($response,$account['data']);
+                 return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "Unauthorized Access: Please sign into an authorized account to process this request."));
+            }
+    
+    // -----------------------------------
+    // Auth SENDERS Information (JWT AUTH)
+    // -----------------------------------
+            $auth_agent_result = $this->authenticate_agent($bearer_token, $processor_ID);
+            if($auth_agent_result['success'] != 200){
+                return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+            }
+    
+    // -----------------------------------
+    // Get Notification Details using the notification ID
+    // -----------------------------------
+            $notificationObj = $this->supportTicket->getNotificationUsingNotificationID($notif_ID);
+            // Check for query error
+            if($notificationObj['success'] == false){
+                // return $this->customResponse->is500Response($response,$notificationObj['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            } 
+            // Check if data is found
+            if($notificationObj['data'] == false){
+                // return $this->customResponse->is500Response($response,$notificationObj['data']);
+                return $this->customResponse->is404Response($response,$this->generateServerResponse(404, "An error occured while processing your request. The notification cannot be found. Please resfresh the browser and try again."));
+            }
+    // Variables Group 2
+    // Get Support Ticket ID, Ticket Actions ID, notifications Type, 
+    // permissions ID, permissions owner, is read
+    $notification_data = $notificationObj['data'];
+    $notif_creator_ID = $notification_data != null ? $notification_data['generated_by'] : null; // should be the same as the assigned agent in the ticket (if transfer request, but if override request should be different)
+    $suport_ticket_ID = $notification_data != null ? $notification_data['support_ticket_id'] : null;
+    $ticket_actions_ID = $notification_data != null ? $notification_data['ticket_actions_id'] : null;
+    $notification_type_ID = $notification_data != null ? $notification_data['notification_type_id'] : null;
+    $permissions_ID = $notification_data != null ? $notification_data['permissions_id'] : null;
+    $permissions_owner_ID = $notification_data != null ? $notification_data['permissions_owner'] : null;
+    $has_taken_action_on_notification = $notification_data != null ? $notification_data['has_taken_action'] : null;
+    $has_notification_been_deleted = $notification_data != null ? $notification_data['is_deleted'] : null;
+    $notification_sysgen = $notification_data != null ? $notification_data['system_generated_description'] : null;
+    $notif_recipient_ID = $notification_data != null ? $notification_data['recipient_id'] : null;
+    // // For Debugging purposes
+    // //  $resData["notificationObj"] = $notificationObj['data'];
+    // $resData["notification_data"] = $notification_data;
+    // $resData["suport_ticket_ID"] = $suport_ticket_ID;
+    // $resData["ticket_actions_ID"] = $ticket_actions_ID;
+    // $resData["notification_type_ID"] = $notification_type_ID;
+    // $resData["permissions_ID"] = $permissions_ID;
+    // $resData["permissions_owner_ID"] = $permissions_owner_ID;
+    // $resData["has_taken_action_on_notification"] = $has_taken_action_on_notification;
+    // $resData["has_notification_been_deleted"] = $has_notification_been_deleted;
+    // $resData["notification_sysgen"] = $notification_sysgen;
+    
+    // GET TRANSFER REASON FROM SYSGEN
+    $transfer_reason_ID = null;
+    $sysgen_end_reason = explode(" REASON-R", $notification_sysgen);
+    if(count($sysgen_end_reason) != 0){
+        $transfer_reason_ID_arr = explode(" ", $sysgen_end_reason[1]);
+        if(count($transfer_reason_ID_arr) != 0){
+            $transfer_reason_ID = $transfer_reason_ID_arr[0];
+        }
+    }
+    // $resData["transfer_ID"] = $transfer_reason_ID;
+    //  Note permissions_ID & permissions_owner_ID can be used to pull the override code data
+    
+    // -----------------------------------
+    // Validate Ticket
+    // -----------------------------------
+            // Does several checks, valid ID, valid status, if found etc.
+            $validate_ticket_result = $this->validate_ticket($suport_ticket_ID,2,$processor_ID,$processor_role,null);
+            if($validate_ticket_result['success'] != 200){
+                return $this->return_server_response($response,$validate_ticket_result['error'],$validate_ticket_result['success']);
+            }
+    // Variables Group 3
+    // Get Support Ticket base info, support ticket agent, support ticket role needed
+            $support_ticket_base_info = $validate_ticket_result['data']['data'];
+            $is_processor_the_ticket_owner = $validate_ticket_result['is_owner'];
+            $is_processor_authorized = $validate_ticket_result['authorized']; // authorized to work on ticket
+            $support_ticket_agent =  $support_ticket_base_info['assigned_agent'];
+            $support_ticket_issue_ID = $support_ticket_base_info['issue_id'];
+            $role_needed = $this->roleSubTypes[$support_ticket_issue_ID];
+    // // For Debugging purposes
+    // // $resData["validate_ticket_result"] = $validate_ticket_result;
+    // $resData["support_ticket_base_info"] = $support_ticket_base_info;
+    // $resData["is_processor_the_ticket_owner"] = $is_processor_the_ticket_owner;
+    // $resData["is_processor_authorized"] = $is_processor_authorized;
+    // $resData["support_ticket_agent"] = $support_ticket_agent; // should be same as notification creator (if transfer request, but if override request should be different)
+    // $resData["support_ticket_issue_ID"] = $support_ticket_issue_ID;
+    // $resData["role_needed"] = $role_needed;
+    
+    // -----------------------------------
+    // Process Transfer Decline
+    // -----------------------------------
+        // Has the notification already been processed ?
+        if($has_taken_action_on_notification != 0){
+            return $this->customResponse->is400Response($response,"Bad Request: This notification has already been processed.");
+        }
+        // Has the notification already been deleted ?
+        if($has_notification_been_deleted != 0){
+            return $this->customResponse->is400Response($response,"Bad Request: This notification has already been deleted.");
+        }
+        // is this the same notification recipient ?
+        if($notif_recipient_ID != $processor_ID){
+            return $this->customResponse->is401Response($response,"Token Expired! Please log into your account and try again!");
+        }
+        // Proceed
+            $toggleObj_notif = $this->supportTicket->toggleReadNotif($notif_ID);
+            // Check for query error
+            // if(!isset( $toggleObj_notif) ||  $toggleObj_notif['success'] == null ||  $toggleObj_notif['success'] == false){
+            //     // return $this->customResponse->is500Response($response, $toggleObj_notif['data']);
+            //     return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            // } 
+            $resData['toggle_read'] = $toggleObj_notif['data'];
+            $resData['message'] = "Succesfully toggled read!";
 
+    return $this->return_server_response($response,"This route works",200,$resData); 
+}
 
 
 
