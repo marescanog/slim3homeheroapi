@@ -2439,7 +2439,9 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
          )
 
          // Send Notification if Chosen agent is not my agent
-         .($chosen_agent_sup == null || $processorID == $chosen_agent_sup ? "" : 
+         // No need to send another notification if From agent Sup is the same as Chosen agent Sup
+         // No need to send a notification to my sup (manager) if I am transfering the ticket to myself since external will always be flagged
+         .(($chosen_agent_sup == null || $processorID == $chosen_agent_sup ) || ($from_agent_sup == $chosen_agent_sup) || ($chosen_agent == $processor_supID) ?  "" : 
          "INSERT INTO `support_notifications` 
          (`id`, `ticket_actions_id`, `recipient_id`, `support_ticket_id`, `notification_type_id`, 
          `generated_by`, `permissions_id`, `permissions_owner`, `system_generated_description`, 
@@ -2452,17 +2454,17 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
 
         ."COMMIT;";
 
-        $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent.". TRANSFERRED TO AGENT #".$chosen_agent;
+        $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent." ON TICKET #".$support_ticket_ID.". TRANSFERRED TO AGENT #".$chosen_agent;
 
         if($transferToSup == 2){
             if($processorID == $chosen_agent){
-                $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent." TRANSFERRED TO SELF.";
+                $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent." ON TICKET #".$support_ticket_ID.". TRANSFERRED TO SELF.";
             } else {
-                $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent.". TRANSFERRED TO SUP #".$chosen_agent;
+                $sysGen = "SUP #".$processorID." ACCEPTED TRANSFER REQUEST OF AGENT #".$from_agent." ON TICKET #".$support_ticket_ID.". TRANSFERRED TO SUP #".$chosen_agent;
             }
         }
 
-        $sysGenEXTERNAL = "SUP #".$processorID." PERFORMED AN EXTERNAL TRANSFER FOR AGENT #".$from_agent.". TRANSFERRED TO AGENT #".$chosen_agent;
+        $sysGenEXTERNAL = "SUP #".$processorID." PERFORMED AN EXTERNAL TRANSFER FOR AGENT #".$from_agent." ON TICKET #".$support_ticket_ID.". TRANSFERRED TO AGENT #".$chosen_agent;
 
         $sysGenEXTERNALFrom = ($transferToSup == 2 && $from_agent_sup != $processorID) ? $sysGenEXTERNAL : $sysGen;
         $sysGenEXTERNALChosen = ($transferToSup == 2 && $chosen_agent_sup != $processorID) ? $sysGenEXTERNAL : $sysGen;
@@ -2508,7 +2510,9 @@ public function getAllAgentsUnderARole($role, $status = 2, $hasEmail = true, $ha
             }
 
             // Send Notification if Chosen agent is not my agent
-            if($chosen_agent_sup != null && $chosen_agent_sup != $processorID){
+            // No need to send another notification if from agent sup is the same as chosen agent sup 
+            // No need to send a notification to my sup (manager) if I am transfering the ticket to myself since external will always be flagged
+            if($chosen_agent_sup != null && $chosen_agent_sup != $processorID && ($from_agent_sup != $chosen_agent_sup) && ($chosen_agent != $processor_supID)){
                 $stmt->bindparam(':notifRecipientChosen', $chosen_agent_sup);
                 $stmt->bindparam(':supportTicketForNotifChosen', $support_ticket_ID);
                 $stmt->bindparam(':notifCreatorChosen', $processorID);
