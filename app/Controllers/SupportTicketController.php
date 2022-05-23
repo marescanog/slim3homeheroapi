@@ -2705,7 +2705,7 @@ public function notifyManager(Request $request,Response $response, array $args)
             // Check if email is valid by seeing if account is found
             if($account['data'] == false){
                 // return $this->customResponse->is500Response($response,$account['data']);
-                return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+                return $this->customResponse->is401Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
             }
     // Variables Group 1
     // Get processor's account, role, & sup ID
@@ -2718,7 +2718,7 @@ public function notifyManager(Request $request,Response $response, array $args)
             // If the request sender is not a supervisor, manager or admin, deny request
             if($processor_role < 4){
                  // return $this->customResponse->is500Response($response,$account['data']);
-                 return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "Unauthorized Access: Please sign into an authorized account to process this request."));
+                 return $this->customResponse->is401Response($response,$this->generateServerResponse(401, "Unauthorized Access: Please sign into an authorized account to process this request."));
             }
     
     // -----------------------------------
@@ -2729,7 +2729,7 @@ public function notifyManager(Request $request,Response $response, array $args)
                 return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
             }
             if($processor_supID == null){
-                return $this->customResponse->is404Response($response,$this->generateServerResponse(401, "You are not currently assigned with a manager"));
+                return $this->customResponse->is400Response($response,$this->generateServerResponse(400, "You are not currently assigned with a manager"));
             }
     // -----------------------------------
     // Check last Notify
