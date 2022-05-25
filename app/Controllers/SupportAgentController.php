@@ -88,6 +88,7 @@ class SupportAgentController
         // Get user account by ID
         $userID = $account['data']['id'];
         $role = $account['data']['role_type'];
+        $sup = $account['data']['supervisor_id'];
 
         // Get the bearer token from the Auth header
         $bearer_token = JSON_encode($request->getHeader("Authorization"));
@@ -127,14 +128,31 @@ class SupportAgentController
             // return $this->customResponse->is500Response($response,$resolvedTickets['data']);
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
         }
-                
+
         // Anouncements
-        // TBD
+        $anouncements = [];
+        switch($role){
+            case 7:
+                $anouncementRes = $this->supportAgent->getAnouncements($role, null);
+                break;
+            case 4:
+                $anouncementRes = $this->supportAgent->getAnouncements($role,  $userID);
+                break;
+            default:
+                $anouncementRes = $this->supportAgent->getAnouncements($role,   $sup);
+                break;
+        }
+        // Check for query error
+        if($anouncementRes['success'] == false){
+            // return $this->customResponse->is500Response($response,$anouncementRes['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
 
         $resData['new_total'] = $newTickets["data"]["0"]["0"];
         $resData['ongoing_total'] = $ongoingTickets["data"]["0"]["COUNT(*)"];
         $resData['resolved_total'] = $resolvedTickets["data"]["0"]["COUNT(*)"];
-        // $resData['anouncements'] = [];
+        $resData['anouncements'] = $anouncementRes['data'];
 
         // 
         // return $this->customResponse->is200Response($response, $newTickets);
@@ -142,6 +160,15 @@ class SupportAgentController
         // return $this->customResponse->is200Response($response, $resolvedTickets);
         return $this->customResponse->is200Response($response,  $resData);
     }
+
+
+
+
+
+
+
+
+
 
     public function getMyTickets(Request $request,Response $response){
         // Get the auth header and userID to get users tickets
