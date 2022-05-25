@@ -573,8 +573,61 @@ class Support
                     }}
 
 
+// ==========================================
+//  May 25, 2022
+public function saveAnouncement($userID,$teamRestrict=null,$roleRestrict=null,$title,$details,$alwaysShow=0)
+{
+    try {
 
+        $db = new DB();
+        $conn = $db->connect();
 
+        $result = "";
+        
+        $sql ="INSERT INTO `anouncements` 
+        (`id`, `author_id`, `team_restriction`, `role_restriction`, `title`, 
+        `details`, `show_always`, `is_deleted`, `created_on`, `updated_on`) 
+        VALUES (NULL, :userID, "
+        .($teamRestrict==null?"NULL":" :teamID")
+        ."," 
+        .($roleRestrict==null?"NULL ":" :roleID ")
+        .", :title, :content, :showAlways, '0', now(), now());";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID);
+            if($teamRestrict!=null){
+                $stmt->bindparam(':teamID', $teamRestrict);
+            }
+            if($roleRestrict!=null){
+                $stmt->bindparam(':roleID', $roleRestrict);
+            }
+            $stmt->bindparam(':title', $title);
+            $stmt->bindparam(':content', $details);
+            $stmt->bindparam(':showAlways', $alwaysShow);
+            $result = $stmt->execute();
+        }
+
+        $stmt = null;
+        $db = null;
+        $conn = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+    }}
 
 
 

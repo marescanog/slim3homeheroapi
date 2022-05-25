@@ -733,9 +733,129 @@ public function getTeamDetails(Request $request,Response $response){
 
 
 
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// May 24, 2020
+
+public function addAnouncement(Request $request,Response $response){
+    // -----------------------------------
+    // Get Necessary variables and params
+    // -----------------------------------
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Get Agent Email for validation
+        $this->validator->validate($request,[
+            // Check if empty
+            "email"=>v::notEmpty(),
+            "title"=>v::notEmpty(),
+            "content"=>v::notEmpty()
+        ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    $title = CustomRequestHandler::getParam($request,"title");
+    $content = CustomRequestHandler::getParam($request,"content"); 
+
+    // -----------------------------------
+    // Get Account Holder's Information (Request Sender)
+    // -----------------------------------
+            // Get processor's ID with email
+            $account = $this->supportAgent->getSupportAccount($email);
+            // Check for query error
+            if($account['success'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            // Check if email is valid by seeing if account is found
+            if($account['data'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is401Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+            }
+    // Variables Group 1
+    // Get user's account, role, & sup ID
+        $user_ID = $account['data']['id'];
+        $user_role = $account['data']['role_type'];
+        $user_supID = $account['data']['supervisor_id'];
+     
+    // -----------------------------------
+    // Auth SENDERS Information (JWT AUTH)
+    // -----------------------------------
+
+            $auth_agent_result = $this->authenticate_agent($bearer_token, $user_ID );
+            if($auth_agent_result['success'] != 200){
+                return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+            }
+
+    // -----------------------------------
+    // Save anouncement based on role
+    // -----------------------------------
+        // Check if correct role
+        if( $user_role != 4 && $user_role != 7  ){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is401Response($response,"Unauthorized Access: Only HomeHero Admin & Supervisor Staff is allowed to make anouncements.");
+        }
+
+        // Default
+        $team_restrict = null;
+        $always_show  = 0;
+
+        // only managers post always show
+        if($user_role == 7){
+            $always_show  = 1;
+            $team_restrict  = CustomRequestHandler::getParam($request,"team_restrict");
+            $team_restrict  = ( $team_restrict == null ||  $team_restrict == "") ? null : $team_restrict ;
+        } else {
+            // supervisors posting an anouncement will always be restricted to their teams
+            $team_restrict  = $user_ID;
+            $always_show = 0;
+        }
+        // Role restrict is optional for both mamangers and admin
+        $role_restrict = CustomRequestHandler::getParam($request,"role_restrict"); 
+        $role_restrict = ( $role_restrict == null ||  $role_restrict == "") ? null : $role_restrict;
+        if( $role_restrict != null || $team_restrict != null){
+            $always_show  = 0;
+        }
+        if( $role_restrict != null  && ($role_restrict > 7 || $role_restrict < 1)){
+            return $this->customResponse->is401Response($response,"Bad Request: Invalid Role Entered.");
+        }
+
+        // Save anouncements            ////$title  $content $role_restrict
+        // -> to consider if there is a file attachment
+            $saveAnounRes= $this->supportAgent->saveAnouncement(
+                $user_ID,                // creator ID
+                $team_restrict,     // team restriction sup id
+                $role_restrict,     // role restrictions role id
+                $title,                 // anouncement title
+                $content,               // anounement details
+                $always_show           // always show
+            );
+            // Check for query error
+            if($saveAnounRes['success'] == false){
+                // return $this->customResponse->is500Response($response,$saveAnounRes['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
 
 
+    $resData = [];
+    // $resData["user_ID"] = $user_ID;
+    // $resData["team_restrict"] = $team_restrict;
+    // $resData["role_restrict"] = $role_restrict;
+    // $resData["title"] = $title;
+    // $resData["content"] = $content;
+    // $resData["always_show"] =  $always_show;
+    $resData["has_saved"] = $saveAnounRes['data'];
+    $resData["message"] = "Anouncement was successfully saved";
 
+    // $resData['myRole'] = $user_role;
+    return $this->return_server_response($response,"This route works",200,$resData); 
+}
 
 
 

@@ -9,4 +9,5 @@ $app->group("/support",function() use ($app){
     $app->post("/get-sup-reason","SupportAgentController:getSupReason");
     $app->post("/get-account-details","SupportAgentController:getAccountDetails");
     $app->post("/get-team-details","SupportAgentController:getTeamDetails");
+    $app->post("/add-anouncement","SupportAgentController:addAnouncement");
 });
