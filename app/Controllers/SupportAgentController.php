@@ -153,6 +153,7 @@ class SupportAgentController
         $resData['ongoing_total'] = $ongoingTickets["data"]["0"]["COUNT(*)"];
         $resData['resolved_total'] = $resolvedTickets["data"]["0"]["COUNT(*)"];
         $resData['anouncements'] = $anouncementRes['data'];
+        $resData['dede'] = $userID;
 
         // 
         // return $this->customResponse->is200Response($response, $newTickets);

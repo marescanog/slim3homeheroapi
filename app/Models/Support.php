@@ -630,6 +630,133 @@ public function saveAnouncement($userID,$teamRestrict=null,$roleRestrict=null,$t
     }}
 
 
+    public function getAnouncements($role_id, $teamID=null)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "";
+
+            $manager = "select DISTINCT m.id, m.author_id, m.team_restriction, m.title, m.details, m.show_always, m.is_deleted, m.created_on, m.updated_on, 
+            hh.first_name, hh.last_name, CONCAT(hh.last_name,', ',hh.first_name) as author_full_name
+          from (
+            SELECT * FROM anouncements a WHERE a.show_always = 1 and a.is_deleted = 0
+            union all
+            SELECT * FROM anouncements a WHERE a.show_always = 0 and a.is_deleted = 0
+          ) m 
+          LEFT JOIN hh_user hh ON m.author_id = hh.user_id
+          ORDER BY m.show_always DESC, m.updated_on DESC";
+
+            $supervisor = "select DISTINCT m.id, m.author_id, m.team_restriction, m.title, m.details, m.show_always, m.is_deleted, m.created_on, m.updated_on, 
+            hh.first_name, hh.last_name, CONCAT(hh.last_name,', ',hh.first_name) as author_full_name
+from (SELECT * FROM anouncements a WHERE a.show_always = 1 and a.is_deleted = 0
+                union all
+               (SELECT * FROM anouncements a  WHERE 
+              (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction = :teamID AND a.role_restriction IS NULL) OR
+              (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction IS NULL AND a.role_restriction IS NOT NULL) OR
+              (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction = :teamID2 AND a.role_restriction IS NOT NULL))
+              ) m
+ LEFT JOIN hh_user hh ON m.author_id = hh.user_id
+ ORDER BY m.show_always DESC, m.updated_on DESC";
+
+            $agent = "select  DISTINCT m.id, m.author_id, m.team_restriction, m.title, m.details, m.show_always, m.is_deleted, m.created_on, m.updated_on, 
+            hh.first_name, hh.last_name, CONCAT(hh.last_name,', ',hh.first_name) as author_full_name 
+from (
+                SELECT * FROM anouncements a WHERE a.show_always = 1 and a.is_deleted = 0
+                union all
+               (SELECT * FROM anouncements a WHERE 
+                (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction = :teamID AND a.role_restriction IS NULL) OR
+                (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction IS NULL AND a.role_restriction = :roleID) OR
+                (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction = :teamID2 AND a.role_restriction = :roleID2))
+              ) m 
+               LEFT JOIN hh_user hh ON m.author_id = hh.user_id
+              ORDER BY m.show_always DESC, m.updated_on DESC";
+
+
+              switch($role_id){
+                case 7:
+                    $sql =  $manager;
+                    break;
+                case 4:
+                    $sql =  $supervisor;
+                    break;
+                default:
+                    $sql =  $agent;
+                    break;
+              }
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            switch($role_id){
+                case 7:
+                    // No binded parameters
+                    break;
+                case 4:
+                    $stmt->bindparam(':teamID', $teamID);
+                    $stmt->bindparam(':teamID2', $teamID);
+                    break;
+                default:
+                    $stmt->bindparam(':teamID', $teamID);
+                    $stmt->bindparam(':teamID2', $teamID);
+                    $stmt->bindparam(':roleID', $role_id);
+                    $stmt->bindparam(':roleID2', $role_id);
+                    break;
+              }
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt = null;
+        $db = null;
+        $conn = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
