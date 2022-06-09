@@ -731,6 +731,99 @@ from (
 
 
 
+    public function get_single_anouncement($aid)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "SELECT * FROM `anouncements` WHERE  id = :aid";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':aid', $aid);
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+            $conn = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
+
+
+    public function delete_single_anouncement($aid)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "UPDATE `anouncements` a
+            SET a.is_deleted = 1,
+            a.updated_on = now()
+            WHERE a.id = :aid;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':aid', $aid);
+                $result = $stmt->execute();
+            }
+
+            $stmt = null;
+            $db = null;
+            $conn = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

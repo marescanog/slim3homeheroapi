@@ -886,6 +886,207 @@ public function addAnouncement(Request $request,Response $response){
 }
 
 
+// -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// June 6, 2020
+
+public function deleteAnouncement(Request $request,Response $response, array $args){
+    // -----------------------------------
+    // Get Necessary variables and params
+    // -----------------------------------
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        $a_id = $args['aid'];
+
+        // Get Agent Email for validation
+        $this->validator->validate($request,[
+            // Check if empty
+            "email"=>v::notEmpty(),
+        ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        // Store Params
+        $email = CustomRequestHandler::getParam($request,"email");
+
+    // -----------------------------------
+    // Get Account Holder's Information (Request Sender)
+    // -----------------------------------
+            // Get processor's ID with email
+            $account = $this->supportAgent->getSupportAccount($email);
+            // Check for query error
+            if($account['success'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            // Check if email is valid by seeing if account is found
+            if($account['data'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is401Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+            }
+    // Variables Group 1
+    // Get user's account, role, & sup ID
+        $user_ID = $account['data']['id'];
+        $user_role = $account['data']['role_type'];
+        $user_supID = $account['data']['supervisor_id'];
+     
+    // -----------------------------------
+    // Auth SENDERS Information (JWT AUTH)
+    // -----------------------------------
+
+        $auth_agent_result = $this->authenticate_agent($bearer_token, $user_ID );
+        if($auth_agent_result['success'] != 200){
+            return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+        }
+
+    // -----------------------------------
+    // Verify role
+    // -----------------------------------
+        // Check if correct role
+        if( $user_role != 4 && $user_role != 7  ){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is401Response($response,"Unauthorized Access: Only HomeHero Admin & Supervisor Staff is allowed to make anouncements.");
+        }
+    
+    // --------------------------------------------
+    // Check if anouncement exists before deletion
+    // --------------------------------------------
+        $announce = $this->supportAgent->get_single_anouncement($a_id);
+        // Check for query error
+        if($announce['success'] == false){
+            // return $this->customResponse->is500Response($response,$announce['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+        $announce = $announce['data'];
+        $author =  $announce['author_id'];
+        $is_deleted =  $announce['is_deleted'];
+
+    // Check if author, or if manager
+        if(!($user_role == 7 || $author == $user_ID)){
+            return $this->customResponse->is401Response($response,"Unauthorized Access: Only the author or the manager is allowed to delete this post.");
+        }
+
+    // Check if already deleted
+    if($is_deleted == 1){
+        return $this->customResponse->is400Response($response,"The anouncement was already deleted.");
+    }
+
+    // delete anouncement
+        $delete = $this->supportAgent->delete_single_anouncement($a_id);
+        // Check for query error
+        if($delete['success'] == false){
+            // return $this->customResponse->is500Response($response,$delete['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+        $resData = [];
+        $resData['is_deleted'] =$delete['data'];
+        $resData['message'] ="anouncement sucessfully deleted.";
+        // $resData['anounce'] = $announce;
+        // $resData['author_id'] = $author;
+        // $resData['bearerToken'] = $bearer_token;
+        // $resData['a_id'] = $a_id;
+        // $resData['myRole'] = $user_role;
+        return $this->return_server_response($response,"This route works",200,$resData); 
+}
+
+
+
+public function editAnouncement(Request $request,Response $response, array $args){
+    // // -----------------------------------
+    // // Get Necessary variables and params
+    // // -----------------------------------
+    //     // Get the bearer token from the Auth header
+    //     $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+    //     // Get all necessary parameters
+    //     // Add Home ID Args
+    //     $home_id = $args['aid'];
+
+    //     // Get Agent Email for validation
+    //     $this->validator->validate($request,[
+    //         // Check if empty
+    //         "email"=>v::notEmpty(),
+    //         "title"=>v::notEmpty(),
+    //         "content"=>v::notEmpty()
+    //     ]);
+    //     // Returns a response when validator detects a rule breach
+    //     if($this->validator->failed())
+    //     {
+    //         $responseMessage = $this->validator->errors;
+    //         return $this->customResponse->is400Response($response,$responseMessage);
+    //     }
+
+    // // Store Params
+    // $email = CustomRequestHandler::getParam($request,"email");
+    // $title = CustomRequestHandler::getParam($request,"title");
+    // $content = CustomRequestHandler::getParam($request,"content"); 
+
+    // // -----------------------------------
+    // // Get Account Holder's Information (Request Sender)
+    // // -----------------------------------
+    //         // Get processor's ID with email
+    //         $account = $this->supportAgent->getSupportAccount($email);
+    //         // Check for query error
+    //         if($account['success'] == false){
+    //             // return $this->customResponse->is500Response($response,$account['data']);
+    //             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    //         }
+    //         // Check if email is valid by seeing if account is found
+    //         if($account['data'] == false){
+    //             // return $this->customResponse->is500Response($response,$account['data']);
+    //             return $this->customResponse->is401Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+    //         }
+    // // Variables Group 1
+    // // Get user's account, role, & sup ID
+    //     $user_ID = $account['data']['id'];
+    //     $user_role = $account['data']['role_type'];
+    //     $user_supID = $account['data']['supervisor_id'];
+     
+    // // -----------------------------------
+    // // Auth SENDERS Information (JWT AUTH)
+    // // -----------------------------------
+
+    //         $auth_agent_result = $this->authenticate_agent($bearer_token, $user_ID );
+    //         if($auth_agent_result['success'] != 200){
+    //             return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+    //         }
+
+    // // -----------------------------------
+    // // Save anouncement based on role
+    // // -----------------------------------
+    //     // Check if correct role
+    //     if( $user_role != 4 && $user_role != 7  ){
+    //         // return $this->customResponse->is500Response($response,$account['data']);
+    //         return $this->customResponse->is401Response($response,"Unauthorized Access: Only HomeHero Admin & Supervisor Staff is allowed to make anouncements.");
+    //     }
+
+        $resData = [];
+    
+        // $resData['myRole'] = $user_role;
+        return $this->return_server_response($response,"This route works",200,$resData); 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
