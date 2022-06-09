@@ -1058,11 +1058,10 @@ public function getSingleAnouncement(Request $request,Response $response, array 
     // -----------------------------------
     // Verify role
     // -----------------------------------
-        // Check if correct role
-        if( $user_role != 4 && $user_role != 7  ){
-            // return $this->customResponse->is500Response($response,$account['data']);
-            return $this->customResponse->is401Response($response,"Unauthorized Access: Only HomeHero Admin & Supervisor Staff is allowed to make anouncements.");
-        }
+    // Check if worker or homeowner
+    // if($user_role == 1 || $user_role == 2){
+    //     return $this->customResponse->is401Response($response,"Unauthorized Access: Only support agents are able to view anouncements.");
+    // }
     
     // --------------------------------------------
     // GET ANOUNCEMENT
@@ -1074,10 +1073,7 @@ public function getSingleAnouncement(Request $request,Response $response, array 
             return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
         }
 
-    // Check if worker or homeowner
-        if($user_role == 1 || $user_role == 2){
-            return $this->customResponse->is401Response($response,"Unauthorized Access: Only support agents are able to view anouncements.");
-        }
+
 
 
     $resData = [];
