@@ -997,6 +997,102 @@ public function deleteAnouncement(Request $request,Response $response, array $ar
 
 
 
+
+
+
+public function getSingleAnouncement(Request $request,Response $response, array $args){
+    // -----------------------------------
+    // Get Necessary variables and params
+    // -----------------------------------
+        // Get the bearer token from the Auth header
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
+
+        // Add Home ID Args
+        $a_id = $args['aid'];
+
+        // Get Agent Email for validation
+        $this->validator->validate($request,[
+            // Check if empty
+            "email"=>v::notEmpty()
+        ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+
+    // -----------------------------------
+    // Get Account Holder's Information (Request Sender)
+    // -----------------------------------
+            // Get processor's ID with email
+            $account = $this->supportAgent->getSupportAccount($email);
+            // Check for query error
+            if($account['success'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            // Check if email is valid by seeing if account is found
+            if($account['data'] == false){
+                // return $this->customResponse->is500Response($response,$account['data']);
+                return $this->customResponse->is401Response($response,$this->generateServerResponse(401, "JWT - Err 2: Token & email not found. Please sign into your account."));
+            }
+    // Variables Group 1
+    // Get user's account, role, & sup ID
+        $user_ID = $account['data']['id'];
+        $user_role = $account['data']['role_type'];
+        $user_supID = $account['data']['supervisor_id'];
+     
+    // -----------------------------------
+    // Auth SENDERS Information (JWT AUTH)
+    // -----------------------------------
+
+        $auth_agent_result = $this->authenticate_agent($bearer_token, $user_ID );
+        if($auth_agent_result['success'] != 200){
+            return $this->return_server_response($response,$auth_agent_result['error'],$auth_agent_result['success']);
+        }
+
+// -----------------------------------
+    // Verify role
+    // -----------------------------------
+        // Check if correct role
+        if( $user_role != 4 && $user_role != 7  ){
+            // return $this->customResponse->is500Response($response,$account['data']);
+            return $this->customResponse->is401Response($response,"Unauthorized Access: Only HomeHero Admin & Supervisor Staff is allowed to make anouncements.");
+        }
+    
+    // --------------------------------------------
+    // GET ANOUNCEMENT
+    // --------------------------------------------
+        $announce = $this->supportAgent->get_single_anouncement($a_id);
+        // Check for query error
+        if($announce['success'] == false){
+            // return $this->customResponse->is500Response($response,$announce['data']);
+            return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+
+    // Check if worker or homeowner
+        if($user_role == 1 || $user_role == 2){
+            return $this->customResponse->is401Response($response,"Unauthorized Access: Only support agents are able to view anouncements.");
+        }
+
+
+    $resData = [];
+    $resData['anouncement'] =  $announce['data'];
+
+    // $resData['myRole'] = $user_role;
+    return $this->return_server_response($response,"This route works",200,$resData); 
+}
+
+
+
+
+
+
+
 public function editAnouncement(Request $request,Response $response, array $args){
     // // -----------------------------------
     // // Get Necessary variables and params

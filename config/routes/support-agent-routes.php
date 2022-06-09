@@ -11,5 +11,6 @@ $app->group("/support",function() use ($app){
     $app->post("/get-team-details","SupportAgentController:getTeamDetails");
     $app->post("/add-anouncement","SupportAgentController:addAnouncement");
     $app->post("/delete-anouncement/{aid}","SupportAgentController:deleteAnouncement");
+    $app->post("/get-single-anouncement/{aid}","SupportAgentController:getSingleAnouncement");
     $app->post("/edit-anouncement/{aid}","SupportAgentController:editAnouncement");
 });
