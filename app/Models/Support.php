@@ -813,6 +813,50 @@ from (
     }
 
 
+    public function edit_anouncement($a_id, $title, $content)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "UPDATE `anouncements` a
+            SET a.title = :title,
+            a.details = :content,
+            a.updated_on = now()
+            WHERE a.id = :aid;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':aid', $a_id);
+                $stmt->bindparam(':title', $title);
+                $stmt->bindparam(':content', $content);
+                $result = $stmt->execute();
+            }
+
+            $stmt = null;
+            $db = null;
+            $conn = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
 
 
 
