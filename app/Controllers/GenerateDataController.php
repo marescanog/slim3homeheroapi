@@ -1538,58 +1538,77 @@ class GenerateDataController
     public function generateSupportAgents(Request $request,Response $response, array $args){
         $total = CustomRequestHandler::getParam($request,"total");
         $role = CustomRequestHandler::getParam($request,"role");
+        $sup = CustomRequestHandler::getParam($request,"sup");        
+        $create_date = CustomRequestHandler::getParam($request,"create_date");
 
         $total = $total == null ? 100 : $total;
         $role =  $role == null ? 1 : $role;
 
-        // $hashedPass = "$2y$10$.jadlIJl4zr6D61QR2v1/O1Oy2O3B6UBZlamuA4eLVE3BYUhOWZAS";
+        //check if sup is in db
 
-        // $lastMobile = $this->generateData->getLastMobileNumber();
-        // $lastMobile = $lastMobile['data']['phone_no'];
-        // $last_fiveDigits = substr($lastMobile, -5);
-        // $last_fiveDigits = $last_fiveDigits == "99999" ? "10000" : $last_fiveDigits;
+        $hashedPass = "$2y$10$.jadlIJl4zr6D61QR2v1/O1Oy2O3B6UBZlamuA4eLVE3BYUhOWZAS";
 
-        // for($x=0;$x<$total;$x++){
-        //     $fnameIndex = mt_rand(0,$this->total_fname);
-        //     $lnameIndex = mt_rand(0,$this->total_lname);
+        $lastMobile = $this->generateData->getLastMobileNumber();
+        $lastMobile = $lastMobile['data']['phone_no'];
+        $last_fiveDigits = substr($lastMobile, -5);
+        $last_fiveDigits = $last_fiveDigits == "99999" ? "10000" : $last_fiveDigits;
+
+        for($x=0;$x<$total;$x++){
+            $fnameIndex = mt_rand(0,$this->total_fname);
+            $lnameIndex = mt_rand(0,$this->total_lname);
     
-        //     $fname = $this->array_fname[$fnameIndex];
-        //     $lname = $this->array_lname[$lnameIndex];
+            $fname = $this->array_fname[$fnameIndex];
+            $lname = $this->array_lname[$lnameIndex];
     
-        //         $last_fiveDigits++;
-        //         $last_fiveDigits = $last_fiveDigits == "99999" ? "10000" : $last_fiveDigits;
+                $last_fiveDigits++;
+                $last_fiveDigits = $last_fiveDigits == "99999" ? "10000" : $last_fiveDigits;
 
-        //     $phone = "092".(mt_rand(100,999)).($last_fiveDigits);
+            $phone = "092".(mt_rand(100,999)).($last_fiveDigits);
 
-        //     $responseMessage = $this->homeowner->createHomeownerWithHashedPass(
-        //     ucfirst($fname),
-        //     ucfirst($lname),
-        //     $phone,
-        //     $hashedPass);
-        // }
+            $responseMessage = $this->homeowner->createHomeownerWithHashedPass(
+            ucfirst($fname),
+            ucfirst($lname),
+            $phone,
+            $hashedPass);
+        }
 
         $lastUsers = $this->generateData->getUsersID($total);
         $lastUsers = $lastUsers['data'];
         $userID = null;
+        $date = $create_date;
+        // $userID = $lastUsers[0]['user_id'];
 
-        $userID = $lastUsers[0]['user_id'];
+        for($x=0;$x<count($lastUsers);$x++){
+            $userID = $lastUsers[$x]['user_id'];
+            $email = strtolower(substr($lastUsers[$x]['first_name'],0,1).$lastUsers[$x]['last_name']."@support.com");
+            
+            // ensure same email does not appear twice in db
+            $isEmailInDB = $this->generateData->getSupportEmail($email);
+            $isEmailInDB = !($isEmailInDB['data'] == false);
+            $h = 2;
+            while($isEmailInDB==true){
+                $email = strtolower(substr($lastUsers[$x]['first_name'],0,1).$lastUsers[$x]['last_name'].$h."@support.com");
+                $isEmailInDB = $this->generateData->getSupportEmail($email);
+                $isEmailInDB = !($isEmailInDB['data'] == false);
+                $h++;
+            }
 
+            if($create_date == null){
+                $date = $this->random_dates("2021-12-16 03:02:00", "2022-01-01 9:00:00");
+            }
+            
+            $result = $this->generateData->createSupport($userID, $role, $date, $email, $sup);
 
-        // for($x=0;$x<count($lastUsers);$x++){
-            $date = $this->generateData->getUserCreationDate($userID);
-            $date = $date['data']['created_on'];
-            // $result = $this->generateData->createSupport($userID, $role, $date);
-
-        //     $userID = $lastUsers[$x]['user_id']; 
-        //     $userType = $this->generateData->getUserType($userID);
-        //     $userType = $userType['data']['user_type_id'];
-        //     $date = $this->random_dates();
-        //     $test= $this->generateData->updateHomeownerCreateDate( $userID, $date,  $userType);
-        // }
+        }
 
         $resData = [];
-        $resData['userID'] = $userID;
-        $resData['createDate'] =  $date;
+        // $resData['userID'] = $userID;
+        // $resData['result'] =  $result;
+        // $resData['createDate'] =  $date;
+        // $resData['role'] =  $role;
+        // $resData['email'] =  $email;
+        // $resData['isEmailInDB'] =  $isEmailInDB;
+
         // $resData['fnametotal'] = $this->total_fname;
         // $resData['lnametotal'] = $this->total_lname;
         // $resData['randNum'] = rand(0,$this->total_fname);

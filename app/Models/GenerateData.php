@@ -202,7 +202,7 @@ class GenerateData
                 $conn = $db->connect();
     
                 // CREATE query
-                $sql = "SELECT user_id FROM `hh_user` ORDER BY user_id DESC LIMIT ".$numberOfUsers.";";
+                $sql = "SELECT user_id, first_name, last_name FROM `hh_user` ORDER BY user_id DESC LIMIT ".$numberOfUsers.";";
                 
                 // Prepare statement
                 $stmt =  $conn->prepare($sql);
@@ -278,6 +278,51 @@ class GenerateData
                 return $ModelResponse;
             }
         }
+
+        public function getSupportEmail($email){
+        
+            try{
+                $db = new DB();
+                $conn = $db->connect();
+                $sql = "SELECT * FROM support_agent sa WHERE sa.email = :email;";
+    
+                // Prepare statement
+                $stmt =  $conn->prepare($sql);
+
+                // Only fetch if prepare succeeded
+                if ($stmt !== false) {
+                    $stmt->bindparam(':email', $email);
+                    $result = $stmt->execute();
+                    $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+                }
+                $stmt=null;
+                $db=null;
+
+                $ModelResponse =  array(
+                    "success"=>true,
+                    "data"=>$result
+                );
+    
+                return $ModelResponse;
+    
+            } catch (\PDOException $e) {
+    
+                $ModelResponse =  array(
+                    "success"=>false,
+                    "data"=>$e->getMessage()
+                );
+    
+                return $ModelResponse;
+            }
+        }
+
+
+
+
+
+
+
+
 
 
 
@@ -434,32 +479,60 @@ class GenerateData
     public function createSupport($userID, $role, $date, $email, $supID = null){
         
         try{
+            if(!is_numeric($role)){
+                return   array(
+                    "success"=>false,
+                    "data"=>"Not numeric"
+                );
+            }
+
             $db = new DB();
             $conn = $db->connect();
 
-            $userType = ($role == 6 || $role == 5) ? 3 : 4;
+            $userType = ($role == 6 || $role == 5) ? 4 : 3;
 
             $sql = "BEGIN;
             DELETE FROM `homeowner` WHERE `homeowner`.`id` = :userID;
-            UPDATE `hh_user` SET `user_type_id` = :userType WHERE `hh_user`.`user_id` = :userID2;
-            UPDATE `homeowner` SET `created_on` = :date2 WHERE `homeowner`.`id` = :userID3;
-            INSERT INTO `support_agent` (`id`, `email`, `role_type`, `supervisor_id`, `is_deleted`, 
-            `created_on`) VALUES (:userID3, :email, :roleType, :supID, '0', :dateye);
-            COMMIT;";
+            UPDATE `hh_user` SET `user_type_id` = :userType, `created_on` = :cdate WHERE `hh_user`.`user_id` = :userID2;
+            ";
 
-            // Prepare statement
+            if($supID != null){
+                $sql = $sql."INSERT INTO `support_agent` (`id`, `email`, `role_type`, `supervisor_id`, `is_deleted`, 
+                `created_on`) VALUES (:userID4, :email, :roleType, :supID, '0', :cdate2);";
+                
+                $sql = $sql."INSERT INTO `sup_assignments` (`id`, `sup_id`, `agent_id`, `assigned_on`) VALUES (NULL, :supID2, :userID5, :cdate3);
+                ";
+            } else {
+                $sql = $sql."INSERT INTO `support_agent` (`id`, `email`, `role_type`, `supervisor_id`, `is_deleted`, 
+                `created_on`) VALUES (:userID6, :email, :roleType, null, '0', :cdate4);";
+            }
+
+            $sql =   $sql."COMMIT;";
+
+            // // Prepare statement
             $stmt =  $conn->prepare($sql);
 
-            // Only fetch if prepare succeeded //$id, $date,
+            // // Only fetch if prepare succeeded //$id, $date,
             if ($stmt !== false) {
                 $stmt->bindparam(':userID', $userID);
                 $stmt->bindparam(':userType', $userType);
                 $stmt->bindparam(':userID2', $userID);
-                $stmt->bindparam(':userID3', $userID);
+                $stmt->bindparam(':cdate', $date);
+
                 $stmt->bindparam(':email', $email);
-                $stmt->bindparam(':supID',$supID);
-                $stmt->bindparam(':roleType', $roleType);
-                $stmt->bindparam(':dateye', $date);
+                $stmt->bindparam(':roleType', $role);
+                if($supID != null){
+                    $stmt->bindparam(':userID4', $userID);
+                    $stmt->bindparam(':supID',$supID);
+                    $stmt->bindparam(':cdate2', $date);
+                    $stmt->bindparam(':supID2',$supID);
+                    $stmt->bindparam(':userID5', $userID);
+                    $stmt->bindparam(':cdate3', $date);
+                } else {
+                    $stmt->bindparam(':userID6', $userID);
+                    $stmt->bindparam(':cdate4', $date);
+                }
+                
                 $result = $stmt->execute();
             }
             $stmt=null;
@@ -467,7 +540,8 @@ class GenerateData
 
             $ModelResponse =  array(
                 "success"=>true,
-                "data"=>$sql
+                // "data"=>$sql,
+                "data"=>$result
             );
 
             return $ModelResponse;
