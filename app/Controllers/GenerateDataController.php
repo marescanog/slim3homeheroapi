@@ -1352,6 +1352,7 @@ class GenerateDataController
         return $random_string;
     }
 
+
     public function completeWorkerRegistration(Request $request,Response $response, array $args){
         $total = CustomRequestHandler::getParam($request,"total");
 
@@ -1375,22 +1376,6 @@ class GenerateDataController
 
 
 
-        $cities_toAdd = [];
-        $total_preferred_cities = mt_rand(1, 100);
-        if($total_preferred_cities % 2 == 0 ){
-            $total_preferred_cities = mt_rand(1, 4);
-        } else if($total_preferred_cities % 3 == 0){
-            $total_preferred_cities = mt_rand(3, 4);
-        } else if ($total_preferred_cities % 7 == 0){
-            $total_preferred_cities = mt_rand(3, 5);
-        } else if ($total_preferred_cities % 5 == 0){
-            $total_preferred_cities = mt_rand(1, 12);
-        }else {
-            $total_preferred_cities = mt_rand(1, 6);
-        }
-
-
-
 
         // $userID =  $lastWorkers[0]['user_id'];
 
@@ -1398,6 +1383,20 @@ class GenerateDataController
 
         // // // for starts here
         for($z=0; $z< $total; $z++){
+            
+            $cities_toAdd = [];
+            $total_preferred_cities = mt_rand(1, 100);
+            if($total_preferred_cities % 2 == 0 ){
+                $total_preferred_cities = mt_rand(1, 4);
+            } else if($total_preferred_cities % 3 == 0){
+                $total_preferred_cities = mt_rand(3, 4);
+            } else if ($total_preferred_cities % 7 == 0){
+                $total_preferred_cities = mt_rand(3, 5);
+            } else if ($total_preferred_cities % 5 == 0){
+                $total_preferred_cities = mt_rand(1, 12);
+            }else {
+                $total_preferred_cities = mt_rand(1, 6);
+            }
 
             $userID =  $lastWorkers[$z]['user_id'];
 
@@ -1594,7 +1593,7 @@ class GenerateDataController
             }
 
             if($create_date == null){
-                $date = $this->random_dates("2021-12-16 03:02:00", "2022-01-01 9:00:00");
+                $date = $this->random_dates("2020-01-01 08:00:00", "2022-03-01 9:00:00");
             }
             
             $result = $this->generateData->createSupport($userID, $role, $date, $email, $sup);

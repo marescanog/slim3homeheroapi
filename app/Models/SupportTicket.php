@@ -159,6 +159,9 @@ public function get_Tickets($status = 1, $count = true, $id = null, $role = null
         // New, Ongoing, Resolved
         $statusTypes = ["st.status = 1","st.status = 2","st.status IN (3,4)","st.is_Escalated = 1"];
 
+        // ORDER BYNew, Ongoing, Resolved
+        $orderByDates = ["st.created_on ASC","st.last_updated_on DESC","st.last_updated_on DESC","st.created_on ASC"];
+
         // CREATE query
         $sql = "";
         $result = "";
@@ -173,7 +176,7 @@ public function get_Tickets($status = 1, $count = true, $id = null, $role = null
 
         // GET NEW TICKETS
         // GET NEW TICKETS -> SELECT COUNT(*) FROM `support_ticket` WHERE status = 1 AND is_Archived = 0 AND assigned_agent = 163;
-        $sql = "SELECT ".$sqlType." FROM ".$this->table." st".($count == true?"":(" LEFT JOIN hh_user hu ON st.assigned_agent = hu.user_id ")).' WHERE '.$statusTypes[$status-1].' AND st.is_Archived = 0'.$filterType.($count == true?";":(" ORDER BY st.id DESC LIMIT ".$limit." OFFSET ".$offset.";"));
+        $sql = "SELECT ".$sqlType." FROM ".$this->table." st".($count == true?"":(" LEFT JOIN hh_user hu ON st.assigned_agent = hu.user_id ")).' WHERE '.$statusTypes[$status-1].' AND st.is_Archived = 0'.$filterType.($count == true?";":(" ORDER BY ".$orderByDates[$status-1]." LIMIT ".$limit." OFFSET ".$offset.";"));
         
 
         // BIND ANY RELEVANT PARAMETERS
