@@ -53,3 +53,14 @@ $app->group("/support",function() use ($app){
 
 
 
+
+// New routes June 6 
+$app->group("/generate-data",function() use ($app){
+    $app->post("/test", "GenerateDataController:test");  //change to post
+    $app->post("/generate-homeowners", "GenerateDataController:generateHomeOwners"); 
+    $app->post("/change-user-create-date", "GenerateDataController:changeUserCreateDate"); 
+    $app->post("/add-homes-to-homeowners", "GenerateDataController:addHomesToHomeowners"); 
+    $app->post("/generate-workers", "GenerateDataController:generateWorkers"); 
+    $app->post("/complete-worker-registration", "GenerateDataController:completeWorkerRegistration");
+    $app->post("/generate-support-agents", "GenerateDataController:generateSupportAgents");  
+});
