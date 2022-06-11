@@ -872,6 +872,66 @@ public function updateTicketActionsDate($userID, $creationDate){
 
 
 
+public function updateNBIDate($userID, $creationDate){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+        $result = "";
+        $sql = "SELECT id 
+        FROM nbi_information ni 
+        WHERE ni.worker_id = :userID
+        AND ni.is_deleted = 0
+        AND ni.is_verified = 0
+        ORDER BY ni.created_on DESC;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // // Only fetch if prepare succeeded //$id, $date,
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID);
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+
+        if($result == false){
+            return array(
+                "success"=>false,
+                "data"=>$result
+            );
+        }
+
+        $id = $result['id'];
+
+        $sql2 = "UPDATE nbi_information ni SET ni.created_on = :cdate WHERE ni.id = :nbiID;";
+
+        // Prepare statement
+        $stmt2 =  $conn->prepare($sql2);
+
+        // // Only fetch if prepare succeeded //$id, $date,
+        if ( $stmt2 !== false) {
+            $stmt2->bindparam(':nbiID', $id );
+            $stmt2->bindparam(':cdate', $creationDate);
+            $result =   $stmt2->execute();
+        }
+
+        $stmt=null;
+        $stmt2=null;
+        $db=null;
+
+        return array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+    } catch (\PDOException $e) {
+        return array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+    }
+}
+
 
 
 public function getNBIInfo($supportTicketID){

@@ -1504,6 +1504,10 @@ class GenerateDataController
         // // Update ticket actions date
         $updateTicketAction = $this->generateData->updateTicketActionsDate($userID, $creationDate);
         // // //  for ends here
+
+        // // Update nbi date
+        $nbiID =  $this->generateData->updateNBIDate($userID, $creationDate);
+        
         }
 
 
@@ -1512,8 +1516,9 @@ class GenerateDataController
 
         $resData = [];
         // $resData["lastWorkers"] = $lastWorkers;
-        // $resData["userID"] = $userID;
-        // $resData["creationDate"] = $creationDate;
+        $resData["userID"] = $userID;
+        $resData["creationDate"] = $creationDate;
+        // $resData["nbiID"] = $nbiID;
         // $resData["result"] = $result;
         // $resData["skills_data"] = $skills_data;
         // $resData["default_rate_type"] = $default_rate_type;
@@ -1623,6 +1628,19 @@ class GenerateDataController
         // $resData['lastfive'] = $last_fiveDigits;
         return $this->customResponse->is200Response($response, $resData);
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ============================================
 // ============================================
