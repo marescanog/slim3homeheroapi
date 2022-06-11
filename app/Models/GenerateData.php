@@ -532,7 +532,7 @@ class GenerateData
                     $stmt->bindparam(':userID6', $userID);
                     $stmt->bindparam(':cdate4', $date);
                 }
-                
+
                 $result = $stmt->execute();
             }
             $stmt=null;
@@ -551,6 +551,444 @@ class GenerateData
                 "success"=>false,
                 "data"=>$e->getMessage()
             );
+            return $ModelResponse;
+        }
+    }
+
+
+    public function getnewRegistrationTickets($total = null, $start = 60){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "SELECT * FROM `support_ticket` st 
+                    WHERE st.id >= :startID 
+                    AND st.issue_id = 1
+                    AND st.status = 1
+                    AND st.is_Archived = 0
+                    ORDER BY st.created_on ASC";
+            
+            if($total == null){
+                $sql =  $sql.";";
+            } else {
+                $sql =  $sql." LIMIT ".$total.";";
+            }
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded //$id, $date,
+            if ($stmt !== false) {
+                $stmt->bindparam(':startID', $start);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt=null;
+            $db=null;
+
+            return array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+        } catch (\PDOException $e) {
+            return  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+        }
+    }
+
+
+    public function getAgetnListBasedOnTicketCreation($date, $role){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+            $result = "";
+            $sql = "SELECT * FROM `support_agent` sa 
+            LEFT JOIN hh_user hh ON sa.id = hh.user_id
+            WHERE sa.created_on < :ticketCreationdate 
+            AND sa.role_type = :sarole
+            AND sa.is_deleted = 0
+            AND hh.user_status_id = 2;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded //$id, $date,
+            if ($stmt !== false) {
+                $stmt->bindparam(':ticketCreationdate', $date);
+                $stmt->bindparam(':sarole', $role);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt=null;
+            $db=null;
+
+            return array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+        } catch (\PDOException $e) {
+            return array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+        }
+    }
+
+
+// @name    assigns a ticket with an agent ID, adds a ticket action and a new ticket assignment into table
+// @params  id
+// @returns a Model Response object with the attributes "success" and "data"
+//          sucess value is true when PDO is successful and false on failure
+//          data value is
+public function assign_ticket($date,$userID,$ticketID,$actionID=2,$description="",$stat=2,$newAgent=null,$prevAgent=null,$transferReason=null){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "";
+
+        $description=($description==""||$description==null)?"AGENT #".$userID." ACCEPTED TICKET":$description;
+
+        $sql = "SET @@session.time_zone = '+08:00';
+        BEGIN;
+            UPDATE support_ticket s
+            SET s.status = :stat, s.assigned_agent = :userID, s.last_updated_on = :adate, s.assigned_on = :adate2
+            WHERE s.id = :ticketID;
+
+            INSERT INTO ticket_actions(action_taken, system_generated_description, action_date, support_ticket) VALUES (:actionID,:description,:adate3,:sticketID);
+
+            INSERT INTO ticket_assignment(support_ticket, date_assigned, newly_assigned_agent, previous_agent, transfer_reason) VALUES (:sticketID2, :adate4, :newAgent,:prevAgent,:reason);
+        COMMIT;
+        ";
+
+        $new =  $newAgent==null?$userID:$newAgent;
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID);
+            $stmt->bindparam(':adate', $date);
+            $stmt->bindparam(':adate2', $date);
+            $stmt->bindparam(':stat', $stat);
+            $stmt->bindparam(':ticketID', $ticketID);
+            $stmt->bindparam(':actionID', $actionID);
+            $stmt->bindparam(':description', $description);
+            $stmt->bindparam(':adate3', $date);
+            $stmt->bindparam(':sticketID', $ticketID);
+            $stmt->bindparam(':sticketID2', $ticketID);
+            $stmt->bindparam(':adate4', $date);
+            $stmt->bindparam(':newAgent', $new);
+            $stmt->bindparam(':prevAgent', $prevAgent);
+            $stmt->bindparam(':reason', $transferReason);
+            $result = $stmt->execute();
+        } else {
+            $result = "PDO Error";
+        }
+
+        $stmt=null;
+        $db=null;
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+//($newDate, $ticketID,  $otherAgentID , $otherAgentCxNotes, 1);
+public function commentTicket($date, $ticketID, $workerID, $comment, $notify = null){
+
+    /*  DEFINITION FOR REFERENCE
+
+        has_AuthorTakenAction = 0 -> Agent is processing ticket
+
+        has_AuthorTakenAction = 1 -> New ticket/No action taken yet
+
+        has_AuthorTakenAction = 2 -> Agent requested Cx follow up
+
+        has_AuthorTakenAction = 3 -> Cx requested agent follow up
+
+        has_AuthorTakenAction = 4 -> Closed/Resolved ticket
+    */
+    try{
+        $systemGenMessage = 'AGENT #'.$workerID.' ADDED NOTES TO TICKET #'.$ticketID;
+        $db = new DB();
+        $conn = $db->connect();
+
+        // CREATE query
+        $sql = "";
+
+        $sql = "SET @@session.time_zone = '+08:00';
+            BEGIN;
+            UPDATE support_ticket st SET st.last_updated_on = :cdate, st.has_AuthorTakenAction = 0 WHERE st.id = :ticketID;
+            INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes, action_date, support_ticket)
+            VALUES (8, :sysMessage , :comment, :cdate2, :id);
+            COMMIT;
+        ";
+
+        if($notify != null){
+            $systemGenMessage = 'AGENT #'.$workerID.' REQUESTED CUSTOMER FOLLOW UP FOR TICKET #'.$ticketID;
+            $sql = "SET @@session.time_zone = '+08:00';
+                BEGIN;
+                    UPDATE support_ticket st SET st.last_updated_on = :cdate, st.has_AuthorTakenAction = :interaction WHERE st.id = :ticketID;
+                    INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes,action_date, support_ticket)
+                    VALUES (:action, :sysMessage , :comment, :cdate2, :id);
+                COMMIT;
+            ";
+        }
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':cdate', $date);
+            $stmt->bindparam(':id', $ticketID);
+            $stmt->bindparam(':comment', $comment);
+            $stmt->bindparam(':sysMessage', $systemGenMessage);
+            $stmt->bindparam(':cdate2', $date);
+            $stmt->bindparam(':ticketID', $ticketID);
+            if($notify != null){
+                $actioneye = $notify == 2 ? 9 : 14;
+                $stmt->bindparam(':action', $actioneye);
+                $stmt->bindparam(':interaction', $notify);
+            }
+            $result = $stmt->execute();
+        }
+
+        $stmt=null;
+        $db=null;
+        
+        $conn=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+
+}
+
+
+
+public function updateTicketActionsDate($userID, $creationDate){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+        $result = "";
+        $sql = "SELECT id FROM `support_ticket` st
+        WHERE st.author = :userID
+        AND st.issue_id = 1
+        AND st.status = 1
+        AND st.is_Archived = 0
+        AND st. assigned_agent IS NULL
+        ORDER BY st.created_on DESC;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // // Only fetch if prepare succeeded //$id, $date,
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID);
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+
+        if($result == false){
+            return array(
+                "success"=>false,
+                "data"=>$result
+            );
+        }
+
+        $id = $result['id'];
+
+        $sql2 = "UPDATE `ticket_actions` SET `action_date` = :cdate 
+        WHERE `ticket_actions`.`support_ticket` = :ticketID;";
+
+        // Prepare statement
+        $stmt2 =  $conn->prepare($sql2);
+
+        // // Only fetch if prepare succeeded //$id, $date,
+        if ( $stmt2 !== false) {
+            $stmt2->bindparam(':ticketID', $id );
+            $stmt2->bindparam(':cdate', $creationDate);
+            $result =   $stmt2->execute();
+        }
+
+        $stmt=null;
+        $stmt2=null;
+        $db=null;
+
+        return array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+    } catch (\PDOException $e) {
+        return array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+    }
+}
+
+
+
+
+
+public function getNBIInfo($supportTicketID){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+        $result = "";
+        $sql = "SELECT ni.id FROM `nbi_information` ni WHERE ni.support_ticket = :supTicketID;";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded //$id, $date,
+        if ($stmt !== false) {
+            $stmt->bindparam(':supTicketID', $supportTicketID);
+            $stmt->execute();
+            $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;
+        $db=null;
+
+        return array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+    } catch (\PDOException $e) {
+        return array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+    }
+}
+
+
+
+
+
+    public function update_worker_registration($newDate, $creationDate, $agentID, $ticketID, $workerID, $nbiID, $option, $comment = null){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+    
+            $verifyNum = -1; // Default decline = -1, accept = 1, not graded = 0
+            if($option == 1){
+                $verifyNum = 1;
+            } 
+    
+            $verifyUser = 3; // 1-Pending Verification, 2-Verified, 3-Declined
+            if($option == 1){
+                $verifyUser = 2;
+            } 
+    
+            $sysDes = "AGENT #".$agentID." ".($verifyNum == -1 ? " DECLINED": " APPROVED")." WORKER #".$workerID." APPLICATION";
+    
+            // CREATE query
+            $sql = "";
+    
+            // STEPS
+            // 1. UPDATE NBI - > verified
+            // 2. UPDATE WORKER ? USER -> verified
+            // 3. ADD ACTION
+            // 4. UPDATE TICKET CLOSED & Verified + TIME
+            $sql = "SET @@session.time_zone = '+08:00';
+            BEGIN;
+                UPDATE nbi_information ni SET ni.is_verified = :verifyNum, ni.created_on = :createdate WHERE ni.id = :nbiID;
+    
+                UPDATE hh_user hh SET hh.user_status_id = :verifyUser WHERE hh.user_id = :workerID;
+    
+                UPDATE support_ticket st SET st.status = 4, st.last_updated_on = :newDate, st.has_AuthorTakenAction = 4 WHERE st.id = :ticketID;
+    
+                INSERT INTO ticket_actions(action_taken, system_generated_description,agent_notes, action_date, support_ticket) VALUES (7,:description,:notes, :newDate2,:sticketID);
+            COMMIT;
+            ";
+    
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+    
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':nbiID', $nbiID);
+                $stmt->bindparam(':verifyNum', $verifyNum);
+                $stmt->bindparam(':createdate', $creationDate);
+                $stmt->bindparam(':workerID', $workerID);
+                $stmt->bindparam(':newDate', $newDate);
+                $stmt->bindparam(':verifyUser', $verifyUser);
+                $stmt->bindparam(':ticketID', $ticketID);
+                $stmt->bindparam(':description', $sysDes );
+                $stmt->bindparam(':notes', $comment);
+                $stmt->bindparam(':newDate2',$newDate);
+                $stmt->bindparam(':sticketID', $ticketID);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+    
+            $stmt=null;
+            $db=null;
+            
+            $conn=null;
+            $db=null;
+    
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+    
+            return $ModelResponse;
+    
+        } catch (\PDOException $e) {
+    
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+    
             return $ModelResponse;
         }
     }
@@ -597,31 +1035,148 @@ class GenerateData
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     public function test($id, $date, $userType){
-        
         try{
             $db = new DB();
             $conn = $db->connect();
+            $result = "";
             $sql = "";
+
+            // // Prepare statement
+            // $stmt =  $conn->prepare($sql);
+
+            // // Only fetch if prepare succeeded //$id, $date,
+            // if ($stmt !== false) {
+            //     $stmt->bindparam(':startID', $start);
+            //     $stmt->execute();
+            //     $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            // }
 
             $stmt=null;
             $db=null;
 
-            $ModelResponse =  array(
+            return array(
                 "success"=>true,
-                "data"=>$sql
+                "data"=>$result
             );
 
-            return $ModelResponse;
-
         } catch (\PDOException $e) {
-
-            $ModelResponse =  array(
+            return array(
                 "success"=>false,
                 "data"=>$e->getMessage()
             );
-
-            return $ModelResponse;
         }
     }
 

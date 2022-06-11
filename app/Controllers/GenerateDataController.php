@@ -1353,6 +1353,9 @@ class GenerateDataController
     }
 
 
+
+
+
     public function completeWorkerRegistration(Request $request,Response $response, array $args){
         $total = CustomRequestHandler::getParam($request,"total");
 
@@ -1375,15 +1378,12 @@ class GenerateDataController
         }
 
 
-
-
         // $userID =  $lastWorkers[0]['user_id'];
 
-        
 
         // // // for starts here
         for($z=0; $z< $total; $z++){
-            
+
             $cities_toAdd = [];
             $total_preferred_cities = mt_rand(1, 100);
             if($total_preferred_cities % 2 == 0 ){
@@ -1408,6 +1408,7 @@ class GenerateDataController
                 if(count($cities_toAdd)==0){ // ensures that at least one of the cities is a set city 1-12
                     array_push($cities_toAdd, $cityMain);
                     unset( $cityMinus[array_search($cityMain, $cityMinus)]);
+                    $cityMinus = array_values($cityMinus);
                 }else{
                     array_push($cities_toAdd,array_shift($cityMinus));
                 }
@@ -1434,6 +1435,7 @@ class GenerateDataController
                 if($x==0){ // ensures that at least one of the skills is a set number 1-6
                     array_push($skills_data["skills_toAdd"],$skillMain);
                     unset($skills_list_minus[array_search($skillMain,$skills_list_minus)]);
+                    $skills_list_minus = array_values($skills_list_minus);
                     $skillMain++;
                     $skillMain = $skillMain == 7 ? 1 : $skillMain;
                 }else{
@@ -1494,11 +1496,13 @@ class GenerateDataController
             $result = $this->worker->completeWorkerRegistration($userID);
 
 
-        // // Update support ticket
+        // // Update support ticket date
         $creationDate = $this->generateData->getUserCreationDate($userID);
         $creationDate = $creationDate['data']['created_on'];
-
         $updateTicket = $this->generateData->updateSupportTicketDate($userID, $creationDate);
+
+        // // Update ticket actions date
+        $updateTicketAction = $this->generateData->updateTicketActionsDate($userID, $creationDate);
         // // //  for ends here
         }
 
@@ -1620,10 +1624,231 @@ class GenerateDataController
         return $this->customResponse->is200Response($response, $resData);
     }
 
+// ============================================
+// ============================================
+// June 11, 2022
+
+public function approveWorker(Request $request,Response $response, array $args){
+    $total = CustomRequestHandler::getParam($request,"total");
+
+    $startID = CustomRequestHandler::getParam($request,"start");
+    $startID = $startID == null ? 60 : $startID;
+
+    // get list of support tickets after id 59 (60 above) that are new
+    $newRegistrations = $this->generateData->getnewRegistrationTickets($total, $startID);
+    $newRegistrations =  $newRegistrations['data'];
 
 
 
 
+    // // // old code comment out (for ticket action date fix)
+    // for($x=0;$x<count($newRegistrations);$x++){
+    //    // get the ID & creation date of the support ticket
+    //    $ticketID =  $newRegistrations[$x]['id'];
+    //    $ticketCreationDate =  $newRegistrations[$x]['created_on'];
+   
+    //    $authorID =  $newRegistrations[$x]['author'];
+    //    $updateTicketAction = $this->generateData->updateTicketActionsDate($authorID, $ticketCreationDate);
+    // }
+ 
+
+
+
+
+
+for($x=0;$x<count($newRegistrations);$x++){
+
+    // get the ID & creation date of the support ticket
+    $ticketID =  $newRegistrations[$x]['id'];
+    $ticketCreationDate =  $newRegistrations[$x]['created_on'];
+    $authorID =  $newRegistrations[$x]['author'];
+
+
+    // $ticketCreationDate =  "2020-01-05 17:30:19"; // Debug Only Comment Out
+
+    // get a list of support agents who have been created before the creation of the support ticket
+    $qualifiedAgents = $this->generateData->getAgetnListBasedOnTicketCreation($ticketCreationDate, 1);
+    $qualifiedAgents =  $qualifiedAgents['data'];
+    shuffle($qualifiedAgents);
+
+    // get a random agent to assign the ticket to
+    $assignedAgentIndex = mt_rand(0,count($qualifiedAgents)-1);
+    $assignedAgent =   $qualifiedAgents[$assignedAgentIndex];
+    $assignedAgentID = $assignedAgent['id'];
+    // get a random date from time of the creation of the support ticket until 2 days after
+    $fastNess = mt_rand(0,100);
+    $days = '1';
+    if($fastNess % 5 == 0){
+        $days = '2';
+    }
+    $dateticketassigned = $this->random_dates($ticketCreationDate, date('Y-m-d H:i:s', strtotime($ticketCreationDate. ' + '.$days.' days')));
+
+    // Assign ticket to agent
+    $assignAgent = $this->generateData->assign_ticket($dateticketassigned,$assignedAgentID,$ticketID,2,"AGENT #".$assignedAgentID." ACCEPTED TICKET",2);
+
+    // Add Agent comments to the ticket
+    $comment1Arr = array(
+        "NBI was verified online and information submitted matched.",
+        "Cx gave correct info",
+        "Verified online",
+        "Info verified & matches submission",
+        "NBI info correct & verified",
+        "Information matches & NBI verified online",
+        "Correct NBI information & verified on NBI website",
+        "NBI website verified & information true"
+    );
+    $asgnAgntComment1 = $comment1Arr[mt_rand(0,count($comment1Arr)-1)];
+    $newDate = date('Y-m-d H:i:s', strtotime($ticketCreationDate. ' + '.mt_rand(3,12).' minutes'));
+    $newDate = $this->random_dates( $newDate, date('Y-m-d H:i:s', strtotime( $newDate. ' + '.mt_rand(3,25).' minutes')));
+    $commentRes = $this->generateData->commentTicket($newDate, $ticketID,   $assignedAgentID,   $asgnAgntComment1);
+
+// // // For Debug Values
+//     $newDate = "2020-01-05 17:43:37";
+//     $assignedAgent =   array(
+//         "id"=> "416",
+//         "email"=> "rblackburn@support.com",
+//         "role_type"=> "1",
+//         "supervisor_id"=> "395",
+//         "is_deleted"=> "0",
+//         "created_on"=> "2020-01-01 08:00:00",
+//         "user_id"=> "416",
+//         "user_type_id"=> "3",
+//         "user_status_id"=> "2",
+//         "first_name"=> "Ralph",
+//         "last_name"=> "Blackburn",
+//         "phone_no"=> "09271542347",
+//         "password"=> "$2y$10$.jadlIJl4zr6D61QR2v1/O1Oy2O3B6UBZlamuA4eLVE3BYUhOWZAS",
+//         "messenger_status_id"=> "1",
+//         "timestamp_last_active"=> "2022-06-11 05:54:37"
+//     );
+//     $assignedAgentID = 416;
+//     $ticketID =  88;
+//     $didCustomerPickUp = false;
+// // // For Debug Values
+
+
+$otherAgentCxNotesArr = array(
+    "Applicant called to inquire about status. Informed applicant that agent is still processing application.",
+    "Candidate called to check application status. Told Candidate a rep will call soon.",
+    "Cx called for status. Informed Cx rep wil call in 24 hours.",
+    "Applicant called in and informed to wait for processing.",
+    "Candidate inquired about application. Told them rep will call within the day."
+ );
+
+
+ $agentReachedCxNotesArr = array(
+    "Applicant was able to verify identity through live call",
+    "Live call was conducted and candidate's identity is verified",
+    "Sucessfully called Cx and verified Identity",
+    "Was able to reach Candidate and verify identity through live call",
+    "Called candidate and verified application"
+);
+
+// $customerPickedUp = 12; // For Debug Only
+
+    // Agent called and was able to get a hold of Cx
+    $newDate = $this->random_dates( $newDate, date('Y-m-d H:i:s', strtotime( $newDate. ' + '.mt_rand(5,25).' minutes')));
+    $customerPickedUp = mt_rand(1,100);
+    $didCustomerPickUp = !($customerPickedUp%2==0 && $customerPickedUp%3==0);
+    if($didCustomerPickUp == false){ // 16% chance customer will not pick up
+        $minutes = mt_rand(1,45);
+        //agentCallCxTimeNotAnswered
+        $newDate = date('Y-m-d H:i:s', strtotime($newDate. ' + '.$minutes.' minutes'));
+
+        // Agent leaves notes
+        $agentMessagesArr = array(
+            "Tried to conduct verification but Cx did not pick up phone",
+            "Called candidate for identity verification and no answer",
+            "Applicant did not answer the phone for the verification call. Will try again later.",
+            "No response for Identity verification. Will cagain in 24 hours.",
+            "Busy tone and applicant cannot be reached. Will try again in 24 hours."
+        );
+        $agentUnanswerMessage = $agentMessagesArr[mt_rand(0,count($agentMessagesArr)-1)];
+        $commentRes = $this->generateData->commentTicket($newDate, $ticketID,   $assignedAgentID, $agentUnanswerMessage);
+
+
+        $minutes = mt_rand(1,185);
+        // agentLeaveNotifTime
+        $newDate = date('Y-m-d H:i:s', strtotime($newDate. ' + '.$minutes.' minutes'));
+        // agent leaves Cx notification
+        $agentCxNotesArr = array(
+            "Please expect a call within 24 hours. Failure to answer call will result in a cancelled application.",
+            "Please answer the call from a respresentative within the next 24 hours. A forfiture of application will occur in failure to answer.",
+            "A representative will contact you within 24 hours. Please answer the call or application will be forfited.",
+            "For identity check purposes, a representative will contact you within 24 hours. The application will be cancelled on a failure to respond to the call."
+        );
+        $agentCxNotes = $agentCxNotesArr[mt_rand(0,count($agentCxNotesArr)-1)];
+        $commentRes = $this->generateData->commentTicket($newDate, $ticketID,   $assignedAgentID,   $agentCxNotes, 2);
+    } 
+
+    // if agent call date is greater than 1 day, then the Cx will follow up
+    $hours = mt_rand(1,36);
+    // $hours = mt_rand(25,36); // For Debug Only
+    // $hours = mt_rand(1,24); // For Debug Only
+    $willCustomerFollowUp = $hours > 24;
+    if(  $willCustomerFollowUp == true){
+        // Get remaining agents
+        unset( $qualifiedAgents[array_search($assignedAgent, $qualifiedAgents)]);
+        $qualifiedAgents = array_values($qualifiedAgents);
+        // get Random Agent who will leave a message
+        $otherAgent = $qualifiedAgents[ mt_rand(0,(count($qualifiedAgents)-1))];
+        $otherAgentID = $otherAgent['id'];
+
+        $hours = mt_rand(25,36);
+
+        // cxCallAgentFollowUpTime
+        $newDate = date('Y-m-d H:i:s', strtotime($newDate. ' + '.$hours.' hours'));
+        // Other Agent Leaves a message
+        $otherAgentCxNotes = $otherAgentCxNotesArr[mt_rand(0,count($otherAgentCxNotesArr)-1)];
+        $commentRes = $this->generateData->commentTicket($newDate, $ticketID,  $otherAgentID , $otherAgentCxNotes, 1);
+    
+        $hours = mt_rand($hours+1,40);
+    } 
+
+    // add final closing comments
+    // agentCallCxTime
+    $newDate = date('Y-m-d H:i:s', strtotime($newDate. ' + '.$hours.' hours'));
+    $agentReachedCxNotes = $agentReachedCxNotesArr[mt_rand(0,count($agentReachedCxNotesArr)-1)];
+    $commentRes = $this->generateData->commentTicket($newDate, $ticketID,  $assignedAgentID, $agentReachedCxNotes);
+
+    $newDate = date('Y-m-d H:i:s', strtotime($newDate. ' + '.mt_rand(0,23).' minutes'));
+
+    $nbiID =  $this->generateData->getNBIInfo($ticketID);
+    $nbiID =   $nbiID['data']['id'];
+
+    $randy=mt_rand(0,100);
+    $comment = ($randy%3==0 || $randy%2==0) ? null : "Verified docs & identity";
+    // approve ticket
+    $approveRes = $this->generateData->update_worker_registration($newDate, $ticketCreationDate, $assignedAgentID, $ticketID, $authorID, $nbiID, 1,  $comment);
+
+    
+
+}
+
+
+
+    $resData = [];
+//     // $resData['newRegistrations'] = $newRegistrations;
+    $resData['ticketID'] = $ticketID;
+    // $resData['authorID'] = $authorID;
+    // $resData['updateTicketAction'] = $updateTicketAction;
+    $resData['assignedAgentID'] = $assignedAgentID;
+//     $resData['newDate'] = $newDate;
+    // $resData['didCustomerPickUp'] = $didCustomerPickUp;
+
+//     // $resData['agentCallCxTimeNotAnswered'] = $agentCallCxTimeNotAnswered;
+    // $resData['willCustomerFollowUp'] = $willCustomerFollowUp;
+//     // $resData['commentRes'] = $commentRes ;
+//     // $resData['otherAgentID'] = $otherAgentID;
+//     // $resData['otherAgentCxNotes'] = $otherAgentCxNotes;
+
+//     // $resData['ticketCreationDate'] = $ticketCreationDate;
+//     // $resData['assignedAgent'] = $assignedAgent;
+//     // $resData['qualifiedAgents'] = $qualifiedAgents;
+//     // $resData['dateticketassigned'] = $dateticketassigned;
+//     // $resData['assignAgent'] = $assignAgent['data'];
+    return $this->customResponse->is200Response($response,$resData);
+}
 
 
 

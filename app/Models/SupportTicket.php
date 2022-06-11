@@ -709,7 +709,7 @@ public function update_worker_registration($agentID, $ticketID, $workerID, $nbiI
 
             UPDATE hh_user hh SET hh.user_status_id = :verifyUser WHERE hh.user_id = :workerID;
 
-            UPDATE support_ticket st SET st.status = 4, st.last_updated_on = now(), st.has_AuthorTakenAction = 0 WHERE st.id = :ticketID;
+            UPDATE support_ticket st SET st.status = 4, st.last_updated_on = now(), st.has_AuthorTakenAction = 4 WHERE st.id = :ticketID;
 
             INSERT INTO ticket_actions(action_taken, system_generated_description,agent_notes, support_ticket) VALUES (7,:description,:notes,:sticketID);
         COMMIT;
@@ -779,7 +779,7 @@ public function comment($ticketID, $workerID, $comment, $notify = null){
 
         $sql = "SET @@session.time_zone = '+08:00';
             BEGIN;
-            UPDATE support_ticket st SET st.last_updated_on = now() WHERE st.id = :ticketID;
+            UPDATE support_ticket st SET st.last_updated_on = now(), st.has_AuthorTakenAction = 0 WHERE st.id = :ticketID;
             INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes, support_ticket)
             VALUES (8, :sysMessage , :comment, :id);
             COMMIT;
@@ -1229,7 +1229,7 @@ public function process_bill($agentID, $ticketID, $paymentID = null, $statusID =
             }
 
             $sql=$sql."  WHERE b.id = :billID;
-                UPDATE support_ticket st SET st.last_updated_on = now(), st.has_AuthorTakenAction = 1 WHERE st.id = :ticketID;
+                UPDATE support_ticket st SET st.last_updated_on = now(), st.has_AuthorTakenAction = 0 WHERE st.id = :ticketID;
                 INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes, support_ticket)
                 VALUES (3, :sysMessage , :comment, :ticketID2);
                 COMMIT;
@@ -1322,7 +1322,7 @@ public function close_ticket($agentID, $ticketID, $status, $comment){
 
         // CREATE query
         $sql = "SET @@session.time_zone = '+08:00'; BEGIN;
-            UPDATE support_ticket st SET st.status = :status, st.last_updated_on = now(), st.has_AuthorTakenAction = 1 WHERE st.id = :ticketID; 
+            UPDATE support_ticket st SET st.status = :status, st.last_updated_on = now(), st.has_AuthorTakenAction = 4 WHERE st.id = :ticketID; 
             INSERT INTO ticket_actions (action_taken, system_generated_description, agent_notes, support_ticket)
             VALUES (7, :sysMessage , :comment, :ticketID2);
             COMMIT;";
