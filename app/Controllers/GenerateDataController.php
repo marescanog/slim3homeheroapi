@@ -57,6 +57,484 @@ class GenerateDataController
 
         $this->generateData = new GenerateData();
 
+        $this->vowels = array("a","e","i","o","u");
+
+        $this->help_synonyms = array("help","assistance","aid","a helping hand","support");
+
+        $this->need_synonyms = array("need","am in need of","have need of","want","call for", "necessitate", "require");
+
+        $this->objectArr = array( // array()
+            array('pipes','kitchen pipes','bathroom pipes','kitchen faucet','bathroom faucet','faucet','outdoor pipes','outdoor faucet'), // 'General Plumbing Project'
+            array('gate','kitchen area','garden shed','wooden box','storage area'), // 'General Carpentry Project',
+            array('lawn','yard','garden','flower bed','vegetable garden', 'flower garden','front yard','back yard'), // 'General Gardening Project',
+            array('kitchen lights','bathroom lights','bedroom lights','living room lights','house wiring'), // 'General Electrical Project',
+            array('guest room','garage','living room','kitchen','pantry','storage area',"kid's playroom",'house design','attic','bedroom','bathroom','game room','nursery','closet area','master bedroom'), // 'General Home Improvement Project',
+            array('guest room','garage','house','back yard','front yard','gutter','curtains','clothes','sofa','living room','kitchen','pantry','storage area',"kid's playroom",'house design','attic','bedroom','bathroom','game room','nursery','closet area','master bedroom'), // 'General Cleaning Project',
+            array('main bathroom sink','guest bathroom sink','bathroom sink','sink'), // 'Bathroom Sink Installation',
+            array('main bathroom sink','guest bathroom sink','bathroom sink','sink'), // 'Bathroom Sink Repair',
+            array('guest tub','guest bathtub','main tub','main bathtub', 'tub','bathtub'), // 'Bathtub Repair',
+            array('drainage','outdoor drain','shower drain','kitchen drain','garage drain'), // 'Drainage Installation',
+            array('drainage','outdoor drain','shower drain','kitchen drain','garage drain'), // 'Drainage Repair',
+            array('bathroom sink','sink','kitchen sink','outdoor sink', 'garage room sink', 'guest room sink'), // 'General Sink Installation',
+            array('bathroom sink','sink','kitchen sink','outdoor sink', 'garage room sink', 'guest room sink'), // 'General Sink Repair',
+            array('outdoor kitchen sink','main kitchen sink','guest kitchen sink','kitchen sink','sink'), // 'Kitchen Sink Installation',
+            array('outdoor kitchen sink','main kitchen sink','guest kitchen sink','kitchen sink','sink'), // 'Kitchen Sink Repair',
+            array('main bathroom pipe','guest bathroom pipe','bathroom pipe','outdoor kitchen pipe','main kitchen pipe','guest kitchen pipe','kitchen pipe','pipe'), // 'Pipe Installation',
+            array('main bathroom pipe','guest bathroom pipe','bathroom pipe','outdoor kitchen pipe','main kitchen pipe','guest kitchen pipe','kitchen pipe','pipe'), // 'Pipe Repair',
+            array('main bathroom shower','guest bathroom shower','bathroom shower','shower'), // 'Shower Repair',
+            array('main bathroom toilet','guest bathroom toilet','bathroom toilet','toilet'), //array(), // 'Toilet Installation',
+            array('main bathroom toilet','guest bathroom toilet','bathroom toilet','toilet'), //'Toilet Repair',
+            array('antique dining table', 'antique table', 'antique sofa','antique chair','antique cabinet','antique rocking chair', 'antique furniture','antique dresser'), //'Antique Furniture Restoration',
+            array('road','driveway','front house pavement','pathway','back yard','front yard'), //'Asphalt Paving Service',
+            array('balcony','porch','stoop','veranda'), //'Balcony Remodelling',
+            array('cabinet', 'cupboard', 'drawer','closet','locker','sideboard'), //'Cabinet Assembly',
+            array('cabinet', 'cupboard', 'drawer','closet','locker','sideboard'), //'Cabinet Construction',
+            array('cabinet', 'cupboard', 'drawer','closet','locker','sideboard'), //'Cabinet Making',
+            array('cabinet', 'cupboard', 'drawer','closet','locker','sideboard'), //'Cabinet Repair',
+            array('bedroom window','bedroom windows','living room window','living room windows','guest room window','guest room windows','window','windows'), //'Caulking',
+            array('closet room','closet','locker','sideboard'), //'Closet Construction',
+            array('closet room','closet','locker','sideboard'), //'Closet Renovation',
+            array('outdoor kitchen counter','outdoor kitchen countertop','kitchen counter','kitchen countertop','counter','countertop','worktop', 'garage worktop', 'outdoor worktop'), //'Countertop Installation',
+            array('outdoor kitchen counter','outdoor kitchen countertop','kitchen counter','kitchen countertop','counter','countertop','worktop', 'garage worktop', 'outdoor worktop'), //'Countertop Repair',
+            array('garage door','back door','screen door','side door','main door','door'), //'Door Installation',
+            array('garage door','back door','screen door','side door','main door','door'), //'Door Repair',
+            array('fence','gate','gateway','railing','hedge','wall', 'wooden gate', 'wooden fence'), //'Fence Installation',
+            array('fence','gate','gateway','railing','hedge','wall', 'wooden gate', 'wooden fence'), //'Fence Repair',
+            array('foam roofing','roofing insulation','insulation'), //'Foam Roofing Installation',
+            array('foam roofing','roofing insulation','insulation'), //'Foam Roofing Repair',
+            array('bookshelf','mantelshelf','shelving','dresser','IKEA furniture','furniture','cupboard','shelves','kitchen set','cabinet','sofa','table','dining set'), //'Furniture Assembly',
+            array('bookshelf','mantelshelf','shelving','dresser','IKEA furniture','furniture','cupboard','shelves','kitchen set','cabinet','sofa','table','dining set'), //'Furniture Repair',
+            array('bookshelf','mantelshelf','shelving','dresser','IKEA furniture','furniture','cupboard','shelves','kitchen set','cabinet','sofa','table','dining set'), //'Furniture Restoration',
+            array('boxed roller door','overhead door','garage door'), //'Garage Door Installation',
+            array('boxed roller door','overhead door','garage door'), //'Garage Door Repair',
+            array('metal gate','overhead gate','gate','wooden gate'), //'Gate Installation',
+            array('metal gate','overhead gate','gate','wooden gate'), //'Gate Repair',
+            array('home','house','stuff','furniture','doors','windows'), //'General Home Repair Service',
+            array('home','house','rooms'), //'Home Remodelling',
+            array('home insulation','insulation','wall insulation'), //'Insulation Installation',
+            array('home insulation','insulation','wall insulation'), //'Insulation Repair',
+            array('locks','latch','bolt'), //'Locksmith Service',
+            array('roof','ceiling','canopy'), //'Roof Construction',
+            array('roof','ceiling','canopy'), //'Roof Repair',
+            array('bookshelves','shelves','bookshelf','mantelshelf','shelving'), //'Shelf Assembly',
+            array('bookshelves','shelves','bookshelf','mantelshelf','shelving'), //'Shelf Construction',
+            array('bookshelves','shelves','bookshelf','mantelshelf','shelving'), //'Shelf Installation',
+            array('tile','shingle','slate','brick'), //'Tile Installation',
+            array('tile','shingle','slate','brick'), //'Tile Repair',
+            array('floor','flooring','mezzanine','living room floor','guest room floor'), //'Vinyl Flooring Installation',
+            array('floor','flooring','mezzanine','living room floor','guest room floor'), //'Vinyl Flooring Repair',
+            array('metal gate','window bars','window grate','metal grate','fence','metal fence'), //'Welding Services',
+            array('floor','flooring','mezzanine','living room floor','guest room floor'), //'Wood Flooring Installation',
+            array('floor','flooring','mezzanine','living room floor','guest room floor'), //'Wood Flooring Repair',
+            array('window-type aircon','window-type airconditioning','inverter aircon','inverter airconditioning','aircon','airconditioning'), //'(Aircon) Air Conditioner Installation',
+            array('window-type aircon','window-type airconditioning','inverter aircon','inverter airconditioning','aircon','airconditioning'), //'(Aircon) Air Conditioner Maintenance',
+            array('fridge','chiller','refrigerator','cooler','icebox','cold storage','cold storage box'), //'(Fridge) Refridgerator Repair',
+            array('fridge','chiller','refrigerator','cooler','icebox','cold storage','cold storage box'), //'(TV) Television Repair',
+            array('TV set','television set','television','TV'), //'(TV) Television Mounting',
+            array('carbon monoxide alarm','carbon monoxide alarm system','fire alarm system', 'security system','security alarm system','security alarm','fire alarm', 'alarm system'), //'Alarm System Installation',
+            array('dryer','washing machine','radio','instapot','fryer','air fryer','vitamix','food processor','blender','water heater','microwave','toaster','kitchen aid mixer','expresso machine','expresso maker','coffee maker','mixer','induction oven','induction stove', 'gas oven','gas stove'.'electric oven','electric stove','oven','stove'), //'Appliance Repair',
+            array('backup generator','generator'), //'Backup Generator Installation',
+            array('house wiring','living room wiring','electrical','wire','cable','cable and wire'), //'Cable and Wire Installation',
+            array('house wiring','living room wiring','electrical','wire','cable','cable and wire'), //'Cable and Wire Repair',
+            array('cellphone','phone','smartphone','iPhone','android phone','vivo phone','xiaomi'), //'Cellphone Repair',
+            array('cellphone','phone','smartphone','iPhone','android phone','vivo phone','xiaomi'), //'Smartphone Repair',
+            array('lamp','kitchen lights','bathroom lights','bedroom lights','living room lights','house wiring'), //'Electrical Lighting Installation',
+            array('lamp','kitchen lights','bathroom lights','bedroom lights','living room lights','house wiring'), //'Electrical Lighting Repair',
+            array('notebook','gaming laptop','laptop','iPad','tablet','cellphone','phone','smartphone','iPhone','android phone','vivo phone','xiaomi'), //'Gadget Repair',
+            array('dryer','washing machine','radio','instapot','fridge','chiller','refrigerator','cooler','icebox','cold storage','cold storage box','fryer','air fryer','vitamix','food processor','blender','water heater','microwave','toaster','kitchen aid mixer','expresso machine','expresso maker','coffee maker','mixer','induction oven','induction stove', 'gas oven','gas stove'.'electric oven','electric stove','oven','stove'), //'General Gadget/Appliance Repair Service',
+            array('backup generator','generator'), //'Generator Installation',
+            array('backup generator','generator'), //'Generator Repair',
+            array('notebook','gaming laptop','laptop'), //'Laptop/Computer Repair',
+            array('roaster','microwave','electric microwave'), //'Microwave Repair',
+            array('solar panels','solar panel'), //'Solar Panel Mounting',
+            array('solar panels','solar panel'), //'Solar Panel Repair',
+            array('house wiring','living room wiring','electrical','wire','cable','cable and wire'), //'Wiring Installation',
+            array('house wiring','living room wiring','electrical','wire','cable','cable and wire'), //'Wiring Repair',
+            array('hedge','bush','shrub','undergrowth','shrubbery'), //'Bush/Hedge Decoration',
+            array('lawn','court','courtyard','garden','yard','backyard','front yard'), //'Clearing Garden',
+            array('lawn','court','courtyard','garden','yard','backyard','front yard'), //'Garden Landscaping',
+            array('lawn','court','courtyard','garden','yard','backyard','front yard'), //'Grass/Lawn Mowing',
+            array('basketball court','lawn','court','courtyard','garden','yard','backyard','front yard'), //'Grounds Maintenance',
+            array('hedge','bush','shrub','undergrowth','shrubbery'), //'Hedge Trimming',
+            array('lawn','court','courtyard','garden','yard','backyard','front yard'), //'Lawn Care Service',
+            array('tree','fruit tree','front yard tree','back yard tree','courtyard tree'), //'Tree Service',
+            array('lawn','yard','garden','flower bed','vegetable garden', 'flower garden','front yard','back yard','lawn','court','courtyard','garden','yard','backyard','front yard'), //'Weeding Garden',
+            array('guest room','garage','living room','kitchen','pantry','storage area',"kid's playroom",'house design','attic','bedroom','bathroom','game room','nursery','closet area','master bedroom','home','house'), //'Aparment/Home Decoratoring',
+            array('guest room','garage','living room','kitchen','pantry','storage area',"kid's playroom",'house design','attic','bedroom','bathroom','game room','nursery','closet area','master bedroom','home','house'), //'Apartment/Home Interior Designer',
+            array('house','home','mural','wall peice','wall'), //'Decorative Painters',
+            array('house','home','mural','wall peice','wall'), //'Exterior Painting',
+            array('house','home','mural','wall peice','wall'), //'Mural Painting',
+            array('house','home','mural','wall peice','wall'), //'General Home Painting',
+            array('window-type aircon','window-type airconditioning','inverter aircon','inverter airconditioning','aircon','airconditioning'), //'(Aircon) Air Conditioner Cleaning',
+            array('air duct','vent','air vent'), //'Air Duct Cleaning',
+            array('furniture','guest room','garage','house','back yard','front yard','gutter','curtains','clothes','sofa','living room','kitchen','pantry','storage area',"kid's playroom",'house design','attic','bedroom','bathroom','game room','nursery','closet area','master bedroom'), //'Apartment Moving Out Cleaning',
+            array('mould','basement mould'), //'Basement Mould Removal',
+            array('guest bathroom','main bathroom','guest tub','guest bathtub','main tub','main bathtub', 'tub','bathtub','main bathroom toilet','guest bathroom toilet','bathroom toilet','toilet','main bathroom shower','guest bathroom shower','bathroom shower','shower'), //'Bathroom Cleaning',
+            array('carpet','rug','mat'), //'Carpet Cleaning',
+            array('carpet','rug','mat'), //'Carpet Steam Cleaning',
+            array('bookshelves','shelves','bookshelf','mantelshelf','shelving','guest room','garage','living room','kitchen','pantry','storage area',"kid's playroom",'house design','attic','bedroom','bathroom','game room','nursery','closet area','master bedroom','home','house'), //'Cleaning and Organizing Service',
+            array('curtain','blinds','drop curtain','draping'), //'Curtain Cleaning',
+            array('floor','flooring','mezzanine','living room floor','guest room floor','floor','living room floor','dining room floor',), //'Floor Care Service',
+            array('gutter','drainpipes','rainspouts','trough'), //'Gutter Cleaning',
+            array('area has a spider infestation that', 'area has a rat infestation that','area has a pest infestation that','area has a roach infestation that'), //'Pest Control',
+            array('area has a wild goose that','area has a stray dog that','area has a wild animal that'), //'Wild Animal removal',
+            array('bedroom window','bedroom windows','living room window','living room windows','guest room window','guest room windows','window','windows','window','windows'), //'Window Cleaning'
+        );
+
+        $this->actionArr = array( // array()
+            array(), // 'General Plumbing Project'
+            array(), // 'General Carpentry Project',
+            array(), // 'General Gardening Project',
+            array(), // 'General Electrical Project',
+            array(), // 'General Home Improvement Project',
+            array(), // 'General Cleaning Project',
+            array(), // 'Bathroom Sink Installation',
+            array(), // 'Bathroom Sink Repair',
+            array(), // 'Bathtub Repair',
+            array(), // 'Drainage Installation',
+            array(), // 'Drainage Repair',
+            array(), // 'General Sink Installation',
+            array(), // 'General Sink Repair',
+            array(), // 'Kitchen Sink Installation',
+            array(), // 'Kitchen Sink Repair',
+            array(), // 'Pipe Installation',
+            array(), // 'Pipe Repair',
+            array(), // 'Shower Repair',
+            array(), //array(), // 'Toilet Installation',
+            array(), //'Toilet Repair',
+            array(), //'Antique Furniture Restoration',
+            array(), //'Asphalt Paving Service',
+            array(), //'Balcony Remodelling',
+            array(), //'Cabinet Assembly',
+            array(), //'Cabinet Construction',
+            array(), //'Cabinet Making',
+            array(), //'Cabinet Repair',
+            array(), //'Caulking',
+            array(), //'Closet Construction',
+            array(), //'Closet Renovation',
+            array(), //'Countertop Installation',
+            array(), //'Countertop Repair',
+            array(), //'Door Installation',
+            array(), //'Door Repair',
+            array(), //'Fence Installation',
+            array(), //'Fence Repair',
+            array(), //'Foam Roofing Installation',
+            array(), //'Foam Roofing Repair',
+            array(), //'Furniture Assembly',
+            array(), //'Furniture Repair',
+            array(), //'Furniture Restoration',
+            array(), //'Garage Door Installation',
+            array(), //'Garage Door Repair',
+            array(), //'Gate Installation',
+            array(), //'Gate Repair',
+            array(), //'General Home Repair Service',
+            array(), //'Home Remodelling',
+            array(), //'Insulation Installation',
+            array(), //'Insulation Repair',
+            array(), //'Locksmith Service',
+            array(), //'Roof Construction',
+            array(), //'Roof Repair',
+            array(), //'Shelf Assembly',
+            array(), //'Shelf Construction',
+            array(), //'Shelf Installation',
+            array(), //'Tile Installation',
+            array(), //'Tile Repair',
+            array(), //'Vinyl Flooring Installation',
+            array(), //'Vinyl Flooring Repair',
+            array(), //'Welding Services',
+            array(), //'Wood Flooring Installation',
+            array(), //'Wood Flooring Repair',
+            array(), //'(Aircon) Air Conditioner Installation',
+            array(), //'(Aircon) Air Conditioner Maintenance',
+            array(), //'(Fridge) Refridgerator Repair',
+            array(), //'(TV) Television Repair',
+            array(), //'(TV) Television Mounting',
+            array(), //'Alarm System Installation',
+            array(), //'Appliance Repair',
+            array(), //'Backup Generator Installation',
+            array(), //'Cable and Wire Installation',
+            array(), //'Cable and Wire Repair',
+            array(), //'Cellphone Repair',
+            array(), //'Smartphone Repair',
+            array(), //'Electrical Lighting Installation',
+            array(), //'Electrical Lighting Repair',
+            array(), //'Gadget Repair',
+            array(), //'General Gadget/Appliance Repair Service',
+            array(), //'Generator Installation',
+            array(), //'Generator Repair',
+            array(), //'Laptop/Computer Repair',
+            array(), //'Microwave Repair',
+            array(), //'Solar Panel Mounting',
+            array(), //'Solar Panel Repair',
+            array(), //'Wiring Installation',
+            array(), //'Wiring Repair',
+            array(), //'Bush/Hedge Decoration',
+            array(), //'Clearing Garden',
+            array(), //'Garden Landscaping',
+            array(), //'Grass/Lawn Mowing',
+            array(), //'Grounds Maintenance',
+            array(), //'Hedge Trimming',
+            array(), //'Lawn Care Service',
+            array(), //'Tree Service',
+            array(), //'Weeding Garden',
+            array(), //'Aparment/Home Decoratoring',
+            array(), //'Apartment/Home Interior Designer',
+            array(), //'Decorative Painters',
+            array(), //'Exterior Painting',
+            array(), //'Mural Painting',
+            array(), //'General Home Painting',
+            array(), //'(Aircon) Air Conditioner Cleaning',
+            array(), //'Air Duct Cleaning',
+            array(), //'Apartment Moving Out Cleaning',
+            array(), //'Basement Mould Removal',
+            array(), //'Bathroom Cleaning',
+            array(), //'Carpet Cleaning',
+            array(), //'Carpet Steam Cleaning',
+            array(), //'Cleaning and Organizing Service',
+            array(), //'Curtain Cleaning',
+            array(), //'Floor Care Service',
+            array(), //'Gutter Cleaning',
+            array(), //'Pest Control',
+            array(), //'Wild Animal removal',
+            array(), //'Window Cleaning'
+        );
+
+        $this->sdfsdf = array( // array()
+            array(), // 'General Plumbing Project'
+            array(), // 'General Carpentry Project',
+            array(), // 'General Gardening Project',
+            array(), // 'General Electrical Project',
+            array(), // 'General Home Improvement Project',
+            array(), // 'General Cleaning Project',
+            array(), // 'Bathroom Sink Installation',
+            array(), // 'Bathroom Sink Repair',
+            array(), // 'Bathtub Repair',
+            array(), // 'Drainage Installation',
+            array(), // 'Drainage Repair',
+            array(), // 'General Sink Installation',
+            array(), // 'General Sink Repair',
+            array(), // 'Kitchen Sink Installation',
+            array(), // 'Kitchen Sink Repair',
+            array(), // 'Pipe Installation',
+            array(), // 'Pipe Repair',
+            array(), // 'Shower Repair',
+            array(), //array(), // 'Toilet Installation',
+            array(), //'Toilet Repair',
+            array(), //'Antique Furniture Restoration',
+            array(), //'Asphalt Paving Service',
+            array(), //'Balcony Remodelling',
+            array(), //'Cabinet Assembly',
+            array(), //'Cabinet Construction',
+            array(), //'Cabinet Making',
+            array(), //'Cabinet Repair',
+            array(), //'Caulking',
+            array(), //'Closet Construction',
+            array(), //'Closet Renovation',
+            array(), //'Countertop Installation',
+            array(), //'Countertop Repair',
+            array(), //'Door Installation',
+            array(), //'Door Repair',
+            array(), //'Fence Installation',
+            array(), //'Fence Repair',
+            array(), //'Foam Roofing Installation',
+            array(), //'Foam Roofing Repair',
+            array(), //'Furniture Assembly',
+            array(), //'Furniture Repair',
+            array(), //'Furniture Restoration',
+            array(), //'Garage Door Installation',
+            array(), //'Garage Door Repair',
+            array(), //'Gate Installation',
+            array(), //'Gate Repair',
+            array(), //'General Home Repair Service',
+            array(), //'Home Remodelling',
+            array(), //'Insulation Installation',
+            array(), //'Insulation Repair',
+            array(), //'Locksmith Service',
+            array(), //'Roof Construction',
+            array(), //'Roof Repair',
+            array(), //'Shelf Assembly',
+            array(), //'Shelf Construction',
+            array(), //'Shelf Installation',
+            array(), //'Tile Installation',
+            array(), //'Tile Repair',
+            array(), //'Vinyl Flooring Installation',
+            array(), //'Vinyl Flooring Repair',
+            array(), //'Welding Services',
+            array(), //'Wood Flooring Installation',
+            array(), //'Wood Flooring Repair',
+            array(), //'(Aircon) Air Conditioner Installation',
+            array(), //'(Aircon) Air Conditioner Maintenance',
+            array(), //'(Fridge) Refridgerator Repair',
+            array(), //'(TV) Television Repair',
+            array(), //'(TV) Television Mounting',
+            array(), //'Alarm System Installation',
+            array(), //'Appliance Repair',
+            array(), //'Backup Generator Installation',
+            array(), //'Cable and Wire Installation',
+            array(), //'Cable and Wire Repair',
+            array(), //'Cellphone Repair',
+            array(), //'Smartphone Repair',
+            array(), //'Electrical Lighting Installation',
+            array(), //'Electrical Lighting Repair',
+            array(), //'Gadget Repair',
+            array(), //'General Gadget/Appliance Repair Service',
+            array(), //'Generator Installation',
+            array(), //'Generator Repair',
+            array(), //'Laptop/Computer Repair',
+            array(), //'Microwave Repair',
+            array(), //'Solar Panel Mounting',
+            array(), //'Solar Panel Repair',
+            array(), //'Wiring Installation',
+            array(), //'Wiring Repair',
+            array(), //'Bush/Hedge Decoration',
+            array(), //'Clearing Garden',
+            array(), //'Garden Landscaping',
+            array(), //'Grass/Lawn Mowing',
+            array(), //'Grounds Maintenance',
+            array(), //'Hedge Trimming',
+            array(), //'Lawn Care Service',
+            array(), //'Tree Service',
+            array(), //'Weeding Garden',
+            array(), //'Aparment/Home Decoratoring',
+            array(), //'Apartment/Home Interior Designer',
+            array(), //'Decorative Painters',
+            array(), //'Exterior Painting',
+            array(), //'Mural Painting',
+            array(), //'General Home Painting',
+            array(), //'(Aircon) Air Conditioner Cleaning',
+            array(), //'Air Duct Cleaning',
+            array(), //'Apartment Moving Out Cleaning',
+            array(), //'Basement Mould Removal',
+            array(), //'Bathroom Cleaning',
+            array(), //'Carpet Cleaning',
+            array(), //'Carpet Steam Cleaning',
+            array(), //'Cleaning and Organizing Service',
+            array(), //'Curtain Cleaning',
+            array(), //'Floor Care Service',
+            array(), //'Gutter Cleaning',
+            array(), //'Pest Control',
+            array(), //'Wild Animal removal',
+            array(), //'Window Cleaning'
+        );
+
+        $this->expertise = array(
+            'General Plumbing Project',
+            'General Carpentry Project',
+            'General Electrical Project',
+            'General Gardening Project',
+            'General Home Improvement Project',
+            'General Cleaning Project',
+            'Bathroom Sink Installation',
+            'Bathroom Sink Repair',
+            'Bathtub Repair',
+            'Drainage Installation',
+            'Drainage Repair',
+            'General Sink Installation',
+            'General Sink Repair',
+            'Kitchen Sink Installation',
+            'Kitchen Sink Repair',
+            'Pipe Installation',
+            'Pipe Repair',
+            'Shower Repair',
+            'Toilet Installation',
+            'Toilet Repair',
+            'Antique Furniture Restoration',
+            'Asphalt Paving Service',
+            'Balcony Remodelling',
+            'Cabinet Assembly',
+            'Cabinet Construction',
+            'Cabinet Making',
+            'Cabinet Repair',
+            'Caulking',
+            'Closet Construction',
+            'Closet Renovation',
+            'Countertop Installation',
+            'Countertop Repair',
+            'Door Installation',
+            'Door Repair',
+            'Fence Installation',
+            'Fence Repair',
+            'Foam Roofing Installation',
+            'Foam Roofing Repair',
+            'Furniture Assembly',
+            'Furniture Repair',
+            'Furniture Restoration',
+            'Garage Door Installation',
+            'Garage Door Repair',
+            'Gate Installation',
+            'Gate Repair',
+            'General Home Repair Service',
+            'Home Remodelling',
+            'Insulation Installation',
+            'Insulation Repair',
+            'Locksmith Service',
+            'Roof Construction',
+            'Roof Repair',
+            'Shelf Assembly',
+            'Shelf Construction',
+            'Shelf Installation',
+            'Tile Installation',
+            'Tile Repair',
+            'Vinyl Flooring Installation',
+            'Vinyl Flooring Repair',
+            'Welding Services',
+            'Wood Flooring Installation',
+            'Wood Flooring Repair',
+            '(Aircon) Air Conditioner Installation',
+            '(Aircon) Air Conditioner Maintenance',
+            '(Fridge) Refridgerator Repair',
+            '(TV) Television Repair',
+            '(TV) Television Mounting',
+            'Alarm System Installation',
+            'Appliance Repair',
+            'Backup Generator Installation',
+            'Cable and Wire Installation',
+            'Cable and Wire Repair',
+            'Cellphone Repair',
+            'Smartphone Repair',
+            'Electrical Lighting Installation',
+            'Electrical Lighting Repair',
+            'Gadget Repair',
+            'General Gadget/Appliance Repair Service',
+            'Generator Installation',
+            'Generator Repair',
+            'Laptop/Computer Repair',
+            'Microwave Repair',
+            'Solar Panel Mounting',
+            'Solar Panel Repair',
+            'Wiring Installation',
+            'Wiring Repair',
+            'Bush/Hedge Decoration',
+            'Clearing Garden',
+            'Garden Landscaping',
+            'Grass/Lawn Mowing',
+            'Grounds Maintenance',
+            'Hedge Trimming',
+            'Lawn Care Service',
+            'Tree Service',
+            'Weeding Garden',
+            'Aparment/Home Decoratoring',
+            'Apartment/Home Interior Designer',
+            'Decorative Painters',
+            'Exterior Painting',
+            'Mural Painting',
+            'General Home Painting',
+            '(Aircon) Air Conditioner Cleaning',
+            'Air Duct Cleaning',
+            'Apartment Moving Out Cleaning',
+            'Basement Mould Removal',
+            'Bathroom Cleaning',
+            'Carpet Cleaning',
+            'Carpet Steam Cleaning',
+            'Cleaning and Organizing Service',
+            'Curtain Cleaning',
+            'Floor Care Service',
+            'Gutter Cleaning',
+            'Pest Control',
+            'Wild Animal removal',
+            'Window Cleaning'
+        );
+
         $this->array_lname = array(
             'Abbott',
             'Acevedo',
@@ -1867,6 +2345,189 @@ $otherAgentCxNotesArr = array(
 //     // $resData['assignAgent'] = $assignAgent['data'];
     return $this->customResponse->is200Response($response,$resData);
 }
+
+
+
+
+
+
+public function generateJobPosts(Request $request,Response $response, array $args){
+    $total = CustomRequestHandler::getParam($request,"total");
+    $total = $total == null ? 10 : $total;
+
+    /* level
+        1 - Job Post
+        2 - Job Order
+        3 - Billing
+        4 - Ratings
+    */
+    $level = CustomRequestHandler::getParam($request,"level");
+    $level = $total == null ? 1 : $level;
+
+    /* feeling
+        1 - Open / Positive
+        2 - Cancel / Negative
+    */
+    $feeling = CustomRequestHandler::getParam($request,"feeling");
+    $feeling = $total == null ? 1 : $feeling;
+    $randomize = CustomRequestHandler::getParam($request,"randomizeRating");
+    $randomize = $randomize == null ? false : $randomize;
+
+    $include_users_date = CustomRequestHandler::getParam($request,"include_users_date");
+    $include_users_date = $include_users_date == null ? '2020-01-01 08:00:00' : $include_users_date;
+
+    /* feeling
+        1 - 'backward'
+        2 - 'forward'
+    */
+    $incl_usr_dir = CustomRequestHandler::getParam($request,"incl_usr_dir");
+    $incl_usr_dir = $incl_usr_dir == null ? 2 : $incl_usr_dir;
+
+    // Get list of homeonwers who were created before startDate
+    $homeownersList = $this->generateData->getListHomeownersByCreationDate( $include_users_date, $incl_usr_dir);
+    $homeownersList = $homeownersList['data'];
+
+    // Get post date max
+    $post_date_max = CustomRequestHandler::getParam($request,"post_date_max");
+    $daysPast = CustomRequestHandler::getParam($request,"daysPast");
+    $daysPast = $daysPast == null ? 12 : $daysPast;
+    date_default_timezone_set('Asia/Singapore');
+    $post_date_max =  $post_date_max == null 
+        ? ($daysPast != null 
+            ? date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s'). ' + '.$daysPast.' day')) 
+            : date('Y-m-d H:i:s') 
+          ) 
+        :  $post_date_max;
+
+    $maxPostNum = CustomRequestHandler::getParam($request,"maxPostNum");
+    $maxPostNum = $maxPostNum == null ? 5 : $maxPostNum;
+
+    $minPostNum = CustomRequestHandler::getParam($request,"minPostNum");
+    $minPostNum =  $minPostNum == null ? 2 : $minPostNum;
+
+    if( $minPostNum > $maxPostNum){ // Ensures u dont screw up and max is always greater than min
+        $temp = $minPostNum;
+        $minPostNum = $maxPostNum;
+        $maxPostNum = $temp;
+    }
+
+    // Get expertise list
+    $expertiseList = $this->file->searchProject("test");
+    $expertiseList = $expertiseList['data'];
+
+    // -------
+    // for starts here
+
+    // post_date_min would be the date the user was created or the inc user data
+    // whichever is greater (cannot post a post before homeowner was created) 
+    $homeowner = $homeownersList[0];
+    $h_userID = $homeowner['user_id'];
+    $h_cdate = $homeowner['created_on'];
+    $post_date_min =  $h_cdate >= $include_users_date ?  $h_cdate : $include_users_date;
+
+    // get the user's list of homes
+    $allAddress = $this->file->getUsersSavedAddresses($h_userID);
+    $allAddress = $allAddress['data'];
+
+
+
+
+    if(count($allAddress)>0){
+
+        // get a random expertise
+        $expertiseIndex = mt_rand(0, count($expertiseList)-1);
+        $expertise = $expertiseList[$expertiseIndex]["type"];
+        $ex_first_letter = strtolower(substr($expertise, 0, 1));
+        $article = in_array($ex_first_letter, $this->vowels)?"an":"a";
+        $objectArr = $this->objectArr[$expertiseIndex];
+        $object = $objectArr[mt_rand(0, count($objectArr)-1)];
+
+        $job_description = "I ".($this->need_synonyms[mt_rand(0, count($this->need_synonyms)-1)])." ".($this->help_synonyms[mt_rand(0, count($this->help_synonyms)-1)])." with ".$article." ".strtolower($expertise).". My ".$object." needs (action). Every (time period) (noun) negative action(destroys,accidentally breaks) my (object). I feel very (negative emotion). I will be (irelevent action) and need (worker action). I would be (positive emotion) if someone can assist me with this.";
+
+        // Create a job post
+        // $homeownersList = $this->generateData->saveProject(
+        //     $createDate,
+        //     $userID,
+        //     $home_id, 
+        //     $job_size_id, 
+        //     $required_expertise_id,
+        //     $job_description, 
+        //     $rate_offer,   
+        //     $isExactSchedule,
+        //     $rate_type_id, 
+        //     $preferred_date_time, 
+        //     $project_name
+        // );
+
+        // Generate Job Order
+        if($level >= 2){
+
+        }
+
+        // Generate Bill
+        if($level >= 3){
+
+        }
+
+        // Generate Rating
+        if($level >= 4){
+
+        }
+
+
+    }
+
+    // // -------
+    // // for ends here
+    $resData = [];
+    // $resData['include_users_date'] = ($incl_usr_dir==1?"before ":"after ").$include_users_date;
+    // $resData['post_date_max'] = $post_date_max;
+    // $resData['post_date_min'] = $post_date_min;
+
+    $resData['h_userID'] = $h_userID;
+    $resData['h_cdate'] = $h_cdate;
+    $resData['job_description'] = $job_description;
+    // $resData['allAddress'] = $allAddress;
+    // $resData['expertiseList'] = $expertiseList;
+    // $resData['homeownersList'] = $homeownersList;
+
+    return $this->customResponse->is200Response($response,$resData);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

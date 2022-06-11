@@ -1056,6 +1056,133 @@ public function getNBIInfo($supportTicketID){
 
 
 
+    public function getListHomeownersByCreationDate($date, $direction = 2){
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+            $result = "";
+
+            
+            $symbol = $direction == 1 ? '<=': '>=';
+            $sql = "SELECT * FROM `hh_user` hh 
+            WHERE hh.user_type_id = 1 
+            AND hh.user_status_id = 2
+            AND hh.created_on ".$symbol." :cdate
+            ORDER BY hh.created_on ASC";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded 
+            if ($stmt !== false) {
+                $stmt->bindparam(':cdate', $date);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt=null;
+            $db=null;
+
+            return array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+        } catch (\PDOException $e) {
+            return array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+        }
+    }
+
+
+
+
+public function saveProject(
+        $createDate,
+        $userID,
+        $home_id, 
+        $job_size_id, 
+        $required_expertise_id,
+        $job_description, 
+        $rate_offer,   
+        $isExactSchedule,
+        $rate_type_id, 
+        $preferred_date_time, 
+        $project_name
+    ){
+    try{    
+        $db = new DB();
+        $conn = $db->connect();
+
+        $sql = "SET @@session.time_zone = '+08:00'; INSERT INTO job_post (homeowner_id, home_id, job_size_id, required_expertise_id, job_post_status_id, job_description, rate_offer, rate_type_id, is_exact_schedule, preferred_date_time, created_on, job_post_name)
+                VALUES (:userID, :homeID, :jobSize, :expert, 1, :jobdesc, :rateoffer, :ratetype, :isexact, :prefdateTime, :cdate, :jobPostName);";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        $result = "";
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID );
+            $stmt->bindparam(':homeID', $home_id);
+            $stmt->bindparam(':jobSize', $job_size_id );
+            $stmt->bindparam(':expert', $required_expertise_id );
+            $stmt->bindparam(':jobdesc',  $job_description );
+            $stmt->bindparam(':rateoffer',$rate_offer );
+            $stmt->bindparam(':ratetype', $rate_type_id );
+            $stmt->bindparam(':isexact', $isExactSchedule );
+            $stmt->bindparam(':prefdateTime', $preferred_date_time );
+            $stmt->bindparam(':cdate', $createDate);
+            $stmt->bindparam(':jobPostName', $project_name );
+            $result = $stmt->execute();
+        } else {
+            $result = "prepare statement failed";
+        }
+        $stmt=null;
+        $db=null;
+
+        $ModelResponse =  array(
+            "success"=>true,
+            "data"=>$result
+        );
+        // ($userID, $home_id , $job_size_id, $required_expertise_id, $job_description  
+        // ,$rate_offer, $rate_type_id, $preferred_date_time, $project_name)
+        return $ModelResponse;
+
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+
+        return $ModelResponse;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

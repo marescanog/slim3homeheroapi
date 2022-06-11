@@ -64,4 +64,5 @@ $app->group("/generate-data",function() use ($app){
     $app->post("/complete-worker-registration", "GenerateDataController:completeWorkerRegistration");
     $app->post("/generate-support-agents", "GenerateDataController:generateSupportAgents");  
     $app->post("/approve-worker", "GenerateDataController:approveWorker");  
+    $app->post("/generate-job-post", "GenerateDataController:generateJobPosts");  
 });
