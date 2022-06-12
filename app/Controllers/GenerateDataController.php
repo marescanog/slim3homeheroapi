@@ -59,17 +59,141 @@ class GenerateDataController
 
         $this->vowels = array("a","e","i","o","u");
 
-        $this->help_synonyms = array("help","assistance","aid","a helping hand","support");
+        $this->help_synonyms = array("help","assistance","help","aid","support","help","cooperation","service","guidance","help");
 
-        $this->need_synonyms = array("need","am in need of","have need of","want","call for", "necessitate", "require");
+        $this->need_synonyms = array("need","want","desire","need","am in need of","have need of","want","call for","need", "necessitate", "require","need");
 
-        $this->time_period = array('day','week','month','year');
-        $this->noun1 = array('the storm','my neighbor','a passerby','the rain','kids');
-        $this->negative_action = array('destroys','breaks','accidentally destroys','messes up');
-        $this->negative_feeling = array();
-        $this->irrelevent_action = array();
-        $this->worker_action = array();
-        $this->positive_feeling = array('appreciative','grateful','happy','overjoyed','');
+        $this->time_period = array('Almost daily','On occasion','Every once in a while','At times','Every so often','Oftentimes','From time to time','Occasionally','Sometimes','Everyday','Every week','Every month','Every year');
+        $this->noun1 = array('the storm','the heavy rains','my neighbor','a passerby','the rain','my kids','some wild animals',
+        'my children',"the guest", "the neighbor's kids", 'the dog', 'my dog', "the neighbor's dog"
+        );
+        $this->negative_action = array('destroys','breaks','accidentally destroys','messes up',
+        'dirties','damages','wrecks','breaks up','ruins'
+        );
+        $this->negative_feeling = array('helpless','angry','sad','mad','disappoinated','annoyed','irritated','exasperated','displease','unhappy','downhearted');
+
+        $this->positive_feeling = array('appreciative','grateful','happy','overjoyed','thankful');
+
+        $this->hope_syn = array(
+            "hoping","expecting","anticipating","foreseeing","counting","banking"
+        );
+
+        $this->perform_job_syn = array(
+            "done","acted on","dealt with","finished","completed","fulfilled","accomplished"
+        );
+
+        $this->quicktime_syn = array(
+            "soon","shortly","presently","in the near future","quickly","in a timely manner","on the double"
+        );
+
+        $this->search_syn = array(
+            "searching","looking for","hunting","seeking","asking","requesting"
+        );
+
+        $this->worker_syn = array(
+            "worker","hireling","laborer","helper","hand help","workman","worker","hired hand","hired man"
+        );
+
+        $this->job_syn = array(
+            "job","task","posting","chore","project","proposal","matter","affair","matter at hand","task at hand","job at hand"
+        );
+
+        $this->correctly_syn = array(
+            "correctly","right","properly","entirely","quickly","fully","completely","exactly","precisely",
+            "well","nicely"
+        );
+
+        $this->important_syn = array(
+            "means a lot","is important","is significant","matters","is serious","is weighty","is crucial"
+        );
+
+        $this->qualified_syn = array(
+            "qualified","skilled","masterful","good","competent","knowledgeable","trained","fit","equipped","expert","proficient","skillful"
+        );
+
+        $this->action_do = array(
+            "do","perform","complete","carry out","undertake","accomplish","fulfill","do"
+        );
+
+        $this->excuses = array(
+            "attending a wedding","going on a business trip",
+            "having guests over","taking a vacation","hosting a party",
+            "leaving for an extended work trip","having my anniversary",
+            "having a birthday party", "going on vacation","attending an important event",
+            "going to a party","hosting a special event"
+        );
+
+        $this->past = array(
+            "last","prior","former","past","previous"
+        );
+
+        $this->excuse_timeframe = array(
+            "next week","soon","in the future","next month","months from now",
+            "two weeks from now","three months from now","three weeks from now",
+            "in the near future","very soon"
+        );
+
+        $this->badReview = array(
+            "was a little bit dissappointing", "was not able to do a good job","did not meet my expectations",
+            "was not able to finish it","could not complete it","had some issues",
+            "poorly did the task","performed badly"
+        );
+
+        $this->timework = array(
+            "on weekends","on weekdays","in the morning","in the afternoon","in the evening",
+            "every other day","most nights","most days","most afternoons",
+            "some nights","some days","some afternoons","some mornings",
+            "most mornings"
+        );
+
+        $this->personactivity = array(
+            "work","am busy with my business","do my job","go to my job",
+            "work remotely", "am busy", "go out", "do errands",
+            "attend school","attend class"
+        );
+
+        $this->familymember = array(
+            "brother","friend","mother","sibling","father","uncle","aunt","sister"
+        );
+        $this->compromise = array(
+            "but I can adjust my schedule if need be",
+            "but it is easy for me to move my schedule",
+            "but I can move my schedule if needed",
+            "but I can have my ".($this->familymember[mt_rand(0,count($this->familymember)-1)])." supervise while I am away",
+            "but I can make adjustments","but I am flexible with time",
+            "so I not flexible with time", "so I cannot adjust my schedule",
+            "so it is hard for me to move my schedule",
+            "so I cannot make adjustments","so I need someone who can adjust to my schedule"
+        );
+        $this->irrelevent_action = array(
+            "The ".($this->past[mt_rand(0,count($this->past)-1)])." ".($this->worker_syn[mt_rand(0,count($this->worker_syn)-1)])
+            ." ".($this->badReview[mt_rand(0,count($this->badReview)-1)]),
+
+            "I will be ".($this->excuses[mt_rand(0,count($this->excuses)-1)])." "
+            .($this->excuse_timeframe[mt_rand(0,count($this->excuse_timeframe)-1)]),
+
+            "I ".($this->personactivity[mt_rand(0,count($this->personactivity)-1)])
+            ." ".($this->timework[mt_rand(0,count($this->timework)-1)])." "
+            .($this->compromise[mt_rand(0,count($this->compromise)-1)])
+
+        );
+
+        $this->worker_action = array(
+            "I was ".($this->hope_syn[mt_rand(0,count($this->hope_syn)-1)])
+            ." that the job can be ".($this->perform_job_syn[mt_rand(0,count($this->perform_job_syn)-1)])
+            ." ".$this->quicktime_syn[mt_rand(0,count($this->quicktime_syn)-1)],
+            
+            "I am ".($this->search_syn[mt_rand(0,count($this->search_syn)-1)])
+            ." for a ".($this->worker_syn[mt_rand(0,count($this->worker_syn)-1)])
+            ." who can ".($this->action_do[mt_rand(0,count($this->action_do)-1)])." the ".($this->job_syn[mt_rand(0,count($this->job_syn)-1)])
+            ." ".($this->correctly_syn[mt_rand(0,count($this->correctly_syn)-1)]),
+            
+            "this ".($this->important_syn[mt_rand(0,count($this->important_syn)-1)])." to me so the ".($this->job_syn[mt_rand(0,count($this->job_syn)-1)])
+            ." should be ".($this->correctly_syn[mt_rand(0,count($this->job_syn)-1)])." done",
+            
+            "I need someone ".($this->qualified_syn[mt_rand(0,count($this->qualified_syn)-1)])." to "
+            .($this->action_do[mt_rand(0,count($this->action_do)-1)])." the ".($this->job_syn[mt_rand(0,count($this->job_syn)-1)])
+        );
 
         $this->objectArr = array( // array()
             array('pipes','kitchen pipes','bathroom pipes','kitchen faucet','bathroom faucet','faucet','outdoor pipes','outdoor faucet'), // 'General Plumbing Project'
@@ -2453,6 +2577,7 @@ public function generateJobPosts(Request $request,Response $response, array $arg
         // get a random expertise
         $expertiseIndex = mt_rand(0, count($expertiseList)-1);
         $expertise = $expertiseList[$expertiseIndex]["type"];
+
         $ex_first_letter = strtolower(substr($expertise, 0, 1));
         $article = in_array($ex_first_letter, $this->vowels)?"an":"a";
 
@@ -2462,8 +2587,27 @@ public function generateJobPosts(Request $request,Response $response, array $arg
         $action_arr_selected = count($this->actionArr) >  $expertiseIndex ? $this->actionArr[$expertiseIndex] : "";
         $action = count($this->actionArr) >  $expertiseIndex ? $action_arr_selected[mt_rand(0, count($action_arr_selected)-1)] : ($this->actionArr[0])[mt_rand(0, count(($this->actionArr[0]))-1)];
 
-        $job_description = "I ".($this->need_synonyms[mt_rand(0, count($this->need_synonyms)-1)])." ".($this->help_synonyms[mt_rand(0, count($this->help_synonyms)-1)])." with ".$article." ".strtolower($expertise).". My ".$obj." needs ".$action.". Every (time period) (noun) negative action(destroys,accidentally breaks) my (object). I feel very (negative emotion). I will be (irelevent action) and need (worker action). I would be (positive emotion) if someone can ".$this->help_synonyms[mt_rand(0,count($this->help_synonyms)-1)]." me with this.";
+        $removal_indexes = array(113,112,104);
+        $pestActions = array("infests","invades","takes over","destroys","damages",'destroys','breaks','accidentally destroys','messes up',
+        'dirties','damages','wrecks','breaks up','ruins');
+        $pestObjArr = $this->objectArr[mt_rand(0,20)];
+        $pest_control = "the ".$obj." ".($pestActions[mt_rand(0,count($pestActions)-1)]).' the '.$pestObjArr[mt_rand(0,count($pestObjArr)-1)];
+        $other_situations = ($this->noun1[mt_rand(0,count($this->noun1)-1)])." ".($this->negative_action[mt_rand(0,count($this->negative_action)-1)])." my ".$obj;
+        $segment = in_array($expertiseIndex,  $removal_indexes) ? $pest_control : $other_situations;
 
+        $opening1 = "I ".($this->need_synonyms[mt_rand(0, count($this->need_synonyms)-1)])." ".($this->help_synonyms[mt_rand(0, count($this->help_synonyms)-1)])." with ".$article." ".strtolower($expertise).".";
+        $opening2 = (mt_rand(1,100)%2==0?"Can":"Will")." someone ".($this->help_synonyms[mt_rand(0, count($this->help_synonyms)-1)])." with ".strtolower($expertise)."?";
+        $opening3 = "This ".($this->job_syn[mt_rand(0,count($this->job_syn)-1)])." is about ".strtolower($expertise).".";
+
+        $opening = [$opening1, $opening2, $opening3];
+        shuffle($opening);
+        $job_description =  $opening[mt_rand(0,count($opening)-1)]." My ".$obj." needs ".$action.". ".($this->time_period[mt_rand(0,count($this->time_period)-1)])." ".$segment." so I feel very "
+            .($this->negative_feeling[mt_rand(0,count($this->negative_action)-1)])." about it. "
+            .($this->irrelevent_action[mt_rand(0,count($this->irrelevent_action)-1)])." hence ".
+            ($this->worker_action[mt_rand(0,count($this->worker_action)-1)]).". I would be "
+            .($this->positive_feeling[mt_rand(0,count($this->positive_feeling)-1)])." if someone can ".$this->help_synonyms[mt_rand(0,count($this->help_synonyms)-1)]." me with this.";
+
+ 
         // Create a job post
         // $homeownersList = $this->generateData->saveProject(
         //     $createDate,
