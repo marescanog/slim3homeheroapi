@@ -49,6 +49,14 @@ class AuthController
         $this->validator = new Validator();
     }
 
+    
+    private function generateServerResponse($status, $message){
+        $response = [];
+        $response['status'] = $status;
+        $response['message'] = $message;
+        return $response;
+    }
+
 // Homeowner
     public function userLogin(Request $request,Response $response){
 
