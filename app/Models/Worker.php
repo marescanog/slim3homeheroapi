@@ -390,6 +390,12 @@ class Worker
 
             // End query builder / transaction
             $full_sql = $full_sql . "COMMIT;";
+
+            if($bind_ClearanceNo == true){
+                $full_sql = $full_sql . " UPDATE worker SET nbi_info_id = @nbiInfoNumber WHERE id = :userID;";
+            }
+
+            $full_sql = $full_sql . "COMMIT;";
             //$test_sql = "INSERT INTO `file` (`id`, `file_name`, `file_path`, `is_deleted`, `created_on`) VALUES (NULL, 'test', 'test', '0', CURRENT_TIMESTAMP);";
 
             // // -------------
@@ -1146,8 +1152,14 @@ class Worker
                         INSERT INTO support_ticket (author, issue_id, has_images, system_Description) 
                         values(:userID, 1, 1, :sysDesc);
 
+                        SET @supportTicketNumber:=LAST_INSERT_ID();
+
                         INSERT INTO ticket_actions (action_taken, system_generated_description, support_ticket)
-                        VALUES(1, :sysDesc, LAST_INSERT_ID());
+                        VALUES(1, :sysDesc, @supportTicketNumber);
+
+                        SELECT @nbi_id := nbi_info_id FROM worker WHERE id = :userID;
+
+                        UPDATE nbi_information SET support_ticket =  @supportTicketNumber WHERE id = @nbi_id;
                     COMMIT;
                     ";
 
@@ -1158,6 +1170,7 @@ class Worker
             if ($stmt !== false) {
                 $stmt->bindparam(':userID', $userID);
                 $stmt->bindparam(':sysDesc', $systemDescription);
+                $stmt->bindparam(':nbi', $nbi);
                 $result = $stmt->execute();
             }
 

@@ -37,4 +37,9 @@ return function($container)
       return new \App\Controllers\HomeownerController;
     };
 
+    $container["GenerateDataController"] = function()
+    {
+      return new \App\Controllers\GenerateDataController;
+    };
+
 };

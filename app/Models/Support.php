@@ -79,4 +79,941 @@ class Support
         }
     }
 
+
+
+
+    // @desc    Retreives the support agent account details based on email
+    // @params  email
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is the support account
+    public function getSupportAccount($email){
+
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT * FROM support_agent WHERE email=:EMAIL";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':EMAIL', $email);
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+ // @desc    Retreives the support agent account details based on email
+    // @params  email
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is the support account
+    public function get_permission_codes($permissions_owner, $searchType = null){
+
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = [];
+            $sql = "";
+            // CREATE query
+            if($searchType == null){
+
+            } else if ($searchType == 2) {
+
+            } else {
+                $sql = "SELECT * FROM override_codes oc WHERE oc.permissions_owner_id = :poid;";
+            
+                // Prepare statement
+                $stmt =  $conn->prepare($sql);
+                $result = "";
+    
+                // Only fetch if prepare succeeded
+                if ($stmt !== false) {
+                    $stmt->bindparam(':poid', $permissions_owner);
+                    $stmt->execute();
+                    $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                }
+            }
+            
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+
+    // @desc    Retreives the support agent full name based on user id
+    // @params  email
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is the support account
+    public function get_user_name($userID){
+
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = [];
+            $sql = "";
+
+            // CREATE query
+            $sql = "SELECT hh.user_id, CONCAT(hh.last_name, ', ', hh.first_name) 
+            as full_name, hh.first_name, hh.last_name 
+            FROM hh_user hh 
+            WHERE hh.user_id = :userID;";
+        
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+            
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+
+    // @desc    Retreives the support agent account details based on email
+    // @params  email
+    // @returns a Model Response object with the attributes "success" and "data"
+    //          sucess value is true when PDO is successful and false on failure
+    //          data value is the support account
+    public function get_trans_reasons(){
+
+        try{
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = [];
+            $sql = "";
+            // CREATE query
+            $sql = "SELECT * FROM ticket_transfer_reason tr WHERE tr.is_deleted = 0;";
+            
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+            $result = "";
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+            
+            $stmt=null;
+            $db=null;
+
+            $ModelResponse =  array(
+                "success"=>true,
+                "data"=>$result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success"=>false,
+                "data"=>$e->getMessage()
+            );
+
+            return $ModelResponse;
+        }
+    }
+
+
+    // For Get Codes
+    public function managerIsGettingSupervisorCodes(){
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = [];
+
+            $sql = "SELECT sa.id as sup_id, CONCAT(hh.last_name, ', ', hh.first_name) as full_name, hh.first_name, hh.last_name,
+            oc.permissions_owner_id, oc.permissions_id, oc.override_code, oc.owner_can_change, oc.is_void
+            FROM support_agent sa
+            LEFT JOIN override_codes oc ON sa.id = oc.permissions_owner_id
+            LEFT JOIN hh_user hh ON sa.id = hh.user_id
+            WHERE sa.role_type = 4
+            AND sa.is_deleted = 0";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
+
+    public function manager_getList_of_supervisors($isActive = false)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = [];
+
+            $sql ="SELECT sa.id as sup_id, sa.email,
+            CONCAT(hh.last_name, ', ', hh.first_name) as full_name, hh.first_name, hh.last_name 
+            FROM support_agent sa 
+            LEFT JOIN hh_user hh ON sa.id = hh.user_id
+            WHERE sa.role_type = 4
+            AND sa.is_deleted = 0;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+            $conn = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+    }}
+
+
+
+    // ======================================================================================
+    // ======================================================================================
+    // May 24, 2022
+
+
+
+    public function getAccBaseInfo($userID)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $result = "";
+
+            $sql ="SELECT sa.id, sa.email, sa.is_deleted, sa.supervisor_id, sa.created_on as date_joined,
+            hha.last_name as acc_lname, hha.first_name acc_fname, CONCAT(hha.last_name,', ', hha.first_name) as acc_full_name,
+            hhs.last_name as sup_lname, hhs.first_name sup_fname, CONCAT(hhs.last_name,', ', hhs.first_name) as sup_full_name
+            FROM support_agent sa 
+            LEFT JOIN hh_user hha ON sa.id = hha.user_id
+            LEFT JOIN hh_user hhs ON sa.supervisor_id = hhs.user_id
+            WHERE sa.id = :userID;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':userID', $userID);
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+            $conn = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
+
+
+        public function get_agent_acc_stats($userID)
+        {
+            try {
+    
+                $db = new DB();
+                $conn = $db->connect();
+    
+                $result = "";
+    
+                // $sql ="SELECT COUNT(*) as `value`, sts.status as `key`
+                //     FROM support_ticket st
+                //     LEFT JOIN support_ticket_status sts ON st.status = sts.id
+                //     WHERE st.assigned_agent = :userID
+                //     GROUP BY st.status;";
+
+                $sql = "SELECT COUNT(at.id) as `value`, sts.status as `key`
+                FROM support_ticket_status sts
+                LEFT JOIN 
+                (SELECT * FROM support_ticket st WHERE st.assigned_agent = :userID) as at ON sts.id =  at.status 
+                GROUP BY sts.id;";
+    
+                // Prepare statement
+                $stmt =  $conn->prepare($sql);
+    
+                // Only fetch if prepare succeeded
+                if ($stmt !== false) {
+                    $stmt->bindparam(':userID', $userID);
+                    $stmt->execute();
+                    $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                }
+    
+                $stmt = null;
+                $db = null;
+                $conn = null;
+    
+                $ModelResponse =  array(
+                    "success" => true,
+                    "data" => $result
+                );
+    
+                return $ModelResponse;
+            } catch (\PDOException $e) {
+    
+                $ModelResponse =  array(
+                    "success" => false,
+                    "data" => $e->getMessage()
+                );
+            }}
+
+
+
+
+
+
+            public function get_supervisor_acc_stats($userID)
+            {
+                try {
+        
+                    $db = new DB();
+                    $conn = $db->connect();
+        
+                    $result = "";
+        
+                    $sql ="SELECT COUNT(agents.id) as `value`, sat.role as `key` 
+                    FROM support_agent_role_type sat
+                    LEFT JOIN (SELECT * FROM support_agent sa WHERE sa.supervisor_id = :userID) as agents ON sat.id = agents.role_type
+                    GROUP BY sat.id;";
+        
+                    // Prepare statement
+                    $stmt =  $conn->prepare($sql);
+        
+                    // Only fetch if prepare succeeded
+                    if ($stmt !== false) {
+                        $stmt->bindparam(':userID', $userID);
+                        $stmt->execute();
+                        $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                    }
+        
+                    $stmt = null;
+                    $db = null;
+                    $conn = null;
+        
+                    $ModelResponse =  array(
+                        "success" => true,
+                        "data" => $result
+                    );
+        
+                    return $ModelResponse;
+                } catch (\PDOException $e) {
+        
+                    $ModelResponse =  array(
+                        "success" => false,
+                        "data" => $e->getMessage()
+                    );
+                }}
+
+
+
+
+
+
+
+                public function get_manager_acc_stats()
+                {
+                    try {
+            
+                        $db = new DB();
+                        $conn = $db->connect();
+            
+                        $result = "";
+            
+                        $sql ="SELECT COUNT(sa.id) as `value`, r.role as `key` FROM support_agent_role_type r 
+                        LEFT JOIN support_agent sa 
+                        ON r.id = sa.role_type
+                        GROUP BY r.id;";
+            
+                        // Prepare statement
+                        $stmt =  $conn->prepare($sql);
+            
+                        // Only fetch if prepare succeeded
+                        if ($stmt !== false) {
+                            $stmt->execute();
+                            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                        }
+            
+                        $stmt = null;
+                        $db = null;
+                        $conn = null;
+            
+                        $ModelResponse =  array(
+                            "success" => true,
+                            "data" => $result
+                        );
+            
+                        return $ModelResponse;
+                    } catch (\PDOException $e) {
+            
+                        $ModelResponse =  array(
+                            "success" => false,
+                            "data" => $e->getMessage()
+                        );
+                    }}
+
+
+// ==========================================
+//  May 25, 2022
+public function saveAnouncement($userID,$teamRestrict=null,$roleRestrict=null,$title,$details,$alwaysShow=0)
+{
+    try {
+
+        $db = new DB();
+        $conn = $db->connect();
+
+        $result = "";
+        
+        $sql ="INSERT INTO `anouncements` 
+        (`id`, `author_id`, `team_restriction`, `role_restriction`, `title`, 
+        `details`, `show_always`, `is_deleted`, `created_on`, `updated_on`) 
+        VALUES (NULL, :userID, "
+        .($teamRestrict==null?"NULL":" :teamID")
+        ."," 
+        .($roleRestrict==null?"NULL ":" :roleID ")
+        .", :title, :content, :showAlways, '0', now(), now());";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID);
+            if($teamRestrict!=null){
+                $stmt->bindparam(':teamID', $teamRestrict);
+            }
+            if($roleRestrict!=null){
+                $stmt->bindparam(':roleID', $roleRestrict);
+            }
+            $stmt->bindparam(':title', $title);
+            $stmt->bindparam(':content', $details);
+            $stmt->bindparam(':showAlways', $alwaysShow);
+            $result = $stmt->execute();
+        }
+
+        $stmt = null;
+        $db = null;
+        $conn = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+        return $ModelResponse;
+    } catch (\PDOException $e) {
+
+        $ModelResponse =  array(
+            "success" => false,
+            "data" => $e->getMessage()
+        );
+    }}
+
+
+    public function getAnouncements($role_id, $teamID=null)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "";
+
+            $manager = "select DISTINCT m.id, m.author_id, m.team_restriction, m.title, m.details, m.show_always, m.is_deleted, m.created_on, m.updated_on, 
+            hh.first_name, hh.last_name, CONCAT(hh.last_name,', ',hh.first_name) as author_full_name
+          from (
+            SELECT * FROM anouncements a WHERE a.show_always = 1 and a.is_deleted = 0
+            union all
+            SELECT * FROM anouncements a WHERE a.show_always = 0 and a.is_deleted = 0
+          ) m 
+          LEFT JOIN hh_user hh ON m.author_id = hh.user_id
+          ORDER BY m.show_always DESC, m.updated_on DESC";
+
+            $supervisor = "select DISTINCT m.id, m.author_id, m.team_restriction, m.title, m.details, m.show_always, m.is_deleted, m.created_on, m.updated_on, 
+            hh.first_name, hh.last_name, CONCAT(hh.last_name,', ',hh.first_name) as author_full_name
+from (SELECT * FROM anouncements a WHERE a.show_always = 1 and a.is_deleted = 0
+                union all
+               (SELECT * FROM anouncements a  WHERE 
+              (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction = :teamID AND a.role_restriction IS NULL) OR
+              (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction IS NULL AND a.role_restriction IS NOT NULL) OR
+              (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction = :teamID2 AND a.role_restriction IS NOT NULL))
+              ) m
+ LEFT JOIN hh_user hh ON m.author_id = hh.user_id
+ ORDER BY m.show_always DESC, m.updated_on DESC";
+
+            $agent = "select  DISTINCT m.id, m.author_id, m.team_restriction, m.title, m.details, m.show_always, m.is_deleted, m.created_on, m.updated_on, 
+            hh.first_name, hh.last_name, CONCAT(hh.last_name,', ',hh.first_name) as author_full_name 
+from (
+                SELECT * FROM anouncements a WHERE a.show_always = 1 and a.is_deleted = 0
+                union all
+               (SELECT * FROM anouncements a WHERE 
+                (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction = :teamID AND a.role_restriction IS NULL) OR
+                (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction IS NULL AND a.role_restriction = :roleID) OR
+                (a.show_always = 0 AND is_deleted = 0 AND a.team_restriction = :teamID2 AND a.role_restriction = :roleID2))
+              ) m 
+               LEFT JOIN hh_user hh ON m.author_id = hh.user_id
+              ORDER BY m.show_always DESC, m.updated_on DESC";
+
+
+              switch($role_id){
+                case 7:
+                    $sql =  $manager;
+                    break;
+                case 4:
+                    $sql =  $supervisor;
+                    break;
+                default:
+                    $sql =  $agent;
+                    break;
+              }
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded
+        if ($stmt !== false) {
+            switch($role_id){
+                case 7:
+                    // No binded parameters
+                    break;
+                case 4:
+                    $stmt->bindparam(':teamID', $teamID);
+                    $stmt->bindparam(':teamID2', $teamID);
+                    break;
+                default:
+                    $stmt->bindparam(':teamID', $teamID);
+                    $stmt->bindparam(':teamID2', $teamID);
+                    $stmt->bindparam(':roleID', $role_id);
+                    $stmt->bindparam(':roleID2', $role_id);
+                    break;
+              }
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt = null;
+        $db = null;
+        $conn = null;
+
+        $ModelResponse =  array(
+            "success" => true,
+            "data" => $result
+        );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
+
+
+
+    public function get_single_anouncement($aid)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "SELECT * FROM `anouncements` WHERE  id = :aid";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':aid', $aid);
+                $stmt->execute();
+                $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+            }
+
+            $stmt = null;
+            $db = null;
+            $conn = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
+
+
+    public function delete_single_anouncement($aid)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "UPDATE `anouncements` a
+            SET a.is_deleted = 1,
+            a.updated_on = now()
+            WHERE a.id = :aid;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':aid', $aid);
+                $result = $stmt->execute();
+            }
+
+            $stmt = null;
+            $db = null;
+            $conn = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
+
+    public function edit_anouncement($a_id, $title, $content)
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "UPDATE `anouncements` a
+            SET a.title = :title,
+            a.details = :content,
+            a.updated_on = now()
+            WHERE a.id = :aid;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':aid', $a_id);
+                $stmt->bindparam(':title', $title);
+                $stmt->bindparam(':content', $content);
+                $result = $stmt->execute();
+            }
+
+            $stmt = null;
+            $db = null;
+            $conn = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // public function template()
+    // {
+    //     try {
+
+    //         $db = new DB();
+    //         $conn = $db->connect();
+
+
+    //         $stmt = null;
+    //         $db = null;
+
+    //         $ModelResponse =  array(
+    //             "success" => true,
+    //             "data" => $result
+    //         );
+
+    //         return $ModelResponse;
+    //     } catch (\PDOException $e) {
+
+    //         $ModelResponse =  array(
+    //             "success" => false,
+    //             "data" => $e->getMessage()
+    //         );
+        // }}
 }
