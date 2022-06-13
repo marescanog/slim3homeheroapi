@@ -57,6 +57,8 @@ class GenerateDataController
 
         $this->generateData = new GenerateData();
 
+        $this->badWorkersList = array(466, 443, 191, 428, 169, 463, 479, 451);
+
         $this->vowels = array("a","e","i","o","u");
 
         $this->willling_syn = array("willing","ready","happy","keen","prepared");
@@ -2866,7 +2868,7 @@ public function generateJobOrder(Request $request,Response $response, array $arg
 
     // -------
     // for starts here
-// for($xp=0; $xp< count($homeownersList); $xp++){
+for($xp=0; $xp< count($homeownersList); $xp++){
 
     // $indexUsed = $randomize == true ? mt_rand(0,count($homeownersList)-1) : $xp;
 
@@ -2874,8 +2876,10 @@ public function generateJobOrder(Request $request,Response $response, array $arg
     // Specific User/Worker - if type = 2 then specific ID for worker but random for homewoner(homeowner list pulled must be specific jobs)
 
 
-    $homeowner = $homeownersList[0]; //for debug
-    // $homeowner = $homeownersList[$xp];
+    // $homeowner = $homeownersList[0]; //for debug
+    // $homeowner = $homeownersList[1]; //for debug has 2 different cities
+    $homeowner = $homeownersList[$xp];
+
 
 
     $h_userID = $homeowner['user_id'];
@@ -2899,12 +2903,13 @@ public function generateJobOrder(Request $request,Response $response, array $arg
 
 // ---------------------
 // second for loop starts here
-        // for($en = 0; $en <   $entriesPerPerson; $en++){
+        for($en = 0; $en <   $entriesPerPerson; $en++){
 
             // get a random expertise
             $expertiseIndex = mt_rand(0, count($expertiseList)-1);
             $expertise = $expertiseList[$expertiseIndex]["type"];
             $expertiseID = $expertiseList[$expertiseIndex]["id"];
+            $baseExpertise = $expertiseList[$expertiseIndex]['expertise'];
 
             $ex_first_letter = strtolower(substr($expertise, 0, 1));
             $article = in_array($ex_first_letter, $this->vowels)?"an":"a";
@@ -3000,10 +3005,11 @@ public function generateJobOrder(Request $request,Response $response, array $arg
             $home = $allAddress[0];
             // Get random home ID
             // if more than one home
-            if(count($allAddress) != 0){
+            if(count($allAddress)!=1){
                 $home = $allAddress[mt_rand(0,count($allAddress)-1)];
             }
             $homeID = $home['home_id'];
+            $cityID = $home['city_id'];
 
             // Get random job size
             $rand_job_size = mt_rand(1,3);
@@ -3027,7 +3033,31 @@ public function generateJobOrder(Request $request,Response $response, array $arg
 // Create a job post
                 // Get a random worker
                 // Get List of workers who are qualified for the job and are within the area
-                $workerID = 157; // temp for now
+                // $workerID = 157; // temp for now
+                // based on $expertiseID, cityID
+                // Get the general ID from the expertise ID
+
+                $workersList = $this->generateData->getListOfWorkers($baseExpertise, $cityID);
+                $workersList = $workersList['data'];
+
+                $worker = $workersList[mt_rand(0, count($workersList)-1)];
+                // $workerID =  $worker['id'];
+                 $workerID =  $worker['worker_id'];
+
+               // // // 10 workers have constant bad reviews
+                // $testy = [];
+                // shuffle($workersList);
+               // // for($v=0; $v<10; $v++){
+               // //     shuffle($workersList);
+               // //     shuffle($workersList);
+               // //     shuffle($workersList);
+               // //     shuffle($workersList);
+               // //     $worker =  $workersList[mt_rand(0,count( $workersList)-1)];
+               // //     array_push( $testy, $worker);
+               // //     unset(    $workersList[array_search($worker,    $workersList)]);
+               // //     $workersList = array_values(   $workersList);
+               // //     shuffle($workersList);
+               // // }
 
 
 
@@ -3152,14 +3182,14 @@ public function generateJobOrder(Request $request,Response $response, array $arg
 
         }
 
-    // }
+    }
     // ---------------------
     // second for loop ends here
 
 
     // // -------
     // // for loop ends here
-// }
+}
 
 
 
@@ -3191,6 +3221,16 @@ public function generateJobOrder(Request $request,Response $response, array $arg
     // $resData['checkPostDateMin'] = $checkPostDateMin;
     // $resData['post_createDate'] = $post_createDate;
     // $resData['readjust'] = $checkPostDateMin <  $post_createDate;
+
+
+    // $resData['home'] = $home;
+    // $resData['home'] = $home;
+    // $resData['cityID'] = $cityID;
+    // $resData['worker'] = $worker;
+    // $resData['workerID'] =  $workerID;
+    // $resData['testy'] = $testy;
+    // $resData['baseExpertise'] = $baseExpertise;
+    // $resData['workersList'] = $workersList;
 
     return $this->customResponse->is200Response($response,$resData);
 }

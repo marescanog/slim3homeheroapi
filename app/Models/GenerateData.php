@@ -1166,6 +1166,80 @@ public function saveProject(
 
 
 
+
+
+
+
+
+
+public function getListOfWorkers($expertiseID, $city){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+        $result = "";
+        // // all workers who are verified and not deleted
+        // $sql = "SELECT hh.user_id as `id`, hh.user_status_id,
+        // w.main_city, w.has_completed_registration, hh.created_on
+        // FROM `hh_user` hh
+        // LEFT JOIN worker w ON hh.user_id = w.id
+        // WHERE hh.user_status_id = 2
+        // AND w.is_deleted = 0";
+
+        $sql = "
+            SELECT cp.worker_id, cp.city_id,  wskl.expertise_id, wskl.user_status_id, wskl.base_ex_id
+            FROM city_preference cp
+            LEFT JOIN (SELECT s.worker_id, s.skill as expertise_id, w.user_status_id, w.main_city, pt.expertise as base_ex_id
+                        FROM skillset s
+                        LEFT JOIN
+                            (SELECT hh.user_id as `id`, hh.user_status_id,
+                            w.main_city, w.has_completed_registration, hh.created_on
+                            FROM `hh_user` hh
+                            LEFT JOIN worker w ON hh.user_id = w.id
+                            WHERE hh.user_status_id = 2
+                            AND w.is_deleted = 0) as w ON s.worker_id = w.id
+                        LEFT JOIN project_type pt ON pt.id = s.skill
+                        WHERE pt.expertise = :bb
+                        ) as wskl ON cp.worker_id = wskl.worker_id
+            WHERE wskl.base_ex_id IS NOT NULL
+            AND wskl.user_status_id IS NOT NULL
+            AND cp.city_id = :cityID    
+        ";
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded //$id, $date,
+        if ($stmt !== false) {
+            $stmt->bindparam(':cityID', $city);
+            $stmt->bindparam(':bb', $expertiseID);
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;
+        $db=null;
+
+        return array(
+            "success"=>true,
+            "data"=>$result
+        );
+
+    } catch (\PDOException $e) {
+        return array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+    }
+}
+
+
+
+
+
+
+
+
+
 public function createCompleteJobOrder( 
     $createDate,
     $userID,
