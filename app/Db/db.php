@@ -15,15 +15,15 @@ class DB {
         // $dotenv->load();
 
         try{
-            // // LOCAL DATABASE, DEVELOPMENT  DATABASE CONNECTION
+            // LOCAL DATABASE, DEVELOPMENT  DATABASE CONNECTION
             // $conn = new PDO($dsn, $user, $pass);
 
             // PRODUCTION DATABASE CONNECTION
             // $conn = new \PDO("mysql:host=".$_ENV['DB_HOST'].";dbname=".$_ENV['DB_NAME'].";charset=utf8mb4", $_ENV['DB_USERNAME'], $_ENV['DB_PASSWORD']);
 
             // DEVELOPMENT PRODUCTION DATABASE CONNECTION
-            require __DIR__ . '/hidden.php';
-            $conn = new \PDO($conn_dsn, $conn_user, $conn_pass);
+             require __DIR__ . '/hidden.php';
+             $conn = new \PDO($conn_dsn, $conn_user, $conn_pass);
 
             // DEVELOPMENT LOCAL DATABASE CONNECTION
             // require __DIR__ . '/hiddenLocal.php';
