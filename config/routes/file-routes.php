@@ -30,17 +30,20 @@ $app->group("/homeowner",function() use ($app){
 
     // This route cancels a user's job order through soft delete
     $app->post("/cancel-order/{id}", "FileController:cancelJobOrder");
+    $app->post("/cancel-order2/{id}", "FileController:cancelJobOrder2"); //ver 2 - no token :(
     
     // When a job order has expired and the worker did not start, this route allows the user to cancel the job order and repost another one
     $app->post("/cancel-repost-order/{id}", "FileController:cancelRepostOrder");
 
     // Check if a job order already has a support ticket. Returns Suppport ticket info if true and false if none
     $app->get("/has-job-issue/{id}", "FileController:hasJobIssue");
+    $app->get("/has-job-issue/{id}/{userid}", "FileController:hasJobIssue"); //ver 2 - no token :(
 
     // When a job order has expired and the worker did not start, this route allows the user to cancel the job order and repost another one
     // type - 1 (REPORT WORKER)
     // type - 2 (REPORT JOB ISSUE)
     $app->post("/report-job-issue/{type}/{id}", "FileController:reportJobIssue");
+    $app->post("/report-job-issue2/{type}/{id}", "FileController:reportJobIssue2"); //ver 2 - no token :(
 
     // This updates the schedule of an existing POST
     $app->post("/update-schedule/{id}","FileController:updateSchedule");
@@ -53,9 +56,11 @@ $app->group("/homeowner",function() use ($app){
 
     // This checks if a billing issue has already been filed, returns false if it does not and the billing & support ticket information if it has
     $app->get("/has-billing-issue/{orderid}","FileController:hasBillingIssue");
+    $app->get("/has-billing-issue/{orderid}/{userid}","FileController:hasBillingIssue"); //ver 2 - no token :(
 
     // This creates a support ticket for the billing issue
     $app->post("/report-billing-issue/{orderid}","FileController:createBillingIssue");
+    $app->post("/report-billing-issue2/{orderid}","FileController:createBillingIssue2"); //ver 2 - no token :(
 
 
 

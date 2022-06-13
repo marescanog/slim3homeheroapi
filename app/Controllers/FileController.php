@@ -728,6 +728,50 @@ public function cancelJobOrder(Request $request,Response $response, array $args)
     // return $this->customResponse->is200Response($response, "This route works");
 }
 
+public function cancelJobOrder2(Request $request,Response $response, array $args){
+
+   
+    // Replacement code for USER ID since no token implemented
+    $userID = CustomRequestHandler::getParam($request,"user_id");
+
+
+
+    // GET NECESSARY INFORMATION FOR CANCELLING THE POST
+    $order_id = $args['id']; 
+    $reason = CustomRequestHandler::getParam($request,"cancellation_reason");
+
+    // GET THE USER'S ORDER DATA
+    $orderData = $this->file->getJobOrderUserID($order_id);
+    // Error handling
+    if( $orderData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
+    }
+    if( $orderData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Order not found") );
+    }
+    if( $orderData['data']['worker_id'] != $userID){ //worker mode
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+    }
+
+    // CANCEL THE ORDER
+    $result = $this->file->cancelJobOrder($order_id , $reason, $userID);
+    // Error handling
+    if(  $result['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,   $result['data']) );
+    }
+
+    $formData = [];
+    $formData['result'] =  $result;
+
+    // // Return information needed for personal info page
+     return $this->customResponse->is200Response($response, $formData);
+
+    // For debugging purposes
+    // return $this->customResponse->is200Response($response,   $orderData );
+    // return $this->customResponse->is200Response($response,  $userID."post_id". $post_id."reason".$reason  );
+    // return $this->customResponse->is200Response($response, "This route works");
+}
+
 
 // This function is for when the worker does not start the job order and never starts
 // So the User can cancel and repost the job post
@@ -859,14 +903,18 @@ public function cancelRepostOrder(Request $request,Response $response, array $ar
 // returns false if none and returns support ticket info if there is
 public function hasJobIssue(Request $request,Response $response, array $args){
     // Get the bearer token from the Auth header
-    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    if(array_key_exists("userid",$args)){
+        $userID = $args['userid'];
+    } else {
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
 
-    // Catch the response, on success it is an ID, on fail it has status and message
-    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
 
-    // Error handling
-    if(is_array( $userID) && array_key_exists("status", $userID)){
-        return $this->customResponse->is401Response($response, $userID);
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
     }
 
     // GET NECESSARY INFORMATION FOR CANCELLING THE POST & Validation
@@ -882,8 +930,14 @@ public function hasJobIssue(Request $request,Response $response, array $args){
     if( $orderData['data'] == false){
         return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Order not found") );
     }
-    if( $orderData['data']['homeowner_id'] != $userID){
-        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+    if(array_key_exists("userid",$args)){ //worker mode
+        if( $orderData['data']['worker_id'] != $userID){
+            return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+        }
+    } else {
+        if( $orderData['data']['homeowner_id'] != $userID){
+            return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+        }
     }
 
     // CHECK IF THE DB ALREADY HAS A SUPPORT TICKET CREATED LINKED TO THE JOB ORDER
@@ -914,6 +968,7 @@ public function hasJobIssue(Request $request,Response $response, array $args){
     // return $this->customResponse->is200Response($response,  $userID );
     // return $this->customResponse->is200Response($response,  "This route works");
 }
+
 
 
 
@@ -983,6 +1038,87 @@ public function reportJobIssue(Request $request,Response $response, array $args)
             $issueID,          // subcategory
             $message,   // authorDesc
             "HOMEOWNER#".$userID.$systemMessage, // systemDesc
+            0,          // has images
+            $order_id   // orderID
+        );
+        // Error handling
+        if( $newSupportTicketCreated['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $newSupportTicketCreated['data']) );
+        }
+    }
+
+    $formData = [];
+    $formData['support_ticket_info'] =  $supportTicket['data'];
+    $formData['lastSupportTicketAction'] =  $lastAction == null ? null : $lastAction['data'];
+    $formData['newSupportTicketCreated'] =  $newSupportTicketCreated;
+
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // // For debugging
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+    // return $this->customResponse->is200Response($response,  $args['type']);
+}
+
+public function reportJobIssue2(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    
+    $userID = CustomRequestHandler::getParam($request,"user_id"); //ver 2 - no token
+
+
+    // GET NECESSARY INFORMATION FOR CREATING SUPPORT TICKET & Validation
+    $order_id = $args['id']; 
+    $type = $args['type']; 
+    $reason = CustomRequestHandler::getParam($request,"author_description");
+
+    // GET THE USER'S ORDER DATA
+    $orderData = $this->file->getJobOrderUserID($order_id);
+    // Error handling, if order belongs to user
+    if( $orderData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
+    }
+    if( $orderData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Order not found") );
+    }
+    if( $orderData['data']['worker_id'] != $userID){ //worker mode
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+    }
+
+    // CHECK IF THE DB ALREADY HAS A SUPPORT TICKET CREATED LINKED TO THE JOB ORDER
+    $supportTicket = $this->file->checkJobOrderIssues($order_id);
+    // Error handling
+    if( $orderData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
+    }
+
+    // IF THERE IS NO SUPPORT TICKET CREATE ONE, OTHERWISE GET LAST ACTION
+    $lastAction = null;
+    $newSupportTicketCreated = false;
+    if($supportTicket['data'] != false){
+        // GET LAST ACTION
+        $lastAction = $this->file->getSupportTicketLastAction($supportTicket['data']['support_ticket_id']);
+        // Error handling
+        if( $lastAction['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $lastAction['data']) );
+        }
+    } else {
+        $message = $type == 1 ? "Worker did not show up for scheduled job post." : "";
+        $systemMessage = $type == 1 ? " SUBMITTED A JOB ISSUE - WORKER NO SHOW" : " SUBMITTED A JOB ORDER ISSUE";
+        $issueID = 7;
+
+        if($reason != null && $reason != ""){
+            $message = $message." Additional information: ".$reason;
+        }
+
+        // CREATE A SUPPORT TICKET
+        $newSupportTicketCreated = $this->file->createJobIssueTicket(
+            $userID,    // author
+            $issueID,          // subcategory
+            $message,   // authorDesc
+            "WORKER#".$userID.$systemMessage, // systemDesc
             0,          // has images
             $order_id   // orderID
         );
@@ -1255,14 +1391,19 @@ public function saveRating(Request $request,Response $response, array $args){
 
 public function hasBillingIssue(Request $request,Response $response, array $args){
     // Get the bearer token from the Auth header
-    $bearer_token = JSON_encode($request->getHeader("Authorization"));
 
-    // Catch the response, on success it is an ID, on fail it has status and message
-    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+    if(array_key_exists("userid",$args)){
+        $userID = $args['userid'];
+    } else { 
+        $bearer_token = JSON_encode($request->getHeader("Authorization"));
 
-    // Error handling
-    if(is_array( $userID) && array_key_exists("status", $userID)){
-        return $this->customResponse->is401Response($response, $userID);
+        // Catch the response, on success it is an ID, on fail it has status and message
+        $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token);
+
+        // Error handling
+        if(is_array( $userID) && array_key_exists("status", $userID)){
+            return $this->customResponse->is401Response($response, $userID);
+        }
     }
 
     // GET NECESSARY INFORMATION FOR Validation
@@ -1277,7 +1418,7 @@ public function hasBillingIssue(Request $request,Response $response, array $args
     if( $orderData['data'] == false){
         return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Order not found") );
     }
-    if( $orderData['data']['homeowner_id'] != $userID){
+    if( $orderData['data']['worker_id'] != $userID){
         return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
     }
 
@@ -1405,6 +1546,92 @@ public function createBillingIssue(Request $request,Response $response, array $a
         // return $this->customResponse->is200Response($response,  $userID );
         // return $this->customResponse->is200Response($response,  "This route works");
         // return $this->customResponse->is200Response($response,  $args['type']);
+}
+
+public function createBillingIssue2(Request $request,Response $response, array $args){
+    
+    $userID = CustomRequestHandler::getParam($request,"user_id");
+
+
+    // GET NECESSARY INFORMATION FOR Validation
+    $order_id = $args['orderid']; 
+    $reason = CustomRequestHandler::getParam($request,"author_description");
+
+    // GET THE USER'S ORDER DATA
+    $orderData = $this->file->getJobOrderUserID($order_id);
+    // Error handling, if order belongs to user
+    if( $orderData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $orderData['data']) );
+    }
+    if( $orderData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Order not found") );
+    }
+    if( $orderData['data']['worker_id'] != $userID){ //worker mode
+        return $this->customResponse->is401Response($response, $this->generateServerResponse(401, "This user does not have access to this order.") );
+    }
+
+    // CHECK DB IF BILL WAS ALREADY GENERATED
+    $billData = $this->file->getSingleBill($order_id);
+    // Error handling
+    if( $billData['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $billData['data']) );
+    }
+    if( $billData['data'] == false){
+        return $this->customResponse->is404Response($response, $this->generateServerResponse(404, "Bill not found") );
+    }
+
+    // CHECK IF THE DB ALREADY HAS A SUPPORT TICKET CREATED LINKED TO THE BILL
+    $supportTicket = $this->file->checkBillingIssues($billData['data']['id']);
+    // Error handling
+    if( $supportTicket['success'] !== true){
+        return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $supportTicket['data']) );
+    }
+
+    // // IF THERE IS NO SUPPORT TICKET CREATE ONE, OTHERWISE GET LAST ACTION
+    $lastAction = null;
+    $newSupportTicketCreated = false;
+    if($supportTicket['data'] != false){
+        // GET LAST ACTION
+        $lastAction = $this->file->getSupportTicketLastAction($supportTicket['data']['support_ticket_id']);
+        // Error handling
+        if( $lastAction['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $lastAction['data']) );
+        }
+    } else {
+        $message = $reason;
+        $systemMessage = " SUBMITTED A BILLING ISSUE";
+        $issueID = 4;
+
+        // CREATE A SUPPORT TICKET
+        $newSupportTicketCreated = $this->file->createBillingIssueTicket(
+            $userID,    // author
+            $issueID,          // subcategory
+            $message,   // authorDesc
+            "WORKER#".$userID.$systemMessage, // systemDesc
+            0,          // has images
+            $billData['data']['id']   // billID
+        );
+        // Error handling
+        if( $newSupportTicketCreated['success'] !== true){
+            return $this->customResponse->is500Response($response, $this->generateServerResponse(500,  $newSupportTicketCreated['data']) );
+        }
+    }
+
+    $formData = [];
+    $formData['bill_data'] =  $billData['data'];
+    $formData['support_ticket_info'] =  $supportTicket['data'];
+    $formData['lastSupportTicketAction'] =  $lastAction == null ? null : $lastAction['data'];
+    $formData['newSupportTicketCreated'] =  $newSupportTicketCreated;
+
+
+
+    // Return information needed for personal info page
+    return $this->customResponse->is200Response($response,  $formData);
+
+    // // For debugging
+    // return $this->customResponse->is200Response($response,  $userID );
+    // return $this->customResponse->is200Response($response,  "This route works");
+    // return $this->customResponse->is200Response($response,  $args['type']);
 }
 
 

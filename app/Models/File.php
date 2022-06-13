@@ -916,12 +916,17 @@ public function cancelJobPost($jobPostID, $reason){
         $conn = $db->connect();
 
         // CREATE query
-        $sql = "UPDATE job_post jp 
+        $sql = "BEGIN;
+        UPDATE job_post jp 
         SET 
         jp.job_post_status_id = 4, 
         jp.date_time_closed = :currentTime, 
         jp.cancellation_reason =  :reason
-        WHERE jp.id = :postID;";
+        WHERE jp.id = :postID;
+        UPDATE homeowner_notification
+        SET is_deleted=1
+        WHERE post_id=:postID;
+        COMMIT;";
 
         // Prepare statement
         $stmt =  $conn->prepare($sql);
