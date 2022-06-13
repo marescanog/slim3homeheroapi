@@ -1116,7 +1116,7 @@ public function saveProject(
         $db = new DB();
         $conn = $db->connect();
 
-        $sql = "SET @@session.time_zone = '+08:00'; INSERT INTO job_post (homeowner_id, home_id, job_size_id, required_expertise_id, job_post_status_id, job_description, rate_offer, rate_type_id, is_exact_schedule, preferred_date_time, created_on, job_post_name)
+        $sql = "INSERT INTO job_post (homeowner_id, home_id, job_size_id, required_expertise_id, job_post_status_id, job_description, rate_offer, rate_type_id, is_exact_schedule, preferred_date_time, created_on, job_post_name)
                 VALUES (:userID, :homeID, :jobSize, :expert, 1, :jobdesc, :rateoffer, :ratetype, :isexact, :prefdateTime, :cdate, :jobPostName);";
 
         // Prepare statement
@@ -1137,16 +1137,16 @@ public function saveProject(
             $stmt->bindparam(':prefdateTime', $preferred_date_time );
             $stmt->bindparam(':cdate', $createDate);
             $stmt->bindparam(':jobPostName', $project_name );
-            $result = $stmt->execute();
+            $stmt->execute();
         } else {
             $result = "prepare statement failed";
         }
-        $stmt=null;
-        $db=null;
+        // $stmt=null;
+        // $db=null;
 
         $ModelResponse =  array(
             "success"=>true,
-            "data"=>$result
+            "data"=> $conn->lastInsertId()
         );
         // ($userID, $home_id , $job_size_id, $required_expertise_id, $job_description  
         // ,$rate_offer, $rate_type_id, $preferred_date_time, $project_name)
@@ -1166,7 +1166,126 @@ public function saveProject(
 
 
 
+public function createCompleteJobOrder( 
+    $createDate,
+    $userID,
+    $home_id, 
+    $job_size_id, 
+    $required_expertise_id,
+    $job_description, 
+    $rate_offer,   
+    $isExactSchedule,
+    $rate_type_id, 
+    $preferred_date_time, 
+    $project_name,
 
+    $workerID, 
+    $jo_createDate,
+    $startTime, 
+    $endTime, 
+
+    $dateBillPaid, 
+    $totalPriceBilled,
+    $isReceivedByWorker, 
+    $billCreationDate,
+
+    $review = null, 
+    $rating = null
+){
+    try{
+        $db = new DB();
+        $conn = $db->connect();
+        $result = "";
+        $sql = "";
+            $sql = "SET @@session.time_zone = '+08:00';
+            BEGIN;
+                INSERT INTO job_post (homeowner_id, home_id, job_size_id, required_expertise_id, job_post_status_id, job_description, rate_offer, rate_type_id, is_exact_schedule, preferred_date_time, date_time_closed, created_on, job_post_name)
+                VALUES (:userID, :homeID, :jobSize, :expert, 2, :jobdesc, :rateoffer, :ratetype, :isexact, :prefdateTime, :dateTimeClosed,  :cdate, :jobPostName);
+            
+                SET @projectPostID:=LAST_INSERT_ID();
+
+                INSERT INTO `job_order` 
+                (`id`, `job_post_id`, `worker_id`, 
+                `homeowner_id`, `job_order_status_id`, `date_time_start`, 
+                `date_time_closed`, `isRated`, `is_deleted`, 
+                `created_on`, `order_cancellation_reason`, `cancelled_by`) 
+                VALUES 
+                (NULL, @projectPostID, :workerID, 
+                :homeOwnerID, '2', :dateTimeJOStart, 
+                :dateTimeJOEnd, '0', '0', 
+                :joCreatedON, NULL, NULL);
+
+                SET @jobPostID:=LAST_INSERT_ID();
+
+                INSERT INTO `bill` 
+                (`id`, `job_order_id`, `worker_id`, 
+                `homeowner_id`, `payment_method_id`, `bill_status_id`, 
+                `date_time_completion_paid`, `remarks`, `hours_readjustment`, 
+                `total_price_billed`, `is_received_by_worker`, `has_dispute`, 
+                `is_deleted`, `created_on`) 
+                VALUES 
+                (NULL, @jobPostID, :workerIDBill, 
+                :homeownerIDBill, '1', '2', 
+                :dateBillPaid, NULL, NULL, 
+                :totalPriceBilled, :isReceivedByWorker, '0', 
+                '0', :billCreationDate);
+
+            COMMIT;
+
+            ";
+
+
+        // Prepare statement
+        $stmt =  $conn->prepare($sql);
+
+        // Only fetch if prepare succeeded 
+        if ($stmt !== false) {
+            $stmt->bindparam(':userID', $userID );
+            $stmt->bindparam(':homeID', $home_id);
+            $stmt->bindparam(':jobSize', $job_size_id );
+            $stmt->bindparam(':expert', $required_expertise_id );
+            $stmt->bindparam(':jobdesc',  $job_description );
+            $stmt->bindparam(':rateoffer',$rate_offer );
+            $stmt->bindparam(':ratetype', $rate_type_id );
+            $stmt->bindparam(':isexact', $isExactSchedule );
+            $stmt->bindparam(':prefdateTime', $preferred_date_time );
+            $stmt->bindparam(':dateTimeClosed', $jo_createDate );
+            $stmt->bindparam(':cdate', $createDate);
+            $stmt->bindparam(':jobPostName', $project_name );
+
+            $stmt->bindparam(':workerID', $workerID );
+            $stmt->bindparam(':homeOwnerID', $userID );
+            $stmt->bindparam(':dateTimeJOStart', $startTime );
+            $stmt->bindparam(':dateTimeJOEnd', $endTime );
+            $stmt->bindparam(':joCreatedON', $jo_createDate );
+
+            // :workerIDBill :homeownerIDBill :dateBillPaid :isReceivedByWorker :billCreationDate
+            $stmt->bindparam(':workerIDBill', $workerID );
+            $stmt->bindparam(':homeownerIDBill', $userID );
+            $stmt->bindparam(':dateBillPaid', $dateBillPaid );
+            $stmt->bindparam(':totalPriceBilled', $totalPriceBilled );
+            $stmt->bindparam(':isReceivedByWorker', $isReceivedByWorker );
+            $stmt->bindparam(':billCreationDate', $billCreationDate ); 
+
+            $stmt->execute();
+            $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
+        $stmt=null;
+        $db=null;
+
+        return array(
+            "success"=>true,
+            "data"=> $result
+        );
+
+    } catch (\PDOException $e) {
+        return array(
+            "success"=>false,
+            "data"=>$e->getMessage()
+        );
+    }
+}
 
 
 

@@ -59,20 +59,39 @@ class GenerateDataController
 
         $this->vowels = array("a","e","i","o","u");
 
-        $this->help_synonyms = array("help","assistance","help","aid","support","help","cooperation","service","guidance","help");
+        $this->willling_syn = array("willing","ready","happy","keen","prepared");
+
+        $this->help_synonyms_noun = array("help","assistance","help","aid","support","help",
+        "service","guidance","help","a helping hand","some help","some assistance","guide","helping out");
+
+        $this->help_synonyms_verb = array("help","assist","help","aid","support","guide","help","service","help");
+
+        $this->need_synonyms_past = array("needed","wanted","desired","needed","wanted","called for","needed","wanted", "required","needed");
 
         $this->need_synonyms = array("need","want","desire","need","am in need of","have need of","want","call for","need", "necessitate", "require","need");
 
+        $this->need_synonyms_obj = array("needs","has need of","calls for", "necessitates", "requires","needs");
+
         $this->time_period = array('Almost daily','On occasion','Every once in a while','At times','Every so often','Oftentimes','From time to time','Occasionally','Sometimes','Everyday','Every week','Every month','Every year');
-        $this->noun1 = array('the storm','the heavy rains','my neighbor','a passerby','the rain','my kids','some wild animals',
-        'my children',"the guest", "the neighbor's kids", 'the dog', 'my dog', "the neighbor's dog"
+        
+        $this->familymember = array(
+            "brother","friend","mother","sibling","father","uncle","aunt","sister"
         );
+
+        $this->noun1 = array('the storm',"my ".($this->familymember[mt_rand(0,count($this->familymember)-1)]),'the heavy rains','my neighbor','a passerby','the rain','my kids','some wild animals',
+        'my children',"the guest","my ".($this->familymember[mt_rand(0,count($this->familymember)-1)]), "the neighbor's kids", 'the dog', 'my dog', "the neighbor's dog", "some birds", "some rats",
+        "some person","some kid","a stranger","my ".($this->familymember[mt_rand(0,count($this->familymember)-1)])
+        );
+
         $this->negative_action = array('destroys','breaks','accidentally destroys','messes up',
         'dirties','damages','wrecks','breaks up','ruins'
         );
-        $this->negative_feeling = array('helpless','angry','sad','mad','disappoinated','annoyed','irritated','exasperated','displease','unhappy','downhearted');
+        $this->negative_feeling = array('helpless','angry','sad','mad','disappoinated','annoyed','irritated','exasperated','displeased','unhappy','downhearted',
+        'frustrated','a lot of rage','bitter','mixed up','confused','overwhelmed','tired');
 
-        $this->positive_feeling = array('appreciative','grateful','happy','overjoyed','thankful');
+        $this->positive_feeling = array('appreciative','grateful','happy','overjoyed','thankful','joyful',
+            'satisfied','cheerful','content'
+        );
 
         $this->hope_syn = array(
             "hoping","expecting","anticipating","foreseeing","counting","banking"
@@ -84,6 +103,12 @@ class GenerateDataController
 
         $this->quicktime_syn = array(
             "soon","shortly","presently","in the near future","quickly","in a timely manner","on the double"
+        );
+
+        $this->quicktime_syn2 = array(
+            "instantly","now","soon","presently","quickly","in a timely manner","on the double",
+            "correctly","right","properly","quickly","fully","completely","precisely",
+            "well","nicely"
         );
 
         $this->search_syn = array(
@@ -152,9 +177,7 @@ class GenerateDataController
             "attend school","attend class"
         );
 
-        $this->familymember = array(
-            "brother","friend","mother","sibling","father","uncle","aunt","sister"
-        );
+
         $this->compromise = array(
             "but I can adjust my schedule if need be",
             "but it is easy for me to move my schedule",
@@ -2492,31 +2515,12 @@ $otherAgentCxNotesArr = array(
 
 
 public function generateJobPosts(Request $request,Response $response, array $args){
-    $total = CustomRequestHandler::getParam($request,"total");
-    $total = $total == null ? 10 : $total;
-
-    /* level
-        1 - Job Post
-        2 - Job Order
-        3 - Billing
-        4 - Ratings
-    */
-    $level = CustomRequestHandler::getParam($request,"level");
-    $level = $total == null ? 1 : $level;
-
-    /* feeling
-        1 - Open / Positive
-        2 - Cancel / Negative
-    */
-    $feeling = CustomRequestHandler::getParam($request,"feeling");
-    $feeling = $total == null ? 1 : $feeling;
-    $randomize = CustomRequestHandler::getParam($request,"randomizeRating");
-    $randomize = $randomize == null ? false : $randomize;
+    date_default_timezone_set('Asia/Singapore');
 
     $include_users_date = CustomRequestHandler::getParam($request,"include_users_date");
     $include_users_date = $include_users_date == null ? '2020-01-01 08:00:00' : $include_users_date;
 
-    /* feeling
+    /* incl_usr_dir - direction
         1 - 'backward'
         2 - 'forward'
     */
@@ -2527,11 +2531,16 @@ public function generateJobPosts(Request $request,Response $response, array $arg
     $homeownersList = $this->generateData->getListHomeownersByCreationDate( $include_users_date, $incl_usr_dir);
     $homeownersList = $homeownersList['data'];
 
+    $ongoing = CustomRequestHandler::getParam($request,"ongoing");
+    $ongoing =  $ongoing == null ? false : $ongoing;
+
+    // ========================
+
     // Get post date max
     $post_date_max = CustomRequestHandler::getParam($request,"post_date_max");
     $daysPast = CustomRequestHandler::getParam($request,"daysPast");
     $daysPast = $daysPast == null ? 12 : $daysPast;
-    date_default_timezone_set('Asia/Singapore');
+
     $post_date_max =  $post_date_max == null 
         ? ($daysPast != null 
             ? date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s'). ' + '.$daysPast.' day')) 
@@ -2539,121 +2548,225 @@ public function generateJobPosts(Request $request,Response $response, array $arg
           ) 
         :  $post_date_max;
 
-    $maxPostNum = CustomRequestHandler::getParam($request,"maxPostNum");
-    $maxPostNum = $maxPostNum == null ? 5 : $maxPostNum;
 
-    $minPostNum = CustomRequestHandler::getParam($request,"minPostNum");
-    $minPostNum =  $minPostNum == null ? 2 : $minPostNum;
+    // if ongoing post date min has to be now // completed
+    if($ongoing == true){
+        $post_date_min = date('Y-m-d H:i:s');
+        $post_date_max =  date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s'). ' + '.$daysPast.' day'));
+    }
 
-    if( $minPostNum > $maxPostNum){ // Ensures u dont screw up and max is always greater than min
-        $temp = $minPostNum;
-        $minPostNum = $maxPostNum;
-        $maxPostNum = $temp;
+    // $total = CustomRequestHandler::getParam($request,"total");
+    // $total = $total == null ? 10 : $total;
+
+    $maxEntriesNum = CustomRequestHandler::getParam($request,"maxEntriesNum");
+    $maxEntriesNum =   $maxEntriesNum == null ? 5 :  $maxEntriesNum;
+
+    $minEntriesNum = CustomRequestHandler::getParam($request,"minEntriesNum");
+    $minEntriesNum =  $minEntriesNum == null ? 1 : $minEntriesNum;
+
+    if( $minEntriesNum > $maxEntriesNum){ // Ensures u dont screw up and max is always greater than min
+        $temp = $minEntriesNum;
+        $minEntriesNum = $maxEntriesNum;
+        $maxEntriesNum = $temp;
     }
 
     // Get expertise list
     $expertiseList = $this->file->searchProject("test");
     $expertiseList = $expertiseList['data'];
 
+    $users = [];; // for debug 
+
     // -------
     // for starts here
+for($xp=0; $xp< count($homeownersList); $xp++){
+
+    // $indexUsed = $randomize == true ? mt_rand(0,count($homeownersList)-1) : $xp;
+
+    // Make in Separate function instead
+    // Specific User/Worker - if type = 2 then specific ID for worker but random for homewoner(homeowner list pulled must be specific jobs)
+
+
+    // $homeowner = $homeownersList[0]; //for debug
+    $homeowner = $homeownersList[$xp];
+
+
+    $h_userID = $homeowner['user_id'];
+    $h_cdate = $homeowner['created_on'];
 
     // post_date_min would be the date the user was created or the inc user data
     // whichever is greater (cannot post a post before homeowner was created) 
-    $homeowner = $homeownersList[0];
-    $h_userID = $homeowner['user_id'];
-    $h_cdate = $homeowner['created_on'];
-    $post_date_min =  $h_cdate >= $include_users_date ?  $h_cdate : $include_users_date;
+    if($ongoing != true){
+        $post_date_min =  $h_cdate >= $include_users_date ?  $h_cdate : $include_users_date; 
+    }   
 
     // get the user's list of homes
     $allAddress = $this->file->getUsersSavedAddresses($h_userID);
     $allAddress = $allAddress['data'];
 
-
+    // array_push($users,$homeowner); // for debug
+    $entriesPerPerson = mt_rand( $minEntriesNum, $maxEntriesNum);
 
 
     if(count($allAddress)>0){
 
-        // get a random expertise
-        $expertiseIndex = mt_rand(0, count($expertiseList)-1);
-        $expertise = $expertiseList[$expertiseIndex]["type"];
+// ---------------------
+// second for loop starts here
+        for($en = 0; $en <   $entriesPerPerson; $en++){
 
-        $ex_first_letter = strtolower(substr($expertise, 0, 1));
-        $article = in_array($ex_first_letter, $this->vowels)?"an":"a";
+            // get a random expertise
+            $expertiseIndex = mt_rand(0, count($expertiseList)-1);
+            $expertise = $expertiseList[$expertiseIndex]["type"];
+            $expertiseID = $expertiseList[$expertiseIndex]["id"];
 
-        $object_arr_selected = count($this->objectArr) >  $expertiseIndex ? $this->objectArr[$expertiseIndex] : "";
-        $obj = count($this->objectArr) >  $expertiseIndex ? $object_arr_selected[mt_rand(0, count($object_arr_selected)-1)] : "thing";
+            $ex_first_letter = strtolower(substr($expertise, 0, 1));
+            $article = in_array($ex_first_letter, $this->vowels)?"an":"a";
 
-        $action_arr_selected = count($this->actionArr) >  $expertiseIndex ? $this->actionArr[$expertiseIndex] : "";
-        $action = count($this->actionArr) >  $expertiseIndex ? $action_arr_selected[mt_rand(0, count($action_arr_selected)-1)] : ($this->actionArr[0])[mt_rand(0, count(($this->actionArr[0]))-1)];
+            $object_arr_selected = count($this->objectArr) >  $expertiseIndex ? $this->objectArr[$expertiseIndex] : "";
+            $obj = count($this->objectArr) >  $expertiseIndex ? $object_arr_selected[mt_rand(0, count($object_arr_selected)-1)] : "thing";
 
-        $removal_indexes = array(113,112,104);
-        $pestActions = array("infests","invades","takes over","destroys","damages",'destroys','breaks','accidentally destroys','messes up',
-        'dirties','damages','wrecks','breaks up','ruins');
-        $pestObjArr = $this->objectArr[mt_rand(0,20)];
-        $pest_control = "the ".$obj." ".($pestActions[mt_rand(0,count($pestActions)-1)]).' the '.$pestObjArr[mt_rand(0,count($pestObjArr)-1)];
-        $other_situations = ($this->noun1[mt_rand(0,count($this->noun1)-1)])." ".($this->negative_action[mt_rand(0,count($this->negative_action)-1)])." my ".$obj;
-        $segment = in_array($expertiseIndex,  $removal_indexes) ? $pest_control : $other_situations;
+            $action_arr_selected = count($this->actionArr) >  $expertiseIndex ? $this->actionArr[$expertiseIndex] : "";
+            $action = count($this->actionArr) >  $expertiseIndex ? $action_arr_selected[mt_rand(0, count($action_arr_selected)-1)] : ($this->actionArr[0])[mt_rand(0, count(($this->actionArr[0]))-1)];
 
-        $opening1 = "I ".($this->need_synonyms[mt_rand(0, count($this->need_synonyms)-1)])." ".($this->help_synonyms[mt_rand(0, count($this->help_synonyms)-1)])." with ".$article." ".strtolower($expertise).".";
-        $opening2 = (mt_rand(1,100)%2==0?"Can":"Will")." someone ".($this->help_synonyms[mt_rand(0, count($this->help_synonyms)-1)])." with ".strtolower($expertise)."?";
-        $opening3 = "This ".($this->job_syn[mt_rand(0,count($this->job_syn)-1)])." is about ".strtolower($expertise).".";
+            $removal_indexes = array(113,112,104);
+            $pestActions = array("infests","invades","takes over","destroys","damages",'destroys','breaks','accidentally destroys','messes up',
+            'dirties','damages','wrecks','breaks up','ruins');
+            $pestObjArr = $this->objectArr[mt_rand(0,20)];
+            $pest_control = "the ".$obj." ".($pestActions[mt_rand(0,count($pestActions)-1)]).' the '.$pestObjArr[mt_rand(0,count($pestObjArr)-1)];
+            $other_situations = ($this->noun1[mt_rand(0,count($this->noun1)-1)])." ".($this->negative_action[mt_rand(0,count($this->negative_action)-1)])." my ".$obj;
+            $segment = in_array($expertiseIndex,  $removal_indexes) ? $pest_control : $other_situations;
 
-        $opening = [$opening1, $opening2, $opening3];
-        shuffle($opening);
-        $job_description =  $opening[mt_rand(0,count($opening)-1)]." My ".$obj." needs ".$action.". ".($this->time_period[mt_rand(0,count($this->time_period)-1)])." ".$segment." so I feel very "
-            .($this->negative_feeling[mt_rand(0,count($this->negative_action)-1)])." about it. "
-            .($this->irrelevent_action[mt_rand(0,count($this->irrelevent_action)-1)])." hence ".
-            ($this->worker_action[mt_rand(0,count($this->worker_action)-1)]).". I would be "
-            .($this->positive_feeling[mt_rand(0,count($this->positive_feeling)-1)])." if someone can ".$this->help_synonyms[mt_rand(0,count($this->help_synonyms)-1)]." me with this.";
+            $opening1 = "I ".($this->need_synonyms[mt_rand(0, count($this->need_synonyms)-1)])." ".($this->help_synonyms_noun[mt_rand(0, count($this->help_synonyms_noun)-1)])." with ".$article." ".strtolower($expertise).".";
+            $opening2 = (mt_rand(1,100)%2==0?"Can":"Will")." someone ".($this->help_synonyms_verb[mt_rand(0, count($this->help_synonyms_verb)-1)])." with ".strtolower($expertise)."?";
+            $opening3 = "This ".($this->job_syn[mt_rand(0,count($this->job_syn)-1)])." is about ".strtolower($expertise).".";
 
- 
-        // Create a job post
-        // $homeownersList = $this->generateData->saveProject(
-        //     $createDate,
-        //     $userID,
-        //     $home_id, 
-        //     $job_size_id, 
-        //     $required_expertise_id,
-        //     $job_description, 
-        //     $rate_offer,   
-        //     $isExactSchedule,
-        //     $rate_type_id, 
-        //     $preferred_date_time, 
-        //     $project_name
-        // );
+            $opening = [$opening1, $opening2, $opening3];
+            shuffle($opening);
 
-        // Generate Job Order
-        if($level >= 2){
+            $job_description =  $opening[mt_rand(0,count($opening)-1)]." My ".$obj." needs ".$action.". ".($this->time_period[mt_rand(0,count($this->time_period)-1)])." ".$segment." so I feel very "
+                .($this->negative_feeling[mt_rand(0,count($this->negative_action)-1)])." about it. "
+                .($this->irrelevent_action[mt_rand(0,count($this->irrelevent_action)-1)])." hence ".
+                ($this->worker_action[mt_rand(0,count($this->worker_action)-1)]).". I would be "
+                .($this->positive_feeling[mt_rand(0,count($this->positive_feeling)-1)])." if someone can ".$this->help_synonyms_verb[mt_rand(0,count($this->help_synonyms_verb)-1)]." me with this.";
+
+            $urNum =mt_rand(1,100);
+            $job_title = ($urNum%2==0 || $urNum%3==0) ? $expertise : 
+            (mt_rand(1,100)%2==0 ? ucfirst($obj)." ".($this->need_synonyms_obj[mt_rand(0, count($this->need_synonyms_obj)-1)])." ".$action 
+            : ( mt_rand(1,100)%2==0 ?
+                ucfirst(($this->need_synonyms[mt_rand(0, count($this->need_synonyms)-1)]))." ".$expertise
+                : ucfirst($this->worker_syn[mt_rand(0,count($this->worker_syn)-1)])." ".($this->need_synonyms_past[mt_rand(0,count($this->need_synonyms_past)-1)])." for ".$expertise
+                )
+            );
+
+            $default_rate_type = mt_rand(1,100); 
+            if($default_rate_type % 2 == 0 || $default_rate_type % 7 == 0){
+                $rindex = 2;
+            } else if ($default_rate_type % 3 == 0 ){
+                $rindex = mt_rand(1,2); // higher probability for rt to be daily
+            } else {
+                $rindex = mt_rand(1,4); // less probability for rt to be project based
+            }
+
+            // random rate offer
+            $rates = array(
+                array(30,35,40,45,50,55,60,65,70,75,80,30,35,40,45,50,55,60,65,70,75,80,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155), // hour
+                array(300,350,400,450,500,550,200,250,300,200,250,300,350,400,450,500,550,200,250,300,350,400,450,500,550,600,650,700,750,800), // day
+                array(1300,1350,1400,1450,1500,1250,1300,1250,1300,1350,1400,1450,1500,1250,1300,1350,1400,1450,1500,1550,1600,1650,1600,1750,1700,1850,1800,1950,2000), // week
+                array(1700,1850,1800,1650,1600,1750,1700,1850,1800,1950,2000,1650,1600,1750,1700,1850,1800,1950,2000,2500,2750,3000,3250,3500,3600,3650,3700,3750,3800,3950,4000,4500), // project
+            );
+
+            $chosen_rates_arr = $rates[$rindex-1];
+            shuffle($chosen_rates_arr);
+            $rate_offer = $chosen_rates_arr[mt_rand(0,count($chosen_rates_arr)-1)];
+            $rate_type_id =  $rindex;
+
+            $rate_thresh = array(
+                90,
+                600,
+                1500,
+                2500
+            );
+
+            if($rate_offer > $rate_thresh[$rindex-1]){
+                $job_description = $job_description." I am ".($this->willling_syn[mt_rand(0,count($this->willling_syn)-1)])." to pay extra to get it "
+                .($this->perform_job_syn[mt_rand(0,count($this->perform_job_syn)-1)])." ".($this->quicktime_syn2[mt_rand(0,count($this->quicktime_syn2)-1)]).".";
+            }
+
+            // Get random post date
+            // user's create date until now
+            $post_createDate = $this->random_dates($post_date_min);
+
+            $home = $allAddress[0];
+            // Get random home ID
+            // if more than one home
+            if(count($allAddress) != 0){
+                $home = $allAddress[mt_rand(0,count($allAddress)-1)];
+            }
+            $homeID = $home['home_id'];
+
+            // Get random job size
+            $rand_job_size = mt_rand(1,3);
+
+            // Get random preferred date
+            // user's post date + 2 until post_date max
+            $preferred_date = $this->random_dates( date('Y-m-d H:i:s', strtotime( $post_createDate. ' + '.mt_rand(12,42).' hours')), $post_date_max);
+
+// ===================================================
+// ===================================================
+// Create a job post
+                $jobPostCreation = $this->generateData->saveProject(
+                    $post_createDate,
+                    $h_userID,
+                    $homeID, 
+                    $rand_job_size, 
+                    $expertiseID,
+                    $job_description, 
+                    $rate_offer,   
+                    1,
+                    $rate_type_id, 
+                    $preferred_date, 
+                    $job_title
+                );
+
+                // $job_post_id = $jobPostCreation['data'];
+
 
         }
-
-        // Generate Bill
-        if($level >= 3){
-
-        }
-
-        // Generate Rating
-        if($level >= 4){
-
-        }
-
 
     }
+    // ---------------------
+    // second for loop ends here
+
 
     // // -------
-    // // for ends here
+    // // for loop ends here
+}
+
+
+
     $resData = [];
     // $resData['include_users_date'] = ($incl_usr_dir==1?"before ":"after ").$include_users_date;
     // $resData['post_date_max'] = $post_date_max;
     // $resData['post_date_min'] = $post_date_min;
 
     $resData['h_userID'] = $h_userID;
-    $resData['h_cdate'] = $h_cdate;
-    $resData['job_description'] = $job_description;
+    // $resData['h_cdate'] = $h_cdate;
+    // $resData['rate_offer'] = $rate_offer;
+    // $resData['rate_type_id'] = $rate_type_id;
+    // $resData['job_title'] = $job_title;
+    // $resData['homeID'] = $homeID;
+    // $resData['expertiseID'] = $expertiseID;
+    // $resData['created_on'] = $post_createDate;
+    // $resData['preferred_date'] = $preferred_date;
+    // $resData['job_description'] = $job_description;
+
+    // $resData['job_post_id'] =   $job_post_id;
+
+    // $resData['users'] = $users;
+
     // $resData['allAddress'] = $allAddress;
     // $resData['expertiseList'] = $expertiseList;
-    // $resData['homeownersList'] = $homeownersList;
+    // $resData['homeownersList'] =  $homeownersList;
+    // $resData['home'] = $home;
 
     return $this->customResponse->is200Response($response,$resData);
 }
@@ -2664,6 +2777,423 @@ public function generateJobPosts(Request $request,Response $response, array $arg
 
 
 
+
+
+// ===============================================
+// ===============================================
+// ===============================================
+//          June 13, 2022
+// ===============================================
+// ===============================================
+// ===============================================
+public function generateJobOrder(Request $request,Response $response, array $args){
+    date_default_timezone_set('Asia/Singapore');
+
+    $include_users_date = CustomRequestHandler::getParam($request,"include_users_date");
+    $include_users_date = $include_users_date == null ? '2020-01-01 08:00:00' : $include_users_date;
+
+    /* incl_usr_dir - direction
+        1 - 'backward'
+        2 - 'forward'
+    */
+    $incl_usr_dir = CustomRequestHandler::getParam($request,"incl_usr_dir");
+    $incl_usr_dir = $incl_usr_dir == null ? 2 : $incl_usr_dir;
+
+
+    // Get list of homeonwers who were created before startDate
+    $homeownersList = $this->generateData->getListHomeownersByCreationDate( $include_users_date, $incl_usr_dir);
+    $homeownersList = $homeownersList['data'];
+
+
+
+    // ========================
+    // GET DATE SETTINGS
+
+    /* completion stage
+        1 - accepted
+        2 - started
+        3 - completed
+    */
+    $completion_stage = CustomRequestHandler::getParam($request,"completion_stage");
+    $completion_stage =  $completion_stage == null ? 3 : $completion_stage;
+
+    $ongoing = CustomRequestHandler::getParam($request,"ongoing");
+    $ongoing =  $ongoing == null ? false : $ongoing;
+
+    // Get post date max
+    $post_date_max = CustomRequestHandler::getParam($request,"post_date_max");
+    $daysPast = CustomRequestHandler::getParam($request,"daysPast");
+    $daysPast = $daysPast == null ? 12 : $daysPast;
+
+    $post_date_max =  $post_date_max == null 
+        ? ($daysPast != null 
+            ? date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s'). ' + '.$daysPast.' day')) 
+            : date('Y-m-d H:i:s') 
+          ) 
+        :  $post_date_max;
+
+    // if($completion_stage >= 2){
+    //     $post_date_max =
+    // }
+
+
+    // if ongoing post date min has to be now // completed
+    if($ongoing == true){
+        $post_date_min = date('Y-m-d H:i:s');
+        $post_date_max =  date('Y-m-d H:i:s', strtotime(date('Y-m-d H:i:s'). ' + '.$daysPast.' day'));
+    }
+
+    // $total = CustomRequestHandler::getParam($request,"total");
+    // $total = $total == null ? 10 : $total;
+
+    $maxEntriesNum = CustomRequestHandler::getParam($request,"maxEntriesNum");
+    $maxEntriesNum =   $maxEntriesNum == null ? 5 :  $maxEntriesNum;
+
+    $minEntriesNum = CustomRequestHandler::getParam($request,"minEntriesNum");
+    $minEntriesNum =  $minEntriesNum == null ? 1 : $minEntriesNum;
+
+    if( $minEntriesNum > $maxEntriesNum){ // Ensures u dont screw up and max is always greater than min
+        $temp = $minEntriesNum;
+        $minEntriesNum = $maxEntriesNum;
+        $maxEntriesNum = $temp;
+    }
+
+    // Get expertise list
+    $expertiseList = $this->file->searchProject("test");
+    $expertiseList = $expertiseList['data'];
+
+    $users = [];; // for debug 
+
+    // -------
+    // for starts here
+// for($xp=0; $xp< count($homeownersList); $xp++){
+
+    // $indexUsed = $randomize == true ? mt_rand(0,count($homeownersList)-1) : $xp;
+
+    // Make in Separate function instead
+    // Specific User/Worker - if type = 2 then specific ID for worker but random for homewoner(homeowner list pulled must be specific jobs)
+
+
+    $homeowner = $homeownersList[0]; //for debug
+    // $homeowner = $homeownersList[$xp];
+
+
+    $h_userID = $homeowner['user_id'];
+    $h_cdate = $homeowner['created_on'];
+
+    // post_date_min would be the date the user was created or the inc user data
+    // whichever is greater (cannot post a post before homeowner was created) 
+    if($ongoing != true){
+        $post_date_min =  $h_cdate >= $include_users_date ?  $h_cdate : $include_users_date; 
+    } 
+
+    // get the user's list of homes
+    $allAddress = $this->file->getUsersSavedAddresses($h_userID);
+    $allAddress = $allAddress['data'];
+
+    // array_push($users,$homeowner); // for debug
+    $entriesPerPerson = mt_rand( $minEntriesNum, $maxEntriesNum);
+
+
+    if(count($allAddress)>0){
+
+// ---------------------
+// second for loop starts here
+        // for($en = 0; $en <   $entriesPerPerson; $en++){
+
+            // get a random expertise
+            $expertiseIndex = mt_rand(0, count($expertiseList)-1);
+            $expertise = $expertiseList[$expertiseIndex]["type"];
+            $expertiseID = $expertiseList[$expertiseIndex]["id"];
+
+            $ex_first_letter = strtolower(substr($expertise, 0, 1));
+            $article = in_array($ex_first_letter, $this->vowels)?"an":"a";
+
+            $object_arr_selected = count($this->objectArr) >  $expertiseIndex ? $this->objectArr[$expertiseIndex] : "";
+            $obj = count($this->objectArr) >  $expertiseIndex ? $object_arr_selected[mt_rand(0, count($object_arr_selected)-1)] : "thing";
+
+            $action_arr_selected = count($this->actionArr) >  $expertiseIndex ? $this->actionArr[$expertiseIndex] : "";
+            $action = count($this->actionArr) >  $expertiseIndex ? $action_arr_selected[mt_rand(0, count($action_arr_selected)-1)] : ($this->actionArr[0])[mt_rand(0, count(($this->actionArr[0]))-1)];
+
+            $removal_indexes = array(113,112,104);
+            $pestActions = array("infests","invades","takes over","destroys","damages",'destroys','breaks','accidentally destroys','messes up',
+            'dirties','damages','wrecks','breaks up','ruins');
+            $pestObjArr = $this->objectArr[mt_rand(0,20)];
+            $pest_control = "the ".$obj." ".($pestActions[mt_rand(0,count($pestActions)-1)]).' the '.$pestObjArr[mt_rand(0,count($pestObjArr)-1)];
+            $other_situations = ($this->noun1[mt_rand(0,count($this->noun1)-1)])." ".($this->negative_action[mt_rand(0,count($this->negative_action)-1)])." my ".$obj;
+            $segment = in_array($expertiseIndex,  $removal_indexes) ? $pest_control : $other_situations;
+
+            $opening1 = "I ".($this->need_synonyms[mt_rand(0, count($this->need_synonyms)-1)])." ".($this->help_synonyms_noun[mt_rand(0, count($this->help_synonyms_noun)-1)])." with ".$article." ".strtolower($expertise).".";
+            $opening2 = (mt_rand(1,100)%2==0?"Can":"Will")." someone ".($this->help_synonyms_verb[mt_rand(0, count($this->help_synonyms_verb)-1)])." with ".strtolower($expertise)."?";
+            $opening3 = "This ".($this->job_syn[mt_rand(0,count($this->job_syn)-1)])." is about ".strtolower($expertise).".";
+
+            $opening = [$opening1, $opening2, $opening3];
+            shuffle($opening);
+
+            $job_description =  $opening[mt_rand(0,count($opening)-1)]." My ".$obj." needs ".$action.". ".($this->time_period[mt_rand(0,count($this->time_period)-1)])." ".$segment." so I feel very "
+                .($this->negative_feeling[mt_rand(0,count($this->negative_action)-1)])." about it. "
+                .($this->irrelevent_action[mt_rand(0,count($this->irrelevent_action)-1)])." hence ".
+                ($this->worker_action[mt_rand(0,count($this->worker_action)-1)]).". I would be "
+                .($this->positive_feeling[mt_rand(0,count($this->positive_feeling)-1)])." if someone can ".$this->help_synonyms_verb[mt_rand(0,count($this->help_synonyms_verb)-1)]." me with this.";
+
+            $urNum =mt_rand(1,100);
+            $job_title = ($urNum%2==0 || $urNum%3==0) ? $expertise : 
+            (mt_rand(1,100)%2==0 ? ucfirst($obj)." ".($this->need_synonyms_obj[mt_rand(0, count($this->need_synonyms_obj)-1)])." ".$action 
+            : ( mt_rand(1,100)%2==0 ?
+                ucfirst(($this->need_synonyms[mt_rand(0, count($this->need_synonyms)-1)]))." ".$expertise
+                : ucfirst($this->worker_syn[mt_rand(0,count($this->worker_syn)-1)])." ".($this->need_synonyms_past[mt_rand(0,count($this->need_synonyms_past)-1)])." for ".$expertise
+                )
+            );
+
+            $default_rate_type = mt_rand(1,100); 
+            if($default_rate_type % 2 == 0 || $default_rate_type % 7 == 0){
+                $rindex = 2;
+            } else if ($default_rate_type % 3 == 0 ){
+                $rindex = mt_rand(1,2); // higher probability for rt to be daily
+            } else {
+                $rindex = mt_rand(1,4); // less probability for rt to be project based
+            }
+
+            // random rate offer
+            $rates = array(
+                array(30,35,40,45,50,55,60,65,70,75,80,30,35,40,45,50,55,60,65,70,75,80,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155), // hour
+                array(300,350,400,450,500,550,200,250,300,200,250,300,350,400,450,500,550,200,250,300,350,400,450,500,550,600,650,700,750,800), // day
+                array(1300,1350,1400,1450,1500,1250,1300,1250,1300,1350,1400,1450,1500,1250,1300,1350,1400,1450,1500,1550,1600,1650,1600,1750,1700,1850,1800,1950,2000), // week
+                array(1700,1850,1800,1650,1600,1750,1700,1850,1800,1950,2000,1650,1600,1750,1700,1850,1800,1950,2000,2500,2750,3000,3250,3500,3600,3650,3700,3750,3800,3950,4000,4500), // project
+            );
+
+            $chosen_rates_arr = $rates[$rindex-1];
+            shuffle($chosen_rates_arr);
+            $rate_offer = $chosen_rates_arr[mt_rand(0,count($chosen_rates_arr)-1)];
+            $rate_type_id =  $rindex;
+
+            $rate_thresh = array(
+                90,
+                600,
+                1500,
+                2500
+            );
+
+            if($rate_offer > $rate_thresh[$rindex-1]){
+                $job_description = $job_description." I am ".($this->willling_syn[mt_rand(0,count($this->willling_syn)-1)])." to pay extra to get it "
+                .($this->perform_job_syn[mt_rand(0,count($this->perform_job_syn)-1)])." ".($this->quicktime_syn2[mt_rand(0,count($this->quicktime_syn2)-1)]).".";
+            }
+
+            // Get random post date
+            // user's create date until now
+            $post_createDate = $this->random_dates($post_date_min);
+            // Cannot have a post created date 2 days before today if entry is completed (3)
+            // completion stage 2+ 
+            $hasElapsed = false;
+            if($completion_stage >= 2){                
+                // check if the post date minimum is within 2 day before now
+                $now =  date('Y-m-d H:i:s');
+                $checkPostDateMin = date('Y-m-d H:i:s', strtotime( $now. ' - 2 days'));
+                // if it is, then reassign to before 2 days from now
+                // readjust
+                if( $checkPostDateMin <  $post_createDate){
+                    $post_createDate = date('Y-m-d H:i:s', strtotime( $post_createDate. ' - 2 days'));
+                    $hasElapsed = true;
+                }
+            }
+
+            $home = $allAddress[0];
+            // Get random home ID
+            // if more than one home
+            if(count($allAddress) != 0){
+                $home = $allAddress[mt_rand(0,count($allAddress)-1)];
+            }
+            $homeID = $home['home_id'];
+
+            // Get random job size
+            $rand_job_size = mt_rand(1,3);
+
+            // Get random preferred date
+            // user's post date + (1-7) days from that date
+          
+            $postToCreate_timeBetween = mt_rand(24,168);
+            // Cannot have a preferred date beyond today if entry is completed
+            // measure time between now and create date -> that is the amount of time you have for entry that is completed
+            if($completion_stage >= 2 &&  $hasElapsed == true){  
+                $postToCreate_timeBetween =  mt_rand(24,30);
+            }
+            $preferred_date = date('Y-m-d H:i:s', strtotime( $post_createDate. ' + '.$postToCreate_timeBetween.' hours'));
+            
+            
+
+
+// ===================================================
+// ===================================================
+// Create a job post
+                // Get a random worker
+                // Get List of workers who are qualified for the job and are within the area
+                $workerID = 157; // temp for now
+
+
+
+                // JO CREATE DATE MUST BE BETWEEN THE TIME THE POST WAS CREATED plus 4-42 minutes
+                // AND THE TIME OF PREFERRED DATE (minus few minutes)
+                $jo_createDate = $this->random_dates( 
+                    date('Y-m-d H:i:s', strtotime( $post_createDate. ' + '.mt_rand(4,42).' minutes')), 
+                    date('Y-m-d H:i:s', strtotime( $preferred_date. ' - '.mt_rand(80,120).' minutes'))
+                );
+
+                // --------------------------------------------------------
+                // Start Time must be based on preferred date
+                // Either worker is late, early or on time
+                $punctuality_randomizer = mt_rand(1,100);
+                // Higher chance of worker just being on time
+                $punctuality = 1; // 1-on time, 2- early, 3 -late
+                if( $punctuality_randomizer%5 == 0 && $punctuality_randomizer%2 != 0){ // 10% chance of being late
+                    $punctuality = 3;
+                } else if($punctuality_randomizer%2 == 0 && $punctuality_randomizer%3 == 0){ // 16% chance of being early
+                    $punctuality = 2;
+                }
+
+                $startTime = $preferred_date; // default: // on time
+                switch($punctuality){ 
+                    case 2: // early -> random time of - 1 minute to less than 1 hour early
+                        $startTime = date('Y-m-d H:i:s', strtotime( $preferred_date. ' - '.(mt_rand(1,50)).' minutes'));
+                        break;
+                    case 3: // late -> random time of - 1 minute to 2 hours late
+                        $startTime = date('Y-m-d H:i:s', strtotime( $preferred_date. ' + '.(mt_rand(1,125)).' minutes'));
+                        break;
+                }
+
+                // End time must be based on job order size ------------------------------------------
+                // default is 2-4 hours after start
+                $timeRendered = (mt_rand(2,4));
+                $endTime =  date('Y-m-d H:i:s', strtotime(  $startTime. ' + '. $timeRendered.' hours'));
+                switch($rand_job_size){
+                    // small
+                    case 1: 
+                        $timeRendered = mt_rand(80,360);
+                        $endTime =  date('Y-m-d H:i:s', strtotime(  $startTime. ' + '.  $timeRendered .' minutes'));
+                        $timeRendered /= 60;
+                        break;
+
+                    // medium
+                    case 2: 
+                        $timeRendered = mt_rand(3,12);
+                        $endTime =  date('Y-m-d H:i:s', strtotime(  $startTime. ' + '.  $timeRendered .' hours'));
+                        break;
+
+                    // big
+                    case 3: 
+                        $timeRendered = mt_rand(6,96);
+                        $endTime =  date('Y-m-d H:i:s', strtotime(  $startTime. ' + '.  $timeRendered .' hours'));
+                        $timeRendered /= 24;
+                        $timeRendered *= 8;
+                        break;
+                }
+
+// ===================================
+                // GENERATE RANDOM BILL
+                // bill creation date should be based on end time of worker
+                $billCreationDate = $endTime ;
+                $dateBillPaid = date('Y-m-d H:i:s', strtotime(  $billCreationDate. ' + '.(mt_rand(12,180)).' minutes'));
+                
+                $base_rate = $rate_offer;
+                $totalPriceBilled = $rate_offer;
+
+                // total price billed should be based on number of hours rendered
+                // get it based on rate offer
+                switch($rate_type_id){ 
+                    case 2: // day
+                        $base_rate = $rate_offer/8; // get hourly rate not 24 hours since there are 8 work hours in a day
+                        break;
+                    case 3: // week
+                        $base_rate = $rate_offer/56;
+                        break;
+                }
+                if($rate_type_id == 4){
+                    $totalPriceBilled = $rate_offer;
+                } else {
+                    $totalPriceBilled = $timeRendered * $base_rate;
+                    if($totalPriceBilled < $rate_offer){
+                        $totalPriceBilled = $rate_offer;
+                    }
+                }
+
+
+
+
+// ===================================
+                // GENERATE RANDOM REVIEW
+                
+
+
+                $jobPostCreation = $this->generateData->createCompleteJobOrder(
+                    $post_createDate,
+                    $h_userID,
+                    $homeID, 
+                    $rand_job_size, 
+                    $expertiseID,
+                    $job_description, 
+                    $rate_offer,   
+                    1,
+                    $rate_type_id, 
+                    $preferred_date, 
+                    $job_title,
+
+                    $workerID, 
+                    $jo_createDate,
+                    $startTime, 
+                    $endTime,
+
+                    $dateBillPaid, 
+                    $totalPriceBilled,
+                    1, // isReceivedByWorker
+                    $billCreationDate
+                );
+
+                // $job_post_id = $jobPostCreation['data'];
+
+
+        }
+
+    // }
+    // ---------------------
+    // second for loop ends here
+
+
+    // // -------
+    // // for loop ends here
+// }
+
+
+
+    $resData = [];
+    // $resData['include_users_date'] = ($incl_usr_dir==1?"before ":"after ").$include_users_date;
+    // $resData['post_date_max'] = $post_date_max;
+    // $resData['post_date_min'] = $post_date_min;
+
+    $resData['h_userID'] = $h_userID;
+    // $resData['h_cdate'] = $h_cdate;
+    // $resData['rate_offer'] = $rate_offer;
+    // $resData['rate_type_id'] = $rate_type_id;
+    // $resData['job_title'] = $job_title;
+    // $resData['homeID'] = $homeID;
+    // $resData['expertiseID'] = $expertiseID;
+    // $resData['created_on'] = $post_createDate;
+    // $resData['preferred_date'] = $preferred_date;
+    // $resData['job_description'] = $job_description;
+
+    // $resData['job_post_id'] =   $job_post_id;
+
+    // $resData['users'] = $users;
+
+    // $resData['allAddress'] = $allAddress;
+    // $resData['expertiseList'] = $expertiseList;
+    // $resData['homeownersList'] =  $homeownersList;
+    // $resData['home'] = $home;
+
+    // $resData['checkPostDateMin'] = $checkPostDateMin;
+    // $resData['post_createDate'] = $post_createDate;
+    // $resData['readjust'] = $checkPostDateMin <  $post_createDate;
+
+    return $this->customResponse->is200Response($response,$resData);
+}
 
 
 
