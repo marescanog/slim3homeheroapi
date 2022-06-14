@@ -58,6 +58,9 @@ class GenerateDataController
         $this->generateData = new GenerateData();
 
         $this->badWorkersList = array(466, 443, 191, 428, 169, 463, 479, 451);
+        $this->goodWorkersList = array(473, 447, 191, 468, 423, 460, 488, 162, 435, 450);
+        $this->exceptionalWorkersList = array(170, 180, 452, 490, 437);
+
 
         $this->vowels = array("a","e","i","o","u");
 
@@ -106,6 +109,19 @@ class GenerateDataController
         $this->quicktime_syn = array(
             "soon","shortly","presently","in the near future","quickly","in a timely manner","on the double"
         );
+
+        $this->negative_char_synonym = array(
+            "rude", "impolite", "impatient", "bad mannered", "ill-mannered", "imprudent", "uncivil", "disrespectful"
+        );
+
+        $this->positive_char_synonym = array(
+            "cordial", "dutiful", "polite", "respectful", "friendly", "well mannered", "civil", "courteous"
+        );
+
+        $this->nagative_time_synonym = array(
+            "slowly","leisurely", "not as fast as I think they should", "as if he was a sloth", "so slow that I had to spend a little bit extra to cover the additional hours"
+        );
+
 
         $this->quicktime_syn2 = array(
             "instantly","now","soon","presently","quickly","in a timely manner","on the double",
@@ -2869,6 +2885,8 @@ public function generateJobOrder(Request $request,Response $response, array $arg
     // -------
     // for starts here
 for($xp=0; $xp< count($homeownersList); $xp++){
+    
+// for($xp=0; $xp< 23; $xp++){ // to limit number of users who have a certain issue
 
     // $indexUsed = $randomize == true ? mt_rand(0,count($homeownersList)-1) : $xp;
 
@@ -2879,6 +2897,8 @@ for($xp=0; $xp< count($homeownersList); $xp++){
     // $homeowner = $homeownersList[0]; //for debug
     // $homeowner = $homeownersList[1]; //for debug has 2 different cities
     $homeowner = $homeownersList[$xp];
+
+    // $homeowner = $homeownersList[mt_rand(0, count($homeownersList)-1)]; // to limit number of users who have a certain issue
 
 
 
@@ -3043,23 +3063,21 @@ for($xp=0; $xp< count($homeownersList); $xp++){
                 $worker = $workersList[mt_rand(0, count($workersList)-1)];
                 // $workerID =  $worker['id'];
                  $workerID =  $worker['worker_id'];
-
-               // // // 10 workers have constant bad reviews
-                // $testy = [];
-                // shuffle($workersList);
-               // // for($v=0; $v<10; $v++){
-               // //     shuffle($workersList);
-               // //     shuffle($workersList);
-               // //     shuffle($workersList);
-               // //     shuffle($workersList);
-               // //     $worker =  $workersList[mt_rand(0,count( $workersList)-1)];
-               // //     array_push( $testy, $worker);
-               // //     unset(    $workersList[array_search($worker,    $workersList)]);
-               // //     $workersList = array_values(   $workersList);
-               // //     shuffle($workersList);
-               // // }
-
-
+                 $workerName =  $worker['first_name'];
+               // // 10 workers have constant bad reviews
+            // //     $testy = [];
+            // //     shuffle($workersList);
+            // //    for($v=0; $v<15; $v++){
+            // //        shuffle($workersList);
+            // //        shuffle($workersList);
+            // //        shuffle($workersList);
+            // //        shuffle($workersList);
+            // //        $worker =  $workersList[mt_rand(0,count( $workersList)-1)];
+            // //        array_push( $testy, $worker);
+            // //        unset(    $workersList[array_search($worker,    $workersList)]);
+            // //        $workersList = array_values(   $workersList);
+            // //        shuffle($workersList);
+            // //    }
 
                 // JO CREATE DATE MUST BE BETWEEN THE TIME THE POST WAS CREATED plus 4-42 minutes
                 // AND THE TIME OF PREFERRED DATE (minus few minutes)
@@ -3080,13 +3098,16 @@ for($xp=0; $xp< count($homeownersList); $xp++){
                     $punctuality = 2;
                 }
 
+                $punctuality_time_count = 1;
                 $startTime = $preferred_date; // default: // on time
                 switch($punctuality){ 
                     case 2: // early -> random time of - 1 minute to less than 1 hour early
-                        $startTime = date('Y-m-d H:i:s', strtotime( $preferred_date. ' - '.(mt_rand(1,50)).' minutes'));
+                        $punctuality_time_count = (mt_rand(1,50));
+                        $startTime = date('Y-m-d H:i:s', strtotime( $preferred_date. ' - '.$punctuality_time_count.' minutes'));
                         break;
                     case 3: // late -> random time of - 1 minute to 2 hours late
-                        $startTime = date('Y-m-d H:i:s', strtotime( $preferred_date. ' + '.(mt_rand(1,125)).' minutes'));
+                        $punctuality_time_count = (mt_rand(1,125));
+                        $startTime = date('Y-m-d H:i:s', strtotime( $preferred_date. ' + '.$punctuality_time_count.' minutes'));
                         break;
                 }
 
@@ -3120,7 +3141,7 @@ for($xp=0; $xp< count($homeownersList); $xp++){
 // ===================================
                 // GENERATE RANDOM BILL
                 // bill creation date should be based on end time of worker
-                $billCreationDate = $endTime ;
+                $billCreationDate = $endTime;
                 $dateBillPaid = date('Y-m-d H:i:s', strtotime(  $billCreationDate. ' + '.(mt_rand(12,180)).' minutes'));
                 
                 $base_rate = $rate_offer;
@@ -3146,12 +3167,139 @@ for($xp=0; $xp< count($homeownersList); $xp++){
                 }
 
 
-
-
 // ===================================
                 // GENERATE RANDOM REVIEW
-                
+                    $rateComment = "";
+                    $rateCreatedTime = date('Y-m-d H:i:s', strtotime(  $dateBillPaid. ' + '.(mt_rand(2,180)).' minutes'));
+                    $rateOverall = "";
+                    $rateProfessionalism = "";
+                    $rateReliability = "";
+                    $ratePunctuality = "";
 
+                    $randomRate = mt_rand(1,100);
+                    // higher percent for each to have a good rating
+                    if(!($randomRate%2==0 || $randomRate%3 == 0 || $randomRate%5 == 0)){ // 14% chance to be bad
+                        $rateOverall = mt_rand(1,4);
+                        $rateProfessionalism = mt_rand(1,4);
+                        $rateReliability = mt_rand(1,4);
+                        $ratePunctuality = mt_rand(1,4);
+                    } else if ($randomRate%2==0 && $randomRate%3 == 0){
+                        $rateOverall = mt_rand(2,5);
+                        $rateProfessionalism = mt_rand(2,5);
+                        $rateReliability = mt_rand(2,5);
+                        $ratePunctuality = mt_rand(2,5);
+                    } else {
+                        $rateOverall = mt_rand(3,4);
+                        $rateProfessionalism = mt_rand(3,4);
+                        $rateReliability = mt_rand(3,4);
+                        $ratePunctuality = mt_rand(3,4);
+                    }
+
+                
+                // ratings will be based on a set list of employees who are consistently exeptional, bad or good
+                // the rest of the ratings will be randomized
+                if(in_array($workerID, $this->exceptionalWorkersList)){
+                    // exceptional employee always 5
+                    $rateOverall = 5;
+                    $rateProfessionalism = 5;
+                    $rateReliability = 5;
+                    $ratePunctuality = 5;
+                } else if (in_array($workerID, $this->goodWorkersList)){
+                    // good employee always 4-5
+                    $rateOverall = mt_rand(4,5);
+                    $rateProfessionalism = mt_rand(4,5);
+                    $rateReliability = mt_rand(4,5);
+                    $ratePunctuality = mt_rand(4,5);
+                } else if (in_array($workerID, $this->badWorkersList)){
+                    // bad employee always 1-3
+                    $rateOverall = mt_rand(1,3);
+                    $rateProfessionalism = mt_rand(1,3);
+                    $rateReliability = mt_rand(1,3);
+                    $ratePunctuality = mt_rand(1,3);
+                }
+
+
+
+                $commentArr = [];
+
+                // BUILD THE RATINGS COMMENT
+                // Overall
+                if( $rateOverall > 3){
+                    $comment_overall_pos = array(
+                        $workerName." has been very helpful with ".$expertise.". I am very ".($this->positive_feeling[mt_rand(0,count($this->positive_feeling)-1)]).". ",
+                        "The ".($this->job_syn[mt_rand(0, count($this->job_syn)-1)])." was ".($this->correctly_syn[mt_rand(0, count($this->correctly_syn)-1)])." done by ".$workerName.". The worker has been ".($this->qualified_syn[mt_rand(0,count($this->qualified_syn)-1)])." with ".$expertise.". ",
+                        "Very ".($this->qualified_syn[mt_rand(0,count($this->qualified_syn)-1)])." ".($this->worker_syn[mt_rand(0,count($this->worker_syn)-1)]).". ".$workerName." was able to ".($this->help_synonyms_verb[mt_rand(0,count($this->help_synonyms_verb)-1)])." me with ".$expertise.". "
+                    );
+                    array_push($commentArr, $comment_overall_pos[mt_rand(0, count($comment_overall_pos)-1)]);
+                } else if ($rateOverall < 3){
+                    $comment_overall_bad = $workerName." ".$this->badReview[mt_rand(0,count($this->badReview)-1)].". ";
+                    array_push($commentArr,  $comment_overall_bad);
+                } else {
+                    if(mt_rand(0,100)%2==0){
+                        array_push($commentArr,  $workerName." helped me with ".$expertise.". ");
+                    }
+                }
+
+                // Professionalism
+                // how professional the worker was
+                if( $rateProfessionalism > 3){
+                    $comment_prof_pos = $workerName." was very ".($this->positive_char_synonym[mt_rand(0, count($this->positive_char_synonym)-1)]).". ";
+                    array_push($commentArr, $comment_prof_pos);
+                } else if ($rateProfessionalism < 3){
+                    $comment_prof_bad = "The ".($this->worker_syn[mt_rand(0,count($this->worker_syn)-1)])." was very ".( $this->negative_char_synonym[mt_rand(0, count( $this->negative_char_synonym)-1)]).". ";
+                    array_push($commentArr, $comment_prof_bad);
+                } 
+
+                // Reliability
+                // how quick the work was done
+                if( $rateReliability > 3){
+                    $comment_rel_pos = "The ".($this->worker_syn[mt_rand(0,count($this->worker_syn)-1)])." was able to do the job ".( $this->quicktime_syn2[mt_rand(0,count( $this->quicktime_syn2 )-1)]).". "; 
+                    array_push($commentArr,  $comment_rel_pos);
+                } else if ($rateReliability < 3){
+                    $comment_rel_bad = $workerName." worked ".($this->nagative_time_synonym[mt_rand(0,count($this->nagative_time_synonym)-1)]).". ";
+                    array_push($commentArr,  $comment_rel_bad );
+                } 
+
+                $tt = $punctuality_time_count/60;
+                $time_des = $tt > 1 ? "hour" : "minutes";
+             
+                // $timeRendered = "";
+                // $punctuality = 1; 
+                // Puncutality
+                // how close to the schedule the worker was
+                if( $punctuality == 2){
+                    $comment_punct_good= "The worker arrived ".$punctuality_time_count." minutes early. ";
+                    array_push($commentArr, $comment_punct_good);
+                } else if ($punctuality == 3){
+                    $comment_punct_bad = $workerName." was ".($tt > 1 ?   intval($tt)  : $punctuality_time_count)." ".($time_des)." late. ";
+                    if( $ratePunctuality > 3){
+                        $comment_punct_bad = $comment_punct_bad." But despite being late, the worker made up for it by making sure everything was ready. ";
+                    } else if( $ratePunctuality < 3){
+                        $follow_up = "I had to wait for the worker to arrive which made me feel ".($this->negative_feeling[mt_rand(0,count($this->negative_feeling)-1)]).". ";
+                        $comment_punct_bad =$comment_punct_bad.$follow_up;
+                    }
+                    array_push($commentArr,  $comment_punct_bad);
+                } else {
+                    $comment_punct_nuetral = $workerName." arrived on time. ";
+                    array_push($commentArr, $comment_punct_nuetral);
+                }
+
+                shuffle($commentArr);
+                shuffle($commentArr);
+                shuffle($commentArr);
+
+                $filler = array("Additionally, ", "Moreover, ", "Furthermore, ", "Besides, ", "On top of that, ", "What's more, ", "And in addition to that, ", "And besides that, ");
+                for($c=0; $c<count($commentArr);$c++){
+                    if($c != 0){
+                        $chosen_filler = $filler[mt_rand(0, count($filler)-1)];
+                        unset(   $filler[array_search( $chosen_filler,  $filler)]);
+                        $filler = array_values(    $filler);
+                        $rateComment = $rateComment.$chosen_filler.$commentArr[$c];
+                    } else {
+                        $rateComment = $rateComment.$commentArr[$c];
+                    }
+                }
+                trim($rateComment);
 
                 $jobPostCreation = $this->generateData->createCompleteJobOrder(
                     $post_createDate,
@@ -3174,7 +3322,14 @@ for($xp=0; $xp< count($homeownersList); $xp++){
                     $dateBillPaid, 
                     $totalPriceBilled,
                     1, // isReceivedByWorker
-                    $billCreationDate
+                    $billCreationDate,
+
+                    $rateOverall, 
+                    $rateProfessionalism,
+                    $rateReliability,
+                    $ratePunctuality,
+                    $rateComment,
+                    $rateCreatedTime
                 );
 
                 // $job_post_id = $jobPostCreation['data'];
@@ -3228,9 +3383,18 @@ for($xp=0; $xp< count($homeownersList); $xp++){
     // $resData['cityID'] = $cityID;
     // $resData['worker'] = $worker;
     // $resData['workerID'] =  $workerID;
+    // $resData['workerName'] =  $workerName;
     // $resData['testy'] = $testy;
     // $resData['baseExpertise'] = $baseExpertise;
     // $resData['workersList'] = $workersList;
+
+        // $resData['rateComment'] = $rateComment;
+        // $resData['rateCreatedTime'] = $rateCreatedTime;
+        // $resData['rateOverall'] = $rateOverall;
+        // $resData['rateProfessionalism'] = $rateProfessionalism;
+        // $resData['rateReliability'] = $rateReliability;
+        // $resData['ratePunctuality'] = $ratePunctuality;
+        
 
     return $this->customResponse->is200Response($response,$resData);
 }

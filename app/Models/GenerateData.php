@@ -1177,7 +1177,7 @@ public function getListOfWorkers($expertiseID, $city){
         $db = new DB();
         $conn = $db->connect();
         $result = "";
-        // // all workers who are verified and not deleted
+        // all workers who are verified and not deleted
         // $sql = "SELECT hh.user_id as `id`, hh.user_status_id,
         // w.main_city, w.has_completed_registration, hh.created_on
         // FROM `hh_user` hh
@@ -1186,12 +1186,12 @@ public function getListOfWorkers($expertiseID, $city){
         // AND w.is_deleted = 0";
 
         $sql = "
-            SELECT cp.worker_id, cp.city_id,  wskl.expertise_id, wskl.user_status_id, wskl.base_ex_id
+            SELECT cp.worker_id, cp.city_id,  wskl.expertise_id, wskl.user_status_id, wskl.first_name, wskl.base_ex_id
             FROM city_preference cp
-            LEFT JOIN (SELECT s.worker_id, s.skill as expertise_id, w.user_status_id, w.main_city, pt.expertise as base_ex_id
+            LEFT JOIN (SELECT s.worker_id, s.skill as expertise_id, w.user_status_id, w.main_city, w.first_name, pt.expertise as base_ex_id
                         FROM skillset s
                         LEFT JOIN
-                            (SELECT hh.user_id as `id`, hh.user_status_id,
+                            (SELECT hh.user_id as `id`, hh.user_status_id, hh.first_name,
                             w.main_city, w.has_completed_registration, hh.created_on
                             FROM `hh_user` hh
                             LEFT JOIN worker w ON hh.user_id = w.id
@@ -1263,8 +1263,12 @@ public function createCompleteJobOrder(
     $isReceivedByWorker, 
     $billCreationDate,
 
-    $review = null, 
-    $rating = null
+    $rateOverall, 
+    $rateProfessionalism,
+    $rateReliability,
+    $ratePunctuality,
+    $rateComment,
+    $rateCreatedTime
 ){
     try{
         $db = new DB();
@@ -1286,7 +1290,7 @@ public function createCompleteJobOrder(
                 VALUES 
                 (NULL, @projectPostID, :workerID, 
                 :homeOwnerID, '2', :dateTimeJOStart, 
-                :dateTimeJOEnd, '0', '0', 
+                :dateTimeJOEnd, '1', '0', 
                 :joCreatedON, NULL, NULL);
 
                 SET @jobPostID:=LAST_INSERT_ID();
@@ -1304,9 +1308,20 @@ public function createCompleteJobOrder(
                 :totalPriceBilled, :isReceivedByWorker, '0', 
                 '0', :billCreationDate);
 
+                INSERT INTO `rating` 
+                (`job_order_id`, `created_by`, `rated_worker`, 
+                `overall_quality`, `professionalism`, `reliability`, 
+                `punctuality`, `comment`, `is_deleted`, `created_on`) 
+                VALUES 
+                (@jobPostID, :rateHomeOwner, :rateWorker, 
+                :rateOverall, :rateProfessionalism, :rateReliability, 
+                :ratePunctuality, :rateComment, '0', 
+                :rateCreatedTime);
+
             COMMIT;
 
             ";
+
 
 
         // Prepare statement
@@ -1341,6 +1356,15 @@ public function createCompleteJobOrder(
             $stmt->bindparam(':isReceivedByWorker', $isReceivedByWorker );
             $stmt->bindparam(':billCreationDate', $billCreationDate ); 
 
+            $stmt->bindparam(':rateHomeOwner', $userID ); 
+            $stmt->bindparam(':rateWorker', $workerID ); 
+            $stmt->bindparam(':rateOverall', $rateOverall ); 
+            $stmt->bindparam(':rateProfessionalism', $rateProfessionalism ); 
+            $stmt->bindparam(':rateReliability', $rateReliability ); 
+            $stmt->bindparam(':ratePunctuality', $ratePunctuality ); 
+            $stmt->bindparam(':rateComment', $rateComment ); 
+            $stmt->bindparam(':rateCreatedTime', $rateCreatedTime ); 
+  
             $stmt->execute();
             $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         }
