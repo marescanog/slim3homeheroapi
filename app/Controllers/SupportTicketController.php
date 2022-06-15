@@ -3119,7 +3119,12 @@ public function getOrdersReport(Request $request,Response $response, array $args
         $app_data = $app_data['data'];
 
     $resData = [];
+       $resData['app_type'] = $app_type;
+       $resData['app_filter'] = $app_filter;
+       $resData['app_time_period'] = $app_time_period;
        $resData['app_data'] = $app_data;
+       $resData['date_end'] = $date_end;
+       $resData['date_start'] = $date_start;
     return $this->customResponse->is200Response($response,$resData);
 }
 
