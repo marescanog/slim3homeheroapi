@@ -858,7 +858,43 @@ from (
     }
 
 
+    public function getTeamsAndAgents()
+    {
+        try {
 
+            $db = new DB();
+            $conn = $db->connect();
+
+            // CREATE query
+            $sql = "SELECT sa.id, sa.role_type, sa.supervisor_id, sa.is_deleted, hh.first_name, hh.last_name, CONCAT(hh.first_name,' ', hh.last_name) AS full_name
+            FROM `support_agent` sa 
+            LEFT JOIN hh_user hh ON sa.id = hh.user_id
+            WHERE sa.role_type IN (1,2,4)
+            AND hh.user_status_id = 2
+            AND sa.is_deleted = 0;";
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql);
+
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
 
 
 

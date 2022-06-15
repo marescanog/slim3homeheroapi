@@ -2777,7 +2777,96 @@ public function notifyManager(Request $request,Response $response, array $args)
 
 
 
+// ===============================================
+// ===============================================
+//          JUN 15  
+// ===============================================
+// ===============================================
+public function getTeamsAndAgents(Request $request,Response $response, array $args){
+    // // Get the bearer token from the Auth header
+    // $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    // // // Get ticket parameter for ticket information
+    // // $notif_ID = $args['notifID'];
 
+    // // Get Agent Email for validation
+    // $this->validator->validate($request,[
+    //     // Check if empty
+    //     "email"=>v::notEmpty(),
+    // ]);
+    //     // Returns a response when validator detects a rule breach
+    //     if($this->validator->failed())
+    //     {
+    //         $responseMessage = $this->validator->errors;
+    //         return $this->customResponse->is400Response($response,$responseMessage);
+    //     }
+
+    // // Store Params
+    // $email = CustomRequestHandler::getParam($request,"email");
+
+    // Get processor's ID with email
+    $agentsList = $this->supportAgent->getTeamsAndAgents();
+    // Check for query error
+    if($agentsList['success'] == false){
+        // return $this->customResponse->is500Response($response,$agentsList['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+
+    $resData = [];
+    $resData['agentsList'] = $agentsList['data'];
+    // $resData['anouncement'] =  $announce['data'];
+
+    return $this->customResponse->is200Response($response,$resData);
+}
+
+
+public function getReport(Request $request,Response $response, array $args){
+    // Get the bearer token from the Auth header
+    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    // // Get ticket parameter for ticket information
+    // $notif_ID = $args['notifID'];
+
+    // Get Agent Email for validation
+    $this->validator->validate($request,[
+        // Check if empty
+        "email"=>v::notEmpty(),
+        "ticket_type"=>v::notEmpty(),
+        "ticket_status"=>v::notEmpty(),
+        "ticket_filter"=>v::notEmpty(),
+        "ticket_time_period"=>v::notEmpty(),
+        "date_start"=>v::notEmpty(),
+        "date_end"=>v::notEmpty()
+    ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+    // Store Params
+    $email = CustomRequestHandler::getParam($request,"email");
+    $ticket_type = CustomRequestHandler::getParam($request,"ticket_type");
+    $ticket_status = CustomRequestHandler::getParam($request,"ticket_status");
+    $ticket_filter = CustomRequestHandler::getParam($request,"ticket_filter");
+    $ticket_time_period = CustomRequestHandler::getParam($request,"ticket_time_period");
+    $date_start = CustomRequestHandler::getParam($request,"date_start");
+    $date_end = CustomRequestHandler::getParam($request,"date_end");
+    
+    // Clean data with defaults
+        // 1-All (default), 2-Verification, 3-Support
+        $ticket_type =  $ticket_type > 0 && $ticket_type < 4 ?  $ticket_type : 1;
+        // 1-All (default), 2-New, 3-Ongoing , 4-Closed/resolved
+        $ticket_type =  $ticket_type > 0 && $ticket_type < 5 ?  $ticket_type : 1;
+        // 1-All (default), 2-By Team, 3-By Agent
+        $ticket_type =  $ticket_type > 0 && $ticket_type < 4 ?  $ticket_type : 1;
+        // 1-Monthly (default), 2-Weekly, 3-Daily
+        $ticket_type =  $ticket_type > 0 && $ticket_type < 4 ?  $ticket_type : 1;
+
+    // $resData = [];
+    // $resData['anouncement'] =  $announce['data'];
+    // $resData['myRole'] = $user_role;
+    return $this->customResponse->is200Response($response,"This route works");
+}
 
 
 
@@ -3359,11 +3448,6 @@ private function return_server_response($r_res,  $r_message = "",$r_code = 200, 
             }
             return  $resData;
         }
-
-
-
-
-
 
 
 

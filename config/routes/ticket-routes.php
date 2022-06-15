@@ -59,8 +59,11 @@ $app->group("/ticket",function() use ($app){
     $app->post("/notify-manager","SupportTicketController:notifyManager");
 
 
+// JUN 15
+    $app->post("/get-teams-agents","SupportTicketController:getTeamsAndAgents");
 
 
+    $app->post("/get-report","SupportTicketController:getReport");
 
     
    
