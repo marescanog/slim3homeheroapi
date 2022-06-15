@@ -3029,8 +3029,99 @@ public function getReport(Request $request,Response $response, array $args){
 
 
 
+// ===============================================
+// ===============================================
+
+public function getOrdersReport(Request $request,Response $response, array $args){
+    date_default_timezone_set('Asia/Singapore');
+    // $start =  date('2021-01-01 00:00:00');
+    // $now =  date('Y-m-d H:i:s');  
+    $start =  date('2021-01-01');
+    $now =  date('Y-m-d');  
+
+    $this->validator->validate($request,[
+        // Check if empty
+        // "email"=>v::notEmpty(),
+        "app_type"=>v::notEmpty(),
+        // "app_status"=>v::notEmpty(),
+        "app_filter"=>v::notEmpty(),
+        "app_time_period"=>v::notEmpty(),
+        "date_start"=>v::notEmpty(),
+        "date_end"=>v::notEmpty(),
+    ]);
+        // Returns a response when validator detects a rule breach
+        if($this->validator->failed())
+        {
+            $responseMessage = $this->validator->errors;
+            return $this->customResponse->is400Response($response,$responseMessage);
+        }
+
+        $date_start = CustomRequestHandler::getParam($request,"date_start");
+        $date_end = CustomRequestHandler::getParam($request,"date_end");
+        $app_type = CustomRequestHandler::getParam($request,"app_type");
+        $app_filter = CustomRequestHandler::getParam($request,"app_filter");
+        $app_time_period = CustomRequestHandler::getParam($request,"app_time_period");
+
+    // Clean data with defaults
+        // 1-All , 2- Job Posts (default), 3- Job Orders
+        $app_type =  $app_type > 0 && $app_type < 4 ?  $app_type : 1;
+        // 1-All (default), 2-Completed/Filled, 3-Cancelled , 4-Ongoing, 5-Expired
+        $app_filter =  $app_filter > 0 && $app_filter < 6 ?  $app_filter : 1;
+
+        // // 1-All (default), 2-By Team, 3-By Agent
+        // // $ticket_filter =  $ticket_filter > 0 && $ticket_filter < 4 ?  $ticket_filter: 1;
+
+        // 1-Daily (default), 2-Weekly, 3-Monthly
+        $app_time_period =   $app_time_period  > 0 &&  $app_time_period  < 4 ?   $app_time_period  : 1;
+        // default '2021-01-01 00:00:00'
+        $date_start = $date_start == "" || ( $date_start > $date_end) || strtotime($date_start) == false ? $start : $date_start;
+        // default now
+        $date_end =  $date_end == "" || ($date_start > $date_end) || strtotime($date_end) == false ? $now :  $date_end;
+       
+        $date_start = date('Y-m-d', strtotime($date_start));
+        $date_end = date('Y-m-d', strtotime($date_end));
+
+        // Make sure that the date value is not greater or equal
+        if($date_start > $date_end){
+            // $temp = $date_end;
+            // $date_end = $date_start;
+            // $date_start = $temp;
+            return $this->customResponse->is400Response($response,"Start date cannot come before end date.");
+        } else if ($date_start == $date_end){
+            return $this->customResponse->is400Response($response,"Start date cannot be the same as end date.");
+        }
 
 
+        // GET THE DATA!!!!
+        $app_data = [];
+        if($app_type == 2){ // Job Posts
+            $app_data = $this->supportTicket->getPostData(
+                $date_start, 
+                $date_end,
+                $app_filter,
+                $app_time_period,
+                $now,
+            );
+        } else {
+            $app_data = $this->supportTicket->getJobOrderData(
+                $date_start, 
+                $date_end,
+                $app_filter,
+                $app_time_period,
+                $now
+            );
+        }
+        // Check for query error
+        if($app_data['success'] == false){
+            return $this->customResponse->is500Response($response,$app_data['data']);
+            // return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+        }
+        $app_data = $app_data['data'];
+
+    $resData = [];
+       $resData['app_data'] = $app_data;
+    return $this->customResponse->is200Response($response,$resData);
+}
 
 
 

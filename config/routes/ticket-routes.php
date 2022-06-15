@@ -65,7 +65,8 @@ $app->group("/ticket",function() use ($app){
 
     $app->post("/get-report","SupportTicketController:getReport");
 
-    
+
+    $app->post("/get-orders-report","SupportTicketController:getOrdersReport");
    
 
 

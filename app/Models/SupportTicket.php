@@ -3059,7 +3059,191 @@ public function getTicketsDataPerTeam(
 
 
 
+  public function getPostData(
+    $date_start, 
+    $date_end,
+    $app_filter,
+    $app_time_period,
+    $now
+  )
+    {
+        try {
 
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "SELECT DATE(jp.created_on) Date, MONTH(jp.created_on) as month, DAY(jp.created_on) as day, 
+            YEAR(jp.created_on) as year, DAYOFWEEK(jp.created_on) as day_of_week, COUNT(DATE(jp.created_on)) totalCount 
+            FROM job_post jp 
+            WHERE  (jp.created_on >= :dateStart AND jp.created_on  <= :dateEnd ) ";
+
+            if( $app_time_period == 2){ // Weekly
+                // $sql="SELECT DATE(st.created_on) Date, MONTH(st.created_on) as month, DAY(st.created_on) as day, 
+                // YEAR(st.created_on) as year, DAYOFWEEK(st.created_on) as day_of_week, COUNT(DATE(st.created_on)) totalCount
+                // FROM `support_ticket` st "
+            } else if ( $app_time_period== 3){ // Monthly
+                $sql="SELECT MONTH(jp.created_on) as month, YEAR(jp.created_on) as year, COUNT(DATE(jp.created_on)) totalCount 
+                FROM job_post jp 
+                WHERE  (jp.created_on >= :dateStart AND jp.created_on  <= :dateEnd ) ";
+            }
+
+            // 1-All (default), 2-Completed/Filled, 3-Cancelled , 4-Ongoing, 5-Expired
+            if($app_filter == 2){
+                // 2-Completed/Filled
+                $sql=$sql."AND jp.job_post_status_id = 2 ";
+            } else if ($app_filter == 3){ 
+                // 3-Cancelled
+                $sql=$sql."AND jp.job_post_status_id = 4 ";
+            } else if ($app_filter == 4){ 
+                // 3-Ongoing
+                $sql=$sql."AND (jp.job_post_status_id = 1 AND jp.preferred_date_time >= DATE(:nowd) AND jp.date_time_closed IS NULL) ";
+            } else if ($app_filter == 5){
+                // 3-Expired
+                $sql=$sql."AND (jp.job_post_status_id IN (1,4) AND jp.preferred_date_time <= DATE(:nowd) AND jp.date_time_closed IS NULL) ";
+            }
+
+            if ( $app_time_period == 1 || $app_time_period == 2){ // Daily/weekly
+                $sql=$sql."GROUP BY  DATE(jp.created_on)
+                ORDER BY DATE(jp.created_on) DESC
+                ;";
+            }
+
+            if ( $app_time_period == 3){ // Monthly
+                $sql=$sql."GROUP BY  month, year
+                ORDER BY  month ASC, year DESC 
+                ;";
+            }
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql); 
+    
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':dateStart', $date_start);
+                $stmt->bindparam(':dateEnd', $date_end);
+                if($app_filter == 5 || $app_filter == 4){
+                    $stmt->bindparam(':nowd', $now);
+                }
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+    
+            $conn=null;
+            $stmt = null;
+            $db = null;
+
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
+
+
+
+
+
+    public function getJobOrderData(
+        $date_start, 
+        $date_end,
+        $app_filter,
+        $app_time_period,
+        $now
+    )
+    {
+        try {
+
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql = "SELECT DATE(jo.created_on) Date, MONTH(jo.created_on) as month, DAY(jo.created_on) as day, 
+            YEAR(jo.created_on) as year, DAYOFWEEK(jo.created_on) as day_of_week, COUNT(DATE(jo.created_on)) totalCount 
+            FROM job_order jo 
+            LEFT JOIN job_post jp ON jo.job_post_id = jp.id 
+            WHERE  (jo.created_on >= :dateStart AND jo.created_on  <= :dateEnd) 
+            ";
+
+            if( $app_time_period == 2){ // Weekly
+                // $sql="SELECT DATE(st.created_on) Date, MONTH(st.created_on) as month, DAY(st.created_on) as day, 
+                // YEAR(st.created_on) as year, DAYOFWEEK(st.created_on) as day_of_week, COUNT(DATE(st.created_on)) totalCount
+                // FROM `support_ticket` st "
+            } else if ( $app_time_period== 3){ // Monthly
+                $sql="SELECT MONTH(jo.created_on) as month, YEAR(jo.created_on) as year, COUNT(DATE(jo.created_on)) totalCount 
+                FROM job_order jo 
+                LEFT JOIN job_post jp ON jo.job_post_id = jp.id 
+                WHERE  (jo.created_on >= :dateStart AND jo.created_on  <= :dateEnd)  
+                ";
+            }
+
+            // 1-All (default), 2-Completed/Filled, 3-Cancelled , 4-Ongoing, 5-Expired
+            if($app_filter == 2){
+                // 2-Completed/Filled
+                $sql=$sql." AND jo.job_order_status_id = 2 AND jo.date_time_closed IS NOT NULL";
+            } else if ($app_filter == 3){ 
+                // 3-Cancelled
+                $sql=$sql." AND jo.job_order_status_id = 3 ";
+            } else if ($app_filter == 4){ // double check this
+                // 3-Ongoing
+                $sql=$sql."AND (jo.job_order_status_id = 1 AND jp.preferred_date_time >= :nowd AND jo.date_time_closed IS NULL)";
+            } else if ($app_filter == 5){
+                // 3-Expired
+                $sql=$sql."AND (jo.job_order_status_id = 1 AND jp.preferred_date_time <= :nowd AND jo.date_time_closed IS NULL AND jo.date_time_start IS NULL)";
+            }
+
+            if ( $app_time_period == 1 || $app_time_period == 2){ // Daily/weekly
+                $sql=$sql." GROUP BY  DATE(jo.created_on)
+                ORDER BY DATE(jo.created_on) DESC
+                ;";
+            }
+
+            if ( $app_time_period == 3){ // Monthly
+                $sql=$sql." GROUP BY  month, year
+                ORDER BY  month ASC, year DESC 
+                ;";
+            }
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql); 
+    
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':dateStart', $date_start);
+                $stmt->bindparam(':dateEnd', $date_end);
+                if($app_filter == 5 || $app_filter == 4){
+                    $stmt->bindparam(':nowd', $now);
+                }
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+    
+            $conn=null;
+            $stmt = null;
+            $db = null;
+
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+
+            return $ModelResponse;
+
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
 
 
 
