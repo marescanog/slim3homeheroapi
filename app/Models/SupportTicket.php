@@ -2857,7 +2857,12 @@ public function checkTime_last_notifyManager($managerID, $supID){
 
   public function getTicketsData(
     $date_start, 
-    $date_end
+    $date_end,
+    $ticket_type = 1, // Default All
+    $ticket_status  = 1, // Default All
+    $ticket_filter  = 1, // Default All
+    $ticket_time_period  = 1, // Default Daily
+    $agent_ID
 )
     {
         try {
@@ -2866,14 +2871,56 @@ public function checkTime_last_notifyManager($managerID, $supID){
             $conn = $db->connect();
 
             $sql="SELECT DATE(st.created_on) Date, MONTH(st.created_on) as month, DAY(st.created_on) as day, 
-            YEAR(st.created_on) as year, DAYOFWEEK(st.created_on) as day_of_week, 
-            COUNT(DATE(st.created_on)) totalCount
-            FROM `support_ticket` st
-   			WHERE  st.created_on >= :dateStart and st.created_on  <= :dateEnd
-            GROUP BY  DATE(st.created_on)
-            ORDER BY DATE(st.created_on) ASC
-            ;";
-    
+            YEAR(st.created_on) as year, DAYOFWEEK(st.created_on) as day_of_week, COUNT(DATE(st.created_on)) totalCount
+            FROM `support_ticket` st ";
+
+            if( $ticket_time_period == 2){ // Weekly
+                // $sql="SELECT DATE(st.created_on) Date, MONTH(st.created_on) as month, DAY(st.created_on) as day, 
+                // YEAR(st.created_on) as year, DAYOFWEEK(st.created_on) as day_of_week, COUNT(DATE(st.created_on)) totalCount
+                // FROM `support_ticket` st "
+            } else if ( $ticket_time_period == 3){ // Monthly
+                $sql="SELECT MONTH(st.created_on) as month, YEAR(st.created_on) as year, COUNT(DATE(st.created_on)) totalCount 
+                FROM `support_ticket` st ";
+            }
+
+            $sql= $sql." 
+            LEFT JOIN support_agent sa ON st.assigned_agent = sa.id
+            WHERE  st.created_on >= :dateStart and st.created_on  <= :dateEnd 
+            ";
+
+            if( $ticket_type == 2){ // Verification Tickets
+                $sql=$sql." AND st.issue_id IN(1,2,3) ";
+            } else if ( $ticket_type == 3){ // Customer Support Tickets
+                $sql=$sql." AND st.issue_id IN(4,5,6,7,8,9,10) ";
+            }
+            
+            if( $ticket_status == 2){ // New
+                $sql=$sql." AND st.status = 1 ";
+            } else if ( $ticket_status == 3){ // Ongoing
+                $sql=$sql." AND st.status = 2 ";
+            } else if ( $ticket_status == 4){ // Closed/Resolved
+                $sql=$sql." AND st.status IN (3,4) ";
+            }
+
+            if( $ticket_filter == 2){ // By Team
+                $sql=$sql." AND sa.supervisor_id = :agentID ";
+            } else if ( $ticket_filter == 3){ // By Agent
+                $sql=$sql." AND st.assigned_agent = :agentID ";
+            }
+
+
+            if ( $ticket_time_period == 1 || $ticket_time_period == 2){ // Daily/weekly
+                $sql=$sql."GROUP BY  DATE(st.created_on)
+                ORDER BY DATE(st.created_on) DESC
+                ;";
+            }
+
+            if ( $ticket_time_period == 3){ // Monthly
+                $sql=$sql."GROUP BY month, year
+                ORDER BY  month ASC, year DESC 
+                ;";
+            }
+
             // Prepare statement
             $stmt =  $conn->prepare($sql); 
     
@@ -2881,6 +2928,9 @@ public function checkTime_last_notifyManager($managerID, $supID){
             if ($stmt !== false) {
                 $stmt->bindparam(':dateStart', $date_start);
                 $stmt->bindparam(':dateEnd', $date_end);
+                if(( $ticket_filter == 2 || $ticket_filter == 3) && $agent_ID != null){ // By Team
+                    $stmt->bindparam(':agentID', $agent_ID);
+                }
                 $stmt->execute();
                 $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
             }
@@ -2892,6 +2942,7 @@ public function checkTime_last_notifyManager($managerID, $supID){
             $ModelResponse =  array(
                 "success" => true,
                 "data" => $result
+                // "data" => $sql
             );
     
             return $ModelResponse;
@@ -2905,7 +2956,105 @@ public function checkTime_last_notifyManager($managerID, $supID){
 
 
 
+// I am in a hurry
+public function getTicketsDataPerTeam(
+    $date_start, 
+    $date_end,
+    $ticket_type = 1, // Default All
+    $ticket_status  = 1, // Default All
+    $ticket_filter  = 1, // Default All
+    $ticket_time_period  = 1, // Default Daily
+    $agent_ID
+)
+    {
+        try {
 
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql="SELECT DATE(st.created_on) Date, MONTH(st.created_on) as month, DAY(st.created_on) as day, 
+            YEAR(st.created_on) as year, DAYOFWEEK(st.created_on) as day_of_week, st.assigned_agent, COUNT(DATE(st.created_on)) totalCount
+            FROM `support_ticket` st ";
+
+            if( $ticket_time_period == 2){ // Weekly
+                // $sql="SELECT DATE(st.created_on) Date, MONTH(st.created_on) as month, DAY(st.created_on) as day, 
+                // YEAR(st.created_on) as year, DAYOFWEEK(st.created_on) as day_of_week, COUNT(DATE(st.created_on)) totalCount
+                // FROM `support_ticket` st "
+            } else if ( $ticket_time_period == 3){ // Monthly
+                $sql="SELECT MONTH(st.created_on) as month, YEAR(st.created_on) as year, st.assigned_agent, COUNT(DATE(st.created_on)) totalCount 
+                FROM `support_ticket` st ";
+            }
+
+            $sql= $sql." 
+            LEFT JOIN support_agent sa ON st.assigned_agent = sa.id
+            WHERE  st.created_on >= :dateStart and st.created_on  <= :dateEnd 
+            ";
+
+            if( $ticket_type == 2){ // Verification Tickets
+                $sql=$sql." AND st.issue_id IN(1,2,3) ";
+            } else if ( $ticket_type == 3){ // Customer Support Tickets
+                $sql=$sql." AND st.issue_id IN(4,5,6,7,8,9,10) ";
+            }
+            
+            if( $ticket_status == 2){ // New
+                $sql=$sql." AND st.status = 1 ";
+            } else if ( $ticket_type == 3){ // Ongoing
+                $sql=$sql." AND st.status = 2 ";
+            } else if ( $ticket_type == 4){ // Closed/Resolved
+                $sql=$sql." AND st.status IN (3,4) ";
+            }
+
+            if( $ticket_filter == 2){ // By Team
+                $sql=$sql." AND sa.supervisor_id = :agentID ";
+            } else if ( $ticket_filter == 3){ // By Agent
+                $sql=$sql." AND st.assigned_agent = :agentID ";
+            }
+
+
+            if ( $ticket_time_period == 1 || $ticket_time_period == 2){ // Daily/weekly
+                $sql=$sql."GROUP BY  DATE(st.created_on)
+                ORDER BY DATE(st.created_on) DESC
+                ;";
+            }
+
+            if ( $ticket_time_period == 3){ // Monthly
+                $sql=$sql."GROUP BY st.assigned_agent, month, year
+                ORDER BY  month ASC, year DESC 
+                ;";
+            }
+
+            // Prepare statement
+            $stmt =  $conn->prepare($sql); 
+    
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':dateStart', $date_start);
+                $stmt->bindparam(':dateEnd', $date_end);
+                if(( $ticket_filter == 2 || $ticket_filter == 3) && $agent_ID != null){ // By Team
+                    $stmt->bindparam(':agentID', $agent_ID);
+                }
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+    
+            $conn=null;
+            $stmt = null;
+            $db = null;
+    
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+                // "data" => $sql
+            );
+    
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
 
 
 

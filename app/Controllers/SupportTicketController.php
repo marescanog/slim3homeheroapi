@@ -2832,14 +2832,14 @@ public function getReport(Request $request,Response $response, array $args){
     $now =  date('Y-m-d');  
 
     // Get the bearer token from the Auth header
-    $bearer_token = JSON_encode($request->getHeader("Authorization"));
+    // $bearer_token = JSON_encode($request->getHeader("Authorization"));
     // // Get ticket parameter for ticket information
     // $notif_ID = $args['notifID'];
 
     // Get Agent Email for validation
     $this->validator->validate($request,[
         // Check if empty
-        "email"=>v::notEmpty(),
+        // "email"=>v::notEmpty(),
         "ticket_type"=>v::notEmpty(),
         "ticket_status"=>v::notEmpty(),
         "ticket_filter"=>v::notEmpty(),
@@ -2856,24 +2856,25 @@ public function getReport(Request $request,Response $response, array $args){
         }
 
     // Store Params
-    $email = CustomRequestHandler::getParam($request,"email");
+    // $email = CustomRequestHandler::getParam($request,"email");
+    $agent_name = CustomRequestHandler::getParam($request,"agent_name");
     $ticket_type = CustomRequestHandler::getParam($request,"ticket_type");
-    $ticket_type = CustomRequestHandler::getParam($request,"agent_id");
     $ticket_status = CustomRequestHandler::getParam($request,"ticket_status");
     $ticket_filter = CustomRequestHandler::getParam($request,"ticket_filter");
     $ticket_time_period = CustomRequestHandler::getParam($request,"ticket_time_period");
     $date_start = CustomRequestHandler::getParam($request,"date_start");
     $date_end = CustomRequestHandler::getParam($request,"date_end");
-    
+    $agent_id = CustomRequestHandler::getParam($request,"agent_id");
+
     // Clean data with defaults
         // 1-All (default), 2-Verification, 3-Support
         $ticket_type =  $ticket_type > 0 && $ticket_type < 4 ?  $ticket_type : 1;
         // 1-All (default), 2-New, 3-Ongoing , 4-Closed/resolved
-        $ticket_type =  $ticket_type > 0 && $ticket_type < 5 ?  $ticket_type : 1;
+        $ticket_status =  $ticket_status > 0 && $ticket_status < 5 ?  $ticket_status : 1;
         // 1-All (default), 2-By Team, 3-By Agent
-        $ticket_type =  $ticket_type > 0 && $ticket_type < 4 ?  $ticket_type : 1;
-        // 1-Monthly (default), 2-Weekly, 3-Daily
-        $ticket_type =  $ticket_type > 0 && $ticket_type < 4 ?  $ticket_type : 1;
+        $ticket_filter =  $ticket_filter > 0 && $ticket_filter < 4 ?  $ticket_filter: 1;
+        // 1-Daily (default), 2-Weekly, 3-Monthly
+        $ticket_time_period =   $ticket_time_period  > 0 &&  $ticket_time_period  < 4 ?   $ticket_time_period  : 1;
         // default '2021-01-01 00:00:00'
         $date_start = $date_start == "" || ( $date_start > $date_end) || strtotime($date_start) == false ? $start : $date_start;
         // default now
@@ -2892,26 +2893,137 @@ public function getReport(Request $request,Response $response, array $args){
             return $this->customResponse->is400Response($response,"Start date cannot be the same as end date.");
         }
 
+        if(($agent_id == null || $agent_id == "") && $ticket_filter != 1){
+            return $this->customResponse->is400Response($response,"An agent ID or sup ID is required");
+        }
+
     // Get the tickets data
     $ticketsData = $this->supportTicket->getTicketsData(
         $date_start, 
-        $date_end
+        $date_end,
+        $ticket_type,
+        $ticket_status,
+        $ticket_filter,
+        $ticket_time_period,
+        $agent_id
     );
+
     // Check for query error
     if($ticketsData['success'] == false){
         // return $this->customResponse->is500Response($response,$ticketsData['data']);
         return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
     }
+    $ticketsData = $ticketsData['data'];
+    $max = 0;
+    // $min = 0;
+
+    for($xy = 0; $xy < count($ticketsData); $xy++){
+        if($ticketsData[$xy]["totalCount"] >  $max){
+            $max = $ticketsData[$xy]["totalCount"];
+        }
+    }
+
+
+    // I know its messy like this but I am in a hurry
+        $table_data_per_team =[];
+        $my_team =[];
+        $a = [];
+        $table_data_per_team_totals = [];
+        if($ticket_filter == 2){
+             // Get the team data 
+             $agentsList = $this->supportAgent->getTeamsAndAgents();
+             // Check for query error
+             if($agentsList['success'] == false){
+                 // return $this->customResponse->is500Response($response,$agentsList['data']);
+                 return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+             }
+             $agentsList =   $agentsList['data'];
+             for($rr=0; $rr<count($agentsList); $rr++){
+                $gent = $agentsList[$rr];
+                if($gent['supervisor_id']==$agent_id){
+                    array_push($my_team,$gent);
+                }
+            }
+
+            // Get the tickets data
+            $table_data_per_team_2 = $this->supportTicket->getTicketsDataPerTeam(
+                $date_start, 
+                $date_end,
+                $ticket_type,
+                $ticket_status,
+                $ticket_filter,
+                $ticket_time_period,
+                $agent_id
+            );
+            // Check for query error
+            if($table_data_per_team_2['success'] == false){
+                // return $this->customResponse->is500Response($response,$table_data_per_team['data']);
+                return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+            }
+            $a = $table_data_per_team_2['data'];
+
+            $table_data_per_team = [];
+            $table_data_per_team_totals = [];
+            $ple = [];
+            $monthtastic = array("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec");
+            for($zorg=0; $zorg<count($ticketsData); $zorg++){
+                $daybe = array();
+                if(array_key_exists("Date",$ticketsData[$zorg])){
+                    $daybe['date'] = $ticketsData[$zorg]['Date'];
+                } else {
+                    $daybe['date'] = $monthtastic[$ticketsData[$zorg]['month']-1].'-'.$ticketsData[$zorg]['year'];
+                }
+    
+                for($rr=0; $rr<count($agentsList); $rr++){
+                    $gent = $agentsList[$rr];
+                    if($gent['supervisor_id']==$agent_id){
+                        $gent = $agentsList[$rr];
+                        $daybe[$gent["id"]] = 0;
+                        // $table_data_per_team_totals[$gent["id"]] = 0;
+                        $ple[$gent["id"]] = 0;
+                    }
+                } //    $resData['a'] = $a; //[0]['assigned_agent']
+                array_push($table_data_per_team,$daybe);
+            }
+
+
+            for($help=0; $help<count($a);$help++){
+                $table_data_per_team[$help][$a[$help]["assigned_agent"]]= $a[$help]["totalCount"];
+                $ple[$a[$help]["assigned_agent"]] += $a[$help]["totalCount"];
+            }
+
+            // // for($help=0; $help<count( $ple);$help++){
+            // //     array_unshift( $table_data_per_team_totals, $ple[$a[$help]["assigned_agent"]]);
+            // // }
+
+            $table_data_per_team_totals = array_values($ple);
+     
+        }
+
 
     $resData = [];
     //    $resData['test'] = $date_start > $date_end;
     // $resData['start'] = $start;
     // $resData['now'] = $now;
+    $resData['agent_id'] = $agent_id;
+    $resData['stat'] = $ticket_status;
+    $resData['count'] =  count($ticketsData);
     $resData['start_date'] = $date_start ;
     $resData['end_date'] =  $date_end;
-    $resData['ticketsData'] =  $ticketsData['data'];
-    $resData['maxValue'] =  0;
-    $resData['minValue'] =  0;
+    $resData['ticketsData'] =  $ticketsData;
+    $resData['maxValue'] =   $max;
+    // $resData['minValue'] =  $min;
+    $resData['ticket_type'] =  $ticket_type;
+    $resData['ticket_status'] =  $ticket_status;
+    $resData['ticket_filter'] =  $ticket_filter;
+    $resData['ticket_time_period'] =  $ticket_time_period;
+    $resData['agent_name'] =  $agent_name;
+    $resData['table_data_per_team'] =  $table_data_per_team;
+    $resData['table_data_per_team_totals'] =  $table_data_per_team_totals;
+    $resData['my_team'] = $my_team;
+    // $resData['a'] = $a; //[0]['assigned_agent']
+    // $resData['agentsList'] = $agentsList;
+
     return $this->customResponse->is200Response($response,$resData);
 }
 
