@@ -2819,7 +2819,18 @@ public function getTeamsAndAgents(Request $request,Response $response, array $ar
 }
 
 
+
+
+// ===============================================
+// ===============================================
+
 public function getReport(Request $request,Response $response, array $args){
+    date_default_timezone_set('Asia/Singapore');
+    // $start =  date('2021-01-01 00:00:00');
+    // $now =  date('Y-m-d H:i:s');  
+    $start =  date('2021-01-01');
+    $now =  date('Y-m-d');  
+
     // Get the bearer token from the Auth header
     $bearer_token = JSON_encode($request->getHeader("Authorization"));
     // // Get ticket parameter for ticket information
@@ -2834,7 +2845,8 @@ public function getReport(Request $request,Response $response, array $args){
         "ticket_filter"=>v::notEmpty(),
         "ticket_time_period"=>v::notEmpty(),
         "date_start"=>v::notEmpty(),
-        "date_end"=>v::notEmpty()
+        "date_end"=>v::notEmpty(),
+        "agent_id"=>v::notEmpty()
     ]);
         // Returns a response when validator detects a rule breach
         if($this->validator->failed())
@@ -2846,6 +2858,7 @@ public function getReport(Request $request,Response $response, array $args){
     // Store Params
     $email = CustomRequestHandler::getParam($request,"email");
     $ticket_type = CustomRequestHandler::getParam($request,"ticket_type");
+    $ticket_type = CustomRequestHandler::getParam($request,"agent_id");
     $ticket_status = CustomRequestHandler::getParam($request,"ticket_status");
     $ticket_filter = CustomRequestHandler::getParam($request,"ticket_filter");
     $ticket_time_period = CustomRequestHandler::getParam($request,"ticket_time_period");
@@ -2861,11 +2874,45 @@ public function getReport(Request $request,Response $response, array $args){
         $ticket_type =  $ticket_type > 0 && $ticket_type < 4 ?  $ticket_type : 1;
         // 1-Monthly (default), 2-Weekly, 3-Daily
         $ticket_type =  $ticket_type > 0 && $ticket_type < 4 ?  $ticket_type : 1;
+        // default '2021-01-01 00:00:00'
+        $date_start = $date_start == "" || ( $date_start > $date_end) || strtotime($date_start) == false ? $start : $date_start;
+        // default now
+        $date_end =  $date_end == "" || ($date_start > $date_end) || strtotime($date_end) == false ? $now :  $date_end;
+       
+        $date_start = date('Y-m-d', strtotime($date_start));
+        $date_end = date('Y-m-d', strtotime($date_end));
 
-    // $resData = [];
-    // $resData['anouncement'] =  $announce['data'];
-    // $resData['myRole'] = $user_role;
-    return $this->customResponse->is200Response($response,"This route works");
+        // Make sure that the date value is not greater or equal
+        if($date_start > $date_end){
+            // $temp = $date_end;
+            // $date_end = $date_start;
+            // $date_start = $temp;
+            return $this->customResponse->is400Response($response,"Start date cannot come before end date.");
+        } else if ($date_start == $date_end){
+            return $this->customResponse->is400Response($response,"Start date cannot be the same as end date.");
+        }
+
+    // Get the tickets data
+    $ticketsData = $this->supportTicket->getTicketsData(
+        $date_start, 
+        $date_end
+    );
+    // Check for query error
+    if($ticketsData['success'] == false){
+        // return $this->customResponse->is500Response($response,$ticketsData['data']);
+        return $this->customResponse->is500Response($response,"SQLSTATE[42000]: Syntax error or access violation: Please check your query.");
+    }
+
+    $resData = [];
+    //    $resData['test'] = $date_start > $date_end;
+    // $resData['start'] = $start;
+    // $resData['now'] = $now;
+    $resData['start_date'] = $date_start ;
+    $resData['end_date'] =  $date_end;
+    $resData['ticketsData'] =  $ticketsData['data'];
+    $resData['maxValue'] =  0;
+    $resData['minValue'] =  0;
+    return $this->customResponse->is200Response($response,$resData);
 }
 
 

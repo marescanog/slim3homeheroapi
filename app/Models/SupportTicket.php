@@ -2855,7 +2855,53 @@ public function checkTime_last_notifyManager($managerID, $supID){
         }}
 
 
+  public function getTicketsData(
+    $date_start, 
+    $date_end
+)
+    {
+        try {
 
+            $db = new DB();
+            $conn = $db->connect();
+
+            $sql="SELECT DATE(st.created_on) Date, MONTH(st.created_on) as month, DAY(st.created_on) as day, 
+            YEAR(st.created_on) as year, DAYOFWEEK(st.created_on) as day_of_week, 
+            COUNT(DATE(st.created_on)) totalCount
+            FROM `support_ticket` st
+   			WHERE  st.created_on >= :dateStart and st.created_on  <= :dateEnd
+            GROUP BY  DATE(st.created_on)
+            ORDER BY DATE(st.created_on) ASC
+            ;";
+    
+            // Prepare statement
+            $stmt =  $conn->prepare($sql); 
+    
+            // Only fetch if prepare succeeded
+            if ($stmt !== false) {
+                $stmt->bindparam(':dateStart', $date_start);
+                $stmt->bindparam(':dateEnd', $date_end);
+                $stmt->execute();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            }
+    
+            $conn=null;
+            $stmt = null;
+            $db = null;
+    
+            $ModelResponse =  array(
+                "success" => true,
+                "data" => $result
+            );
+    
+            return $ModelResponse;
+        } catch (\PDOException $e) {
+
+            $ModelResponse =  array(
+                "success" => false,
+                "data" => $e->getMessage()
+            );
+        }}
 
 
 
