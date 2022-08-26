@@ -440,7 +440,9 @@ class File
             AND jp.is_deleted = 0
             AND jp.preferred_date_time >= CURRENT_TIMESTAMP
             AND jp.job_post_status_id = 1
-            AND homeowner_id = :userid";
+            AND homeowner_id = :userid
+            ORDER BY jp.created_on DESC
+            ";
 
             // Prepare statement
             $stmt =  $conn->prepare($sql);
@@ -685,7 +687,9 @@ class File
             	jp.job_post_status_id = 4 OR jo.job_order_status_id = 3 OR jo.job_order_status_id = 2 OR
                 (jp.job_post_status_id = 1 AND jp.preferred_date_time < CURRENT_TIMESTAMP)
             )
-            AND jp.homeowner_id = :userid";
+            AND jp.homeowner_id = :userid
+            ORDER BY DATE(jo.date_time_closed) DESC , jo.job_order_status_id DESC
+            ";
 
             // Prepare statement
             $stmt =  $conn->prepare($sql);
