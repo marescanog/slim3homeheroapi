@@ -1157,6 +1157,7 @@ public function decodeLoginToken(Request $request,Response $response){
         $resData['role'] = null;
         $resData['email'] = null;
         $resData['profile_pic_location'] = false;
+        $resData['id'] = $userData['user_id'];
 
         if($userType == 3 || $userType == 4){
             // Get Data from Support Model
