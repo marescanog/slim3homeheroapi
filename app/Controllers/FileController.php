@@ -62,12 +62,12 @@ private function generateServerResponse($status, $message){
 
 
 
-   private function GET_USER_ID_FROM_TOKEN($bearer_token, $type = 1){
+   private function GET_USER_ID_FROM_TOKEN($bearer_token){
     // Extract token by omitting "Bearer"
     $jwt = substr(trim($bearer_token),9);
 
     // Decode token to get user ID
-    $result =  GenerateTokenController::AuthenticateUserType($jwt, $type);
+    $result =  GenerateTokenController::AuthenticateUserType($jwt, 1);
     //return $result ;
     if($result['status'] == false){
         return $this->generateServerResponse(401, $result['message']);
@@ -2358,123 +2358,6 @@ public function getProjectTypes(Request $request,Response $response){
     // For debugging purposes
     // return $this->customResponse->is200Response($response,  "This route works");
 }
-
-
-
-// AUG 26 2022
-
-public function getSingleProjectW(Request $request,Response $response, array $args){
-    // Get the bearer token from the Auth header
-    $bearer_token = JSON_encode($request->getHeader("Authorization"));
-
-    // Catch the response, on success it is an ID, on fail it has status and message
-    $userID = $this->GET_USER_ID_FROM_TOKEN($bearer_token, 2);
-
-    // Error handling
-    if(is_array( $userID) && array_key_exists("status", $userID)){
-        return $this->customResponse->is401Response($response, $userID);
-    }
-
-    // Get the necessary data needed to pass into the variables
-    $jobPostID = $args['id'];
-
-    // Validate Data & Return Validation Errors
-    if(!v::intVal()->validate($jobPostID))
-    {
-        return $this->customResponse->is400Response($response,$this->generateServerResponse(400, "wrong api route argument"));
-    }
-
-
-    // Get Single job post
-    $singleJobPost=  $this->file->getSingleJobPost($jobPostID);
-    // Error handling & Verification
-    if(   $singleJobPost['success'] !== true){
-        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $singleJobPost['data']) );
-    }
-    if($singleJobPost['data'] == false){
-        return $this->customResponse->is500Response($response,$this->generateServerResponse(404, "404: Job Post cannot be found"));
-    }
-    if($singleJobPost['data']['preferred_date_time'] == null){
-        return $this->customResponse->is401Response($response,$this->generateServerResponse(500, "500: Somethign went wrong, please try again."));
-    }
-    $postDate = $singleJobPost['data']['preferred_date_time'];
-    $dateToday =  date("Y-m-d h:m:s") ;
-
-
-    // Get Single Job Order Associated with post
-    $singleJobOrder =  $this->file->getSingleJobOrder($jobPostID);
-    // Error handling 
-    if( $singleJobOrder['success'] !== true){
-        return $this->customResponse->is500Response($response, $this->generateServerResponse(500, $singleJobOrder['data']) );
-    }
-    $jo =  $singleJobOrder['data'];
-
-    $postDate = $singleJobPost['data']['preferred_date_time'];
-    $dateToday =  date("Y-m-d h:m:s") ;
-
-    $singleBill = null;
-    $singleRating = null;
-    if(  $jo !== false ){
-        // Check if it is the correct worker
-        if($jo['worker_id'] != $userID){
-            return $this->customResponse->is500Response($response,$this->generateServerResponse(401, "401: This job order is not assigned to you"));
-        }
-
-        // Get Single Job Bill Associated with post
-        $singleBill =  $this->file->getSingleBill($jo['id']);
-        // Error handling 
-        if( $singleBill['success'] !== true){
-            return $this->$singleBill->is500Response($response, $this->generateServerResponse(500, $singleBill['data']) );
-        }
-
-        // Get single review associated with post
-        $singleRating =  $this->file->getSingleRating($jo['id']);
-        // Error handling 
-        if(  $singleRating['success'] !== true){
-            return $this->$singleBill->is500Response($response, $this->generateServerResponse(500,  $singleRating['data']) );
-        }
-    } else {
-        // Check if the job post is expired
-        if($dateToday > $postDate){
-            return $this->customResponse->is500Response($response, $this->generateServerResponse(401, "401: Job Post has already expired") );
-        }
-    }
-
-    // send data back
-    $data = [];
-    $data['singleJobPost'] = $singleJobPost['data'];
-    $data['singleJobOrder'] = $jo;
-    $data['singleBill'] = $singleBill == null ? false : $singleBill['data'];
-    $data['singleReview'] = $singleRating == null ? false : $singleRating['data'] ;
-
-    //$singleJobPost['data']['preferred_date_time']
-
-
-    // Return information needed for personal info page
-    return $this->customResponse->is200Response($response, $data);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

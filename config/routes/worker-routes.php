@@ -20,7 +20,6 @@ $app->group("/worker",function() use ($app){
     $app->get("/ongoing-job-orders/{id}","WorkerController:getOngoingJobOrders");
     $app->get("/past-job-orders/{id}","WorkerController:getPastJobOrders");
     $app->get("/reviews/{id}","WorkerController:getReviews");
-    $app->get("/get-single-project-complete-info/{id}","FileController:getSingleProjectW");
     // 2. Get Job Postings (Restrict by worker's preferred city & skillset)
     // 3. Get Ongoing Job Orders (Restrict by worker id/ only logged in workers postings)
     // 4. Get Past Job Orders (Restrict by worker id/ only logged in workers postings & isCompleted)
